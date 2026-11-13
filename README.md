@@ -20,11 +20,44 @@ Para um deck menor e resultados reproduziveis:
 .\.venv\Scripts\python.exe main.py --deck-size 12 --seed 42
 ```
 
-Cada deck usa copias ciclicas das cartas do catalogo, embaralhadas. O tamanho
+O deck automatico usa copias ciclicas das cartas do catalogo, embaralhadas. O tamanho
 padrao e 30; nao ha limite de copias neste prototipo. Cada jogador recebe tres
 cartas iniciais (ou o tamanho do deck, se menor). O primeiro jogador tambem
 compra no inicio do seu primeiro turno. Nao ha mulligan, moeda, armas ou poder
 heroico.
+
+## Deck builder
+
+No menu, use **Montar / editar decks**. Clique no campo de nome para digitar e
+use **+** / **-** para ajustar as copias de cada carta. As paginas permitem
+percorrer todo o catalogo. Nao ha limite de copias nem tamanho fixo: o deck deve
+conter pelo menos uma carta. O painel mostra total, tipos de carta e custo medio.
+
+**Salvar / substituir e selecionar** grava o deck e o seleciona para a proxima
+partida. Salvar com um nome existente substitui sua composicao; mudar o nome
+cria outro deck. Clique em um deck salvo para carrega-lo e edita-lo.
+**Novo**, **Voltar** e Esc descartam alteracoes nao salvas.
+
+No menu, clique no seletor **Deck** para alternar entre os salvos e o automatico.
+A selecao vale durante a sessao; os decks permanecem salvos ao fechar o jogo.
+O deck escolhido e usado pelo jogador, inclusive ao jogar novamente. A IA
+continua usando o deck automatico de `--deck-size` cartas; essa opcao nao altera
+o tamanho do deck personalizado. Ambos sao embaralhados antes da partida.
+
+Os decks ficam em `data\decks.json`, criado no primeiro salvamento e ignorado
+pelo Git por ser um arquivo local do jogador. Formato:
+
+```json
+{
+  "Peoes e Torres": ["peao", "peao", "torre"],
+  "Teste rapido": ["cavalo", "bispo", "dama"]
+}
+```
+
+Nomes aceitam ate 40 caracteres. IDs desconhecidos, decks vazios e JSON
+malformado geram uma mensagem visivel; um arquivo invalido nao e sobrescrito
+pelo editor. Corrija-o e reabra o editor para recarregar. Os salvamentos usam
+substituicao atomica para preservar o arquivo anterior se houver falha.
 
 ## Controles
 
@@ -82,7 +115,8 @@ da fila e precisa esperar para atacar, como uma unidade sem Investida.
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `main.py` | Estados Menu/Partida/Fim, desenho, cliques, agenda da IA sem bloquear eventos |
+| `main.py` | Estados Menu/Deck builder/Partida/Fim, desenho, cliques, agenda da IA sem bloquear eventos |
+| `deck_store.py` | Validacao de decks e persistencia local em JSON |
 | `game_engine.py` | Estado, jogadas legais, combate, turnos, compras, Endgame e IA |
 | `effect_parser.py` | Resolucao de alvos, condicoes e execucao ordenada dos efeitos |
 | `csv_to_json.py` | Conversao e validacao do catalogo; utilizavel sem pygame |
@@ -181,3 +215,4 @@ python main.py --smoke-test
 Os testes de interface e o segundo comando usam o driver SDL dummy, sem janela.
 Para executar somente as regras, sem depender de pygame, use
 `python -m unittest discover -s tests -p test_game.py -v`.
+Os testes de decks usam arquivos temporarios e nao alteram sua biblioteca.

@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from csv_to_json import validate_cards
+from deck_store import validate_deck
 from effect_parser import EffectParser, MANUAL_TARGETS
 
 
@@ -92,6 +93,7 @@ class Game:
     def __init__(
         self, cards: list[dict], deck_size: int = 30, seed: int | None = None,
         opening_hand: int = 3,
+        player_deck: list[str] | None = None,
     ):
         validate_cards(cards)
         if isinstance(deck_size, bool) or not isinstance(deck_size, int) or deck_size < 1:
@@ -99,6 +101,7 @@ class Game:
         if isinstance(opening_hand, bool) or not isinstance(opening_hand, int) or not 0 <= opening_hand <= HAND_LIMIT:
             raise ValueError("opening_hand deve estar entre 0 e 10")
         self.catalog = {card["id"]: card for card in cards}
+        custom_deck = validate_deck(player_deck, self.catalog) if player_deck is not None else None
         self.rng = random.Random(seed)
         self._next_uid = 1
         self.messages: deque[str] = deque(maxlen=150)
@@ -107,13 +110,17 @@ class Game:
         self.over = False
         self.winner: int | None = None
         self._cleaning = False
+        decks = [self._make_deck(deck_size) if custom_deck is None else custom_deck,
+                 self._make_deck(deck_size)]
+        if custom_deck is not None:
+            self.rng.shuffle(decks[0])
         self.players = [
-            Player(owner, name, self._make_deck(deck_size))
+            Player(owner, name, decks[owner])
             for owner, name in enumerate(("Jogador", "Adversario"))
         ]
         self.parser = EffectParser(self)
         for owner in (0, 1):
-            for _ in range(min(opening_hand, deck_size)):
+            for _ in range(min(opening_hand, len(self.players[owner].deck))):
                 self.draw_card(owner)
         self.start_turn()
 

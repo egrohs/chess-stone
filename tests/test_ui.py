@@ -1,5 +1,8 @@
 import os
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 os.environ["SDL_AUDIODRIVER"] = "dummy"
@@ -13,11 +16,13 @@ from main import App, State
 class InterfaceTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.app = App(deck_size=100, seed=3)
+        cls.temporary = tempfile.TemporaryDirectory()
+        cls.app = App(deck_size=100, seed=3, decks_path=Path(cls.temporary.name) / "decks.json")
 
     @classmethod
     def tearDownClass(cls):
         pygame.quit()
+        cls.temporary.cleanup()
 
     def setUp(self):
         self.app.start_game()
@@ -135,6 +140,124 @@ class InterfaceTests(unittest.TestCase):
         self.app.click(self.app.start_button.center)
         self.assertEqual(self.app.state, State.MATCH)
         self.assertFalse(self.app.game.over)
+
+
+class DeckBuilderTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.path = Path(self.temporary.name) / "decks.json"
+        self.app = App(seed=42, decks_path=self.path)
+        self.addCleanup(pygame.quit)
+        self.app.click(self.app.builder_button.center)
+
+    def name_deck(self, name):
+        self.app.click(self.app.name_rect.center)
+        self.app.handle_event(pygame.event.Event(pygame.TEXTINPUT, text=name))
+        self.app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN))
+
+    def test_build_save_reload_select_and_play(self):
+        self.assertEqual(self.app.state, State.DECK_BUILDER)
+        self.name_deck("Peoes")
+        _, minus, plus = self.app.catalog_rows()[0]
+        self.app.click(minus.center)
+        self.assertEqual(self.app.draft["peao"], 0)
+        for _ in range(13):
+            self.app.click(plus.center)
+        self.app.click(minus.center)
+        self.app.draw()
+        self.app.click(self.app.save_deck_button.center)
+        self.assertEqual(self.app.saved_decks, {"Peoes": ["peao"] * 12})
+        self.assertTrue(self.path.is_file())
+        self.app.click(self.app.back_deck_button.center)
+        self.app.draw()
+        self.app.click(self.app.start_button.center)
+        player = self.app.game.players[0]
+        self.assertEqual(len(player.deck) + len(player.hand), 12)
+        self.assertTrue(all(c.definition["id"] == "peao" for c in player.hand))
+        reloaded = App(decks_path=self.path)
+        self.assertEqual(reloaded.saved_decks, {"Peoes": ["peao"] * 12})
+        reloaded.click(reloaded.deck_select_button.center)
+        self.assertEqual(reloaded.active_deck, "Peoes")
+        reloaded.start_game()
+        self.assertEqual(len(reloaded.game.players[0].deck), 8)
+
+    def test_edit_existing_and_save_another_name(self):
+        self.name_deck("Primeiro")
+        self.app.click(self.app.catalog_rows()[0][2].center)
+        self.app.save_draft()
+        self.app.click(self.app.new_deck_button.center)
+        self.assertEqual(sum(self.app.draft.values()), 0)
+        self.app.click(self.app.saved_rows()[0][1].center)
+        self.assertEqual(self.app.draft_name, "Primeiro")
+        self.app.click(self.app.catalog_rows()[1][2].center)
+        self.app.save_draft()
+        self.assertEqual(self.app.saved_decks["Primeiro"], ["peao", "cavalo"])
+        self.app.draft_name = "Segundo"
+        self.app.save_draft()
+        self.assertEqual(len(self.app.deck_store.load()), 2)
+
+    def test_invalid_empty_deck_and_save_failure_reported(self):
+        self.app.save_draft()
+        self.assertIn("Erro ao salvar", self.app.deck_message)
+        self.assertFalse(self.path.exists())
+        self.name_deck("Teste")
+        self.app.click(self.app.catalog_rows()[0][2].center)
+        with patch.object(self.app.deck_store, "save", side_effect=OSError("sem permissao")):
+            self.app.save_draft()
+        self.assertIn("sem permissao", self.app.deck_message)
+        self.assertEqual(self.app.saved_decks, {})
+        self.assertIsNone(self.app.active_deck)
+
+    def test_corrupt_file_is_not_overwritten_and_can_be_reloaded(self):
+        self.path.write_text("{", encoding="utf-8")
+        self.app.open_builder()
+        self.assertTrue(self.app.library_error)
+        self.name_deck("Teste")
+        self.app.click(self.app.catalog_rows()[0][2].center)
+        self.app.save_draft()
+        self.assertEqual(self.path.read_text(), "{")
+        self.assertIn("Erro ao ler", self.app.deck_message)
+        self.app.draw()
+        self.path.write_text('{"Recuperado": ["peao"]}', encoding="utf-8")
+        self.app.click(self.app.back_deck_button.center)
+        self.app.click(self.app.builder_button.center)
+        self.assertFalse(self.app.library_error)
+        self.assertIn("Recuperado", self.app.saved_decks)
+
+    def test_pagination_name_backspace_and_discard(self):
+        self.app.click(self.app.catalog_next.center)
+        self.assertEqual(self.app.catalog_page, 1)
+        self.assertEqual(self.app.catalog_rows()[0][0]["id"], "roque")
+        self.app.click(self.app.catalog_rows()[0][2].center)
+        self.app.draw()
+        self.app.click(self.app.catalog_prev.center)
+        self.name_deck("A" * 50)
+        self.assertEqual(len(self.app.draft_name), 40)
+        self.app.click(self.app.name_rect.center)
+        self.app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_BACKSPACE))
+        self.assertEqual(len(self.app.draft_name), 39)
+        self.app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+        self.assertEqual(self.app.state, State.MENU)
+        self.app.click(self.app.builder_button.center)
+        self.assertEqual(sum(self.app.draft.values()), 0)
+        self.assertFalse(self.path.exists())
+
+    def test_saved_deck_pagination_and_automatic_selection(self):
+        self.app.saved_decks = {f"Deck {i}": ["peao"] for i in range(8)}
+        self.app.click(self.app.saved_next.center)
+        self.assertEqual(len(self.app.saved_rows()), 2)
+        name, rect = self.app.saved_rows()[0]
+        self.app.click(rect.center)
+        self.assertEqual(self.app.active_deck, name)
+        self.app.draw()
+        self.app.click(self.app.saved_prev.center)
+        self.assertEqual(len(self.app.saved_rows()), 6)
+        self.app.active_deck = None
+        self.app.state = State.MENU
+        for _ in range(9):
+            self.app.click(self.app.deck_select_button.center)
+        self.assertIsNone(self.app.active_deck)
 
 
 if __name__ == "__main__":

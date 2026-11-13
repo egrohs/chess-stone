@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import argparse
 import os
+from collections import Counter
 from enum import Enum, auto
+from pathlib import Path
 
 import pygame
 
 from game_engine import BOARD_LIMIT, KEYWORD_LABELS, Card, Entity, Game, RuleError, Unit, load_cards
+from deck_store import DEFAULT_PATH, DeckStore
 
 
 WIDTH, HEIGHT = 1440, 940
@@ -26,12 +29,16 @@ SIDEBAR = 1100
 
 class State(Enum):
     MENU = auto()
+    DECK_BUILDER = auto()
     MATCH = auto()
     GAME_OVER = auto()
 
 
 class App:
-    def __init__(self, *, deck_size: int = 30, seed: int | None = None):
+    def __init__(
+        self, *, deck_size: int = 30, seed: int | None = None,
+        decks_path: Path = DEFAULT_PATH,
+    ):
         pygame.init()
         pygame.display.set_caption("Chess Stone - prototipo")
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
@@ -42,6 +49,17 @@ class App:
         self.cards = load_cards()
         self.deck_size = deck_size
         self.seed = seed
+        self.deck_store = DeckStore([card["id"] for card in self.cards], decks_path)
+        self.saved_decks: dict[str, list[str]] = {}
+        self.active_deck: str | None = None
+        self.library_error = False
+        self.deck_message = ""
+        self.draft_name = ""
+        self.draft: Counter[str] = Counter()
+        self.name_focused = False
+        self.catalog_page = 0
+        self.saved_page = 0
+        self.reload_decks()
         self.state = State.MENU
         self.game: Game | None = None
         self.selected_card: Card | None = None
@@ -50,17 +68,125 @@ class App:
         self.running = True
         self.ai_at = 0
         self.start_button = pygame.Rect(540, 440, 360, 65)
-        self.quit_button = pygame.Rect(540, 530, 360, 60)
+        self.quit_button = pygame.Rect(540, 690, 360, 60)
+        self.builder_button = pygame.Rect(540, 520, 360, 60)
+        self.deck_select_button = pygame.Rect(440, 600, 560, 60)
+        self.name_rect = pygame.Rect(30, 95, 820, 48)
+        self.save_deck_button = pygame.Rect(910, 95, 490, 48)
+        self.new_deck_button = pygame.Rect(910, 160, 235, 48)
+        self.back_deck_button = pygame.Rect(1165, 160, 235, 48)
+        self.catalog_prev = pygame.Rect(30, 830, 180, 45)
+        self.catalog_next = pygame.Rect(670, 830, 180, 45)
+        self.saved_prev = pygame.Rect(910, 745, 180, 45)
+        self.saved_next = pygame.Rect(1220, 745, 180, 45)
         self.end_button = pygame.Rect(1120, 100, 296, 52)
         self.king_button = pygame.Rect(1120, 164, 296, 52)
         self.play_button = pygame.Rect(1120, 228, 296, 52)
         self.menu_button = pygame.Rect(1120, 868, 296, 48)
 
     def start_game(self) -> None:
-        self.game = Game(self.cards, deck_size=self.deck_size, seed=self.seed)
+        self.game = Game(
+            self.cards, deck_size=self.deck_size, seed=self.seed,
+            player_deck=self.saved_decks[self.active_deck] if self.active_deck else None,
+        )
         self.state = State.MATCH
         self.clear_selection()
         self.ai_at = pygame.time.get_ticks() + 450
+
+    def reload_decks(self) -> None:
+        try:
+            decks = self.deck_store.load()
+        except (OSError, ValueError) as error:
+            self.library_error = True
+            self.deck_message = f"Erro ao ler decks: {error}. Corrija o arquivo e reabra o editor."
+            return
+        self.saved_decks = decks
+        self.saved_page = min(self.saved_page, max(0, (len(decks) - 1) // 6))
+        if self.active_deck not in decks:
+            self.active_deck = None
+        self.library_error = False
+        self.deck_message = ""
+
+    def open_builder(self) -> None:
+        self.reload_decks()
+        self.state = State.DECK_BUILDER
+        self.name_focused = False
+        if self.active_deck:
+            self.draft_name = self.active_deck
+            self.draft = Counter(self.saved_decks[self.active_deck])
+        else:
+            self.draft_name = ""
+            self.draft = Counter()
+
+    def catalog_rows(self) -> list[tuple[dict, pygame.Rect, pygame.Rect]]:
+        return [
+            (card, pygame.Rect(660, 180 + i * 63, 54, 45),
+             pygame.Rect(783, 180 + i * 63, 54, 45))
+            for i, card in enumerate(self.cards[self.catalog_page * 10:(self.catalog_page + 1) * 10])
+        ]
+
+    def saved_rows(self) -> list[tuple[str, pygame.Rect]]:
+        names = sorted(self.saved_decks, key=str.casefold)
+        return [
+            (name, pygame.Rect(910, 390 + i * 55, 490, 45))
+            for i, name in enumerate(names[self.saved_page * 6:(self.saved_page + 1) * 6])
+        ]
+
+    def save_draft(self) -> None:
+        if self.library_error:
+            return
+        cards = [card["id"] for card in self.cards for _ in range(self.draft[card["id"]])]
+        name = self.draft_name.strip()
+        candidate = {**self.saved_decks, name: cards}
+        try:
+            self.deck_store.save(candidate)
+        except (OSError, ValueError) as error:
+            self.deck_message = f"Erro ao salvar: {error}"
+            return
+        self.saved_decks = candidate
+        self.active_deck = name
+        self.draft_name = name
+        self.deck_message = f"Deck '{name}' salvo e selecionado ({len(cards)} cartas)."
+
+    def click_builder(self, point: tuple[int, int]) -> None:
+        self.name_focused = self.name_rect.collidepoint(point)
+        if self.name_focused:
+            pygame.key.start_text_input()
+            return
+        pygame.key.stop_text_input()
+        if self.back_deck_button.collidepoint(point):
+            self.state = State.MENU
+        elif self.save_deck_button.collidepoint(point):
+            self.save_draft()
+        elif self.new_deck_button.collidepoint(point):
+            self.draft_name = ""
+            self.draft = Counter()
+            if not self.library_error:
+                self.deck_message = "Novo deck. Informe um nome e adicione cartas."
+        elif self.catalog_prev.collidepoint(point):
+            self.catalog_page = max(0, self.catalog_page - 1)
+        elif self.catalog_next.collidepoint(point):
+            self.catalog_page = min((len(self.cards) - 1) // 10, self.catalog_page + 1)
+        elif self.saved_prev.collidepoint(point):
+            self.saved_page = max(0, self.saved_page - 1)
+        elif self.saved_next.collidepoint(point):
+            self.saved_page = min(max(0, (len(self.saved_decks) - 1) // 6), self.saved_page + 1)
+        else:
+            for card, minus, plus in self.catalog_rows():
+                if plus.collidepoint(point):
+                    self.draft[card["id"]] += 1
+                    return
+                if minus.collidepoint(point):
+                    self.draft[card["id"]] = max(0, self.draft[card["id"]] - 1)
+                    return
+            for name, rect in self.saved_rows():
+                if rect.collidepoint(point):
+                    self.draft_name = name
+                    self.draft = Counter(self.saved_decks[name])
+                    self.active_deck = name
+                    if not self.library_error:
+                        self.deck_message = f"Deck '{name}' carregado e selecionado."
+                    return
 
     def clear_selection(self) -> None:
         self.selected_card = None
@@ -133,8 +259,16 @@ class App:
         if self.state == State.MENU:
             if self.start_button.collidepoint(point):
                 self.start_game()
+            elif self.builder_button.collidepoint(point):
+                self.open_builder()
+            elif self.deck_select_button.collidepoint(point):
+                options = [None, *sorted(self.saved_decks, key=str.casefold)]
+                self.active_deck = options[(options.index(self.active_deck) + 1) % len(options)]
             elif self.quit_button.collidepoint(point):
                 self.running = False
+            return
+        if self.state == State.DECK_BUILDER:
+            self.click_builder(point)
             return
         if self.state == State.GAME_OVER:
             if self.start_button.collidepoint(point):
@@ -377,16 +511,80 @@ class App:
             self.text(line, (1120, 480 + height * index), WHITE, self.small)
         self.button(self.menu_button, "Voltar ao Menu")
 
+    def draw_builder(self) -> None:
+        self.text("MONTAR DECK", (30, 25), GOLD, self.large)
+        self.text("Copias livres | Minimo: 1 carta | Salvar com o mesmo nome substitui o deck.", (350, 38), MUTED)
+        pygame.draw.rect(self.screen, PANEL, self.name_rect, border_radius=5)
+        pygame.draw.rect(self.screen, GOLD if self.name_focused else MUTED, self.name_rect, 2)
+        self.paragraph(
+            self.draft_name + ("|" if self.name_focused else "") if self.draft_name or self.name_focused
+            else "Clique para informar o nome do deck",
+            self.name_rect.inflate(-20, -14), WHITE if self.draft_name else MUTED, font=self.font,
+        )
+        self.button(self.save_deck_button, "Salvar / substituir e selecionar", not self.library_error)
+        self.button(self.new_deck_button, "Novo (descartar rascunho)")
+        self.button(self.back_deck_button, "Voltar (descartar)")
+        total = sum(self.draft.values())
+        minions = sum(self.draft[c["id"]] for c in self.cards if c["type"] == "minion")
+        self.text(f"{total} cartas | {minions} lacaios | {total - minions} feiticos", (910, 235), GOLD)
+        average = sum(c["cost"] * self.draft[c["id"]] for c in self.cards) / total if total else 0
+        self.text(f"Custo medio: {average:.1f} mana", (910, 270), BLUE)
+        self.paragraph(
+            "Clique em um deck salvo para carregar e selecionar."
+            " Alteracoes so entram na partida depois de salvar.",
+            pygame.Rect(910, 310, 490, 65), MUTED,
+        )
+        self.text("CARTAS: custo / nome / atributos / efeito", (30, 153), MUTED, self.small)
+        for card, minus, plus in self.catalog_rows():
+            y = minus.y
+            pygame.draw.rect(self.screen, PANEL, (30, y, 820, 55), border_radius=5)
+            stats = f" {card['attack']}/{card['health']}" if card["type"] == "minion" else " Feitico"
+            self.text(f"{card['cost']} - {card['name']}{stats}", (40, y + 3), WHITE)
+            self.paragraph(card["description"], pygame.Rect(40, y + 29, 605, 22), MUTED)
+            self.button(minus, "-", self.draft[card["id"]] > 0)
+            self.paragraph(
+                str(self.draft[card["id"]]), pygame.Rect(722, y + 12, 55, 24), GOLD,
+            )
+            self.button(plus, "+")
+        for name, rect in self.saved_rows():
+            pygame.draw.rect(self.screen, PANEL, rect, border_radius=5)
+            pygame.draw.rect(self.screen, GOLD if name == self.active_deck else MUTED, rect, 2)
+            self.paragraph(
+                f"{name} ({len(self.saved_decks[name])} cartas)", rect.inflate(-18, -12),
+                font=self.font,
+            )
+        if not self.saved_decks:
+            self.text("Nenhum deck salvo.", (910, 400), MUTED)
+        self.button(self.catalog_prev, "Cartas anteriores", self.catalog_page > 0)
+        self.button(self.catalog_next, "Proximas cartas", (self.catalog_page + 1) * 10 < len(self.cards))
+        self.text(f"Pagina {self.catalog_page + 1}", (350, 842), MUTED)
+        self.button(self.saved_prev, "Decks anteriores", self.saved_page > 0)
+        self.button(self.saved_next, "Proximos decks", (self.saved_page + 1) * 6 < len(self.saved_decks))
+        self.paragraph(
+            self.deck_message, pygame.Rect(30, 888, 1370, 45),
+            RED if self.library_error or self.deck_message.startswith("Erro") else GREEN,
+        )
+
     def draw(self) -> None:
         self.screen.fill(BG)
         if self.state == State.MATCH:
             self.draw_match()
+        elif self.state == State.DECK_BUILDER:
+            self.draw_builder()
         elif self.state == State.MENU:
             self.text("CHESS STONE", (600, 220), GOLD, self.large)
             self.text("Card game de xadrez | Jogador x IA", (548, 292))
-            self.text(f"Deck: {self.deck_size} cartas | 8 unidades por lado | 30 de vida", (493, 336), MUTED)
+            self.text(f"IA: {self.deck_size} cartas | 8 unidades por lado | 30 de vida", (493, 336), MUTED)
             self.button(self.start_button, "Iniciar partida")
+            self.button(self.builder_button, "Montar / editar decks")
+            self.button(self.deck_select_button, "")
+            self.paragraph(
+                f"Deck: {self.active_deck} (clique para trocar)" if self.active_deck
+                else f"Deck automatico: {self.deck_size} cartas (clique para trocar)",
+                self.deck_select_button.inflate(-20, -14), font=self.font,
+            )
             self.button(self.quit_button, "Sair")
+            self.paragraph(self.deck_message, pygame.Rect(360, 800, 720, 100), RED if self.library_error else GREEN)
         else:
             game = self.game
             title = "Empate!" if game is None or game.winner is None else (
@@ -419,6 +617,18 @@ class App:
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT:
             self.running = False
+        elif self.state == State.DECK_BUILDER and event.type == pygame.TEXTINPUT and self.name_focused:
+            self.draft_name = (self.draft_name + "".join(c for c in event.text if c.isprintable()))[:40]
+        elif self.state == State.DECK_BUILDER and event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_ESCAPE:
+                self.name_focused = False
+                pygame.key.stop_text_input()
+                self.state = State.MENU
+            elif self.name_focused and event.key == pygame.K_BACKSPACE:
+                self.draft_name = self.draft_name[:-1]
+            elif event.key == pygame.K_RETURN:
+                self.name_focused = False
+                pygame.key.stop_text_input()
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
             self.clear_selection()
         elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -443,7 +653,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--deck-size", type=int, default=30, help="Quantidade de cartas por deck (>= 1)")
     parser.add_argument("--seed", type=int, help="Semente para partidas reproduziveis")
-    parser.add_argument("--smoke-test", action="store_true", help="Renderiza os tres estados sem janela")
+    parser.add_argument("--smoke-test", action="store_true", help="Renderiza os quatro estados sem janela")
     args = parser.parse_args()
     if args.deck_size < 1:
         parser.error("--deck-size deve ser >= 1")
@@ -458,6 +668,9 @@ def main() -> None:
     if args.smoke_test:
         try:
             app.draw()
+            app.click(app.builder_button.center)
+            app.draw()
+            app.click(app.back_deck_button.center)
             app.click(app.start_button.center)
             app.draw()
             app.game.damage(app.game.hero_target(1), 99)
