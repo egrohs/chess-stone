@@ -7,9 +7,19 @@ import os
 import tempfile
 from pathlib import Path
 from typing import Collection
+from collections import Counter
 
 
 DEFAULT_PATH = Path(__file__).resolve().parent / "data" / "decks.json"
+
+
+def validate_legendary(deck: list[str], catalog: dict[str, dict]) -> None:
+    counts = Counter(
+        catalog[card_id].get("base_id", card_id)
+        for card_id in deck if catalog[card_id].get("rarity") == "legendary"
+    )
+    if any(count > 1 for count in counts.values()):
+        raise ValueError("Apenas uma copia de cada carta lendaria por deck, somando qualidades.")
 
 
 def write_json(path: Path, data: object) -> None:

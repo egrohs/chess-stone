@@ -12,12 +12,13 @@ from pathlib import Path
 import pygame
 
 from game_engine import BOARD_LIMIT, KEYWORD_LABELS, Card, Entity, Game, RuleError, Unit, load_cards
-from deck_store import DEFAULT_PATH, DeckStore
+from deck_store import DEFAULT_PATH, DeckStore, validate_legendary
 from collection_view import CollectionView
 from ui_theme import BG, PANEL, WHITE, MUTED, GREEN, GOLD, RED, BLUE
 from crafting import CraftingInventory, STARTER_IDS
 from puzzle_view import PuzzleView
 from audio import ImpactAudio
+from mate_rules import LABELS as MATE_LABELS
 
 
 WIDTH, HEIGHT = 1440, 940
@@ -176,6 +177,9 @@ class App:
         candidate = {**self.saved_decks, name: cards}
         try:
             self.inventory.validate_owned(cards)
+            validate_legendary(
+                cards, {c["id"]: c for c in self.inventory.catalog(all_variants=True)},
+            )
             self.deck_store.save(candidate)
         except (OSError, ValueError) as error:
             self.deck_message = f"Erro ao salvar: {error}"
@@ -363,7 +367,8 @@ class App:
                         self.clear_selection()
                         self.selected_card = card
                         if not game.playable(0, card):
-                            game.log("Carta indisponivel: verifique mana, espacos e alvos.")
+                            game.log(game.mate_unavailable_reason(0, card) or
+                                     "Carta indisponivel: verifique mana, espacos e alvos.")
                     return
             for position, rect in self.placement_rects():
                 if rect.collidepoint(point):
@@ -450,7 +455,12 @@ class App:
             border = GREEN
         if unit is self.selected_unit:
             border = GOLD
+        prepared = bool(game and any(
+            unit.uid in threat.units for threat in game.mates.threats[unit.owner]
+        ))
         pygame.draw.rect(self.screen, border, rect, 3, border_radius=5)
+        if prepared:
+            pygame.draw.rect(self.screen, GOLD, rect.inflate(-8, -8), 1, border_radius=4)
         self.paragraph(unit.name, pygame.Rect(rect.x + 7, rect.y + 7, rect.width - 14, 43), font=self.font)
         labels = [KEYWORD_LABELS[k] for k in sorted(unit.keywords)]
         if game and game.players[unit.owner].turns_started <= unit.frozen_through:
@@ -493,6 +503,14 @@ class App:
                 f"Deck: {len(player.deck)} | Mao: {len(player.hand)}/10 | Mesa: {len(player.board)}/8",
                 (24, y + 28), MUTED, self.small,
             )
+            if player.armor:
+                self.text(f"Armadura do Rei: {player.armor}", (750, y + 10), BLUE)
+            patterns = sorted({threat.pattern for threat in game.mates.threats[owner]})
+            if patterns:
+                self.paragraph(
+                    "AMEACAS: " + " | ".join(MATE_LABELS[pattern] for pattern in patterns),
+                    pygame.Rect(24, 647 if owner == 0 else 150, 1040, 23), GOLD,
+                )
         for _, rect in self.placement_rects():
             pygame.draw.rect(self.screen, GREEN, rect, 2)
         hint = "Selecione carta ou unidade. Verde = alvo/espaco valido; azul = pronto; vermelho = Provocar."
@@ -534,6 +552,8 @@ class App:
             return
         pygame.draw.rect(self.screen, PANEL, (SIDEBAR, 0, WIDTH - SIDEBAR, HEIGHT))
         self.text("COMANDOS", (1120, 28), GOLD, self.large)
+        if not self.audio.error:
+            self.text(f"Feiticos neste turno: {game.players[game.current].spells_played}", (1120, 70), MUTED, self.small)
         if self.audio.error:
             self.text("Audio indisponivel (veja o console)", (1120, 70), RED, self.small)
         human_turn = game.current == 0 and not game.over

@@ -141,6 +141,46 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(self.app.state, State.MATCH)
         self.assertFalse(self.app.game.over)
 
+    def test_announced_mate_renders_and_wins_through_clicks(self):
+        for card_id in ("bispo", "peao", "peao", "bispo"):
+            self.game.summon(0, card_id)
+        self.game.end_turn(0)
+        self.game.end_turn(1)
+        self.player.mana = 10
+        self.player.spells_played = 2
+        self.player.hand.clear()
+        self.add_card("mate_boden")
+        self.app.draw()
+        self.select_first_card()
+        self.app.click(self.app.play_button.center)
+        self.assertTrue(self.game.over)
+        self.assertEqual(self.game.winner, 0)
+        self.assertEqual(self.game.players[1].health, 30)
+        self.app.update()
+        self.assertEqual(self.app.state, State.GAME_OVER)
+        self.app.draw()
+
+    def test_single_piece_threats_render_and_back_rank_wins_by_click(self):
+        rook = self.game.summon(0, "torre")
+        for _ in range(3):
+            self.game.summon(1, "peao")
+        self.game.end_turn(0)
+        self.game.end_turn(1)
+        self.player.mana = 10
+        self.game.players[1].armor = 1
+        self.player.hand.clear()
+        self.add_card("mate_gaveta")
+        self.app.draw()
+        self.game.players[1].armor = 0
+        self.game.attack(0, rook, self.game.players[1])
+        self.select_first_card()
+        self.app.draw()
+        self.app.click(self.app.play_button.center)
+        self.assertTrue(self.game.over)
+        self.assertEqual(self.game.winner, 0)
+        self.app.update()
+        self.assertEqual(self.app.state, State.GAME_OVER)
+
 
 class DeckBuilderTests(unittest.TestCase):
     def setUp(self):
@@ -259,6 +299,17 @@ class DeckBuilderTests(unittest.TestCase):
             self.app.click(self.app.deck_select_button.center)
         self.assertIsNone(self.app.active_deck)
 
+    def test_builder_rejects_multiple_legendary_qualities(self):
+        self.app.inventory.award("mate_boden", "mate1", 2, 1, 1)
+        self.app.inventory.award("mate_boden", "mate2", 0, 1, 1)
+        self.app.refresh_collection()
+        self.app.draft_name = "Lendarias"
+        self.app.draft["mate_boden"] = 1
+        self.app.draft["mate_boden__perfect"] = 1
+        self.app.save_draft()
+        self.assertIn("Apenas uma copia", self.app.deck_message)
+        self.assertFalse(self.path.exists())
+
 
 class CollectionTests(unittest.TestCase):
     def setUp(self):
@@ -286,22 +337,29 @@ class CollectionTests(unittest.TestCase):
         self.app.draw()
         self.click(self.collection.next)
         second = self.collection.rows()
-        self.assertEqual(len(second), 4)
-        self.assertEqual(len({c["id"] for c, _ in first + second}), 12)
+        self.assertEqual(len(second), min(8, len(self.app.cards) - len(first)))
         self.click(second[0][1])
         self.assertIs(self.collection.selected, second[0][0])
         self.app.draw()
+        all_rows = first + second
+        while (self.collection.page + 1) * 8 < len(self.app.cards):
+            self.click(self.collection.next)
+            all_rows += self.collection.rows()
+            self.app.draw()
+        self.assertEqual(len({c["id"] for c, _ in all_rows}), len(self.app.cards))
+        last_page = self.collection.page
         self.click(self.collection.next)
-        self.assertEqual(self.collection.page, 1)
-        self.click(self.collection.previous)
-        self.assertEqual(self.collection.page, 0)
+        self.assertEqual(self.collection.page, last_page)
+        while self.collection.page:
+            self.click(self.collection.previous)
         self.click(self.collection.previous)
         self.assertEqual(self.collection.page, 0)
         self.assertFalse(self.path.exists())
 
     def test_accent_insensitive_search_and_empty_results(self):
         self.search("peao")
-        self.assertEqual([c["id"] for c in self.collection.filtered_cards()], ["peao"])
+        self.assertIn("peao", [c["id"] for c in self.collection.filtered_cards()])
+        self.assertIn("peao_passado", [c["id"] for c in self.collection.filtered_cards()])
         self.app.draw()
         self.app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_BACKSPACE))
         self.assertEqual(self.collection.query, "pea")
@@ -314,7 +372,10 @@ class CollectionTests(unittest.TestCase):
 
     def test_keywords_type_filter_sort_and_reset_page(self):
         self.search("provocar")
+        self.assertIn("torre", [c["id"] for c in self.collection.filtered_cards()])
+        self.click(self.collection.type_button)
         self.assertEqual([c["id"] for c in self.collection.filtered_cards()], ["torre"])
+        self.collection.card_type = None
         self.collection.query = ""
         self.collection.refresh()
         self.click(self.collection.next)
@@ -324,7 +385,7 @@ class CollectionTests(unittest.TestCase):
         self.click(self.collection.type_button)
         self.assertTrue(all(c["type"] == "spell" for c in self.collection.filtered_cards()))
         self.click(self.collection.type_button)
-        self.assertEqual(len(self.collection.filtered_cards()), 12)
+        self.assertEqual(len(self.collection.filtered_cards()), len(self.app.cards))
         self.click(self.collection.sort_button)
         self.assertTrue(self.collection.sort_by_name)
         self.assertEqual(self.collection.filtered_cards()[0]["id"], "ataque_duplo")

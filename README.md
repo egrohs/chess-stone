@@ -205,6 +205,83 @@ da fila e precisa esperar para atacar, como uma unidade sem Investida.
 - Ativacao manual e gratuita, apenas no turno do dono. Nunca cria um segundo Rei
   nem excede oito unidades. O Rei conta como unidade para alvos e efeitos de area.
 
+### Vitorias alternativas: seis padroes de mate
+
+As seis cartas de mate sao feiticos **lendarios**, adquiridos por crafting.
+Cada deck aceita no maximo uma copia de cada mate, somando todas as qualidades.
+Os decks automaticos nao incluem lendarias.
+
+A mesa continua sendo uma **fila compactada**: mortes aproximam as unidades.
+Ponta significa primeira/ultima unidade da fila, nao slot fisico 1/8.
+O Rei ocupa posicao na fila, mas nao conta como lacaio nos requisitos abaixo.
+
+| Carta | Mana | Formacao a anunciar | Condicoes adicionais para executar |
+|---|---|---|---|
+| Mate de Anastasia | 9 | Torre na primeira ou ultima posicao, com Cavalo adjacente; pelo menos tres unidades aliadas | Inimigo com ate 15 de vida, ao menos dois lacaios e nenhuma unidade com Provocar |
+| Mate de Boden | 5 | Bispos nas duas pontas; pelo menos dois lacaios entre eles | Jogar dois outros feiticos no mesmo turno antes do mate |
+| Mate Abafado | 6 | Um Cavalo | Inimigo com oito lacaios e nenhum Provocar; Rei nao conta para os oito |
+| Mate de Gaveta | 8 | Uma Torre | Essa mesma Torre deve ter atacado e sobrevivido no turno atual; inimigo com zero de Armadura e pelo menos tres lacaios que sejam Peoes ou tenham Provocar |
+| Mate da Opera | 7 | Exatamente uma Torre e um Bispo aliados, adjacentes; outras pecas sao permitidas | Ambos devem ter atacado nesta partida; inimigo com ate 15 de vida e exatamente um lacaio |
+| Endgame Puro (Rei e Peao) | 10 | Ambos os Reis ativados, sem nenhuma outra unidade em qualquer lado | Peao Passado na mao e seu Rei com estritamente mais vida que o Rei inimigo |
+
+Ao terminar seu turno com uma dessas formacoes, ela e **anunciada
+automaticamente**, mesmo sem a carta na mao. O log identifica o dono, o padrao
+e os IDs das pecas envolvidas; uma faixa por lado resume seus padroes anunciados,
+e as pecas participantes recebem uma borda interna dourada.
+O adversario recebe um turno completo para responder antes de voce poder
+executar o mate.
+
+As mesmas pecas precisam permanecer vivas, com ataque positivo,
+descongeladas e na geometria exigida. Se a formacao for rompida por morte,
+congelamento ou mudanca de posicao/quantidade, a preparacao e cancelada.
+Reconstruir a mesma formacao naquele turno nao restaura a ameaca: e preciso
+anuncia-la novamente no fim de um turno proprio. Novas pecas do mesmo tipo
+nao substituem os IDs anunciados. Mortes intermediarias que deixem a formacao
+valida nao cancelam a preparacao.
+
+No turno da execucao, as pecas nao podem ter atacado, **exceto em Gaveta**,
+que exige um ataque real da Torre nesse turno. A carta
+revalida todos os requisitos antes de gastar mana ou sair da mao; uma tentativa
+invalida exibe o motivo e nao consome recursos. O mate bem-sucedido compromete
+os ataques restantes das pecas e encerra a partida **sem reduzir a vida
+inimiga a zero**. Somente Endgame Puro exige os Reis ativados. Provocar bloqueia
+Anastasia e Abafado mesmo congelado; os outros mates podem vencer atraves de
+Provocar. Em Gaveta, um Peao com Provocar conta uma unica vez entre os tres
+bloqueadores; Peao Passado tambem conta como Peao. O Rei nao conta como bloqueador.
+
+O historico de ataque da Opera pertence a cada unidade individual: invocar
+outra Torre/Bispo nao herda ataques da anterior. Os ataques precisam ter ocorrido
+antes do turno da execucao, pois a dupla nao pode atacar nesse turno.
+Os requisitos inimigos de vida/quantidade/Provocar/Armadura sao revalidados
+na execucao; a formacao aliada e que precisa permanecer intacta durante a
+preparacao. No Endgame Puro, qualquer outra unidade em qualquer mesa cancela
+a preparacao, mesmo se for removida logo depois.
+
+O **Peao Passado** e uma carta de apoio 2/3 de custo 2, criada por puzzles
+`advancedPawn` (aproximacao: peao avancado). Nao e uma das cinco pecas iniciais
+liberadas. Para Endgame Puro, ele precisa permanecer **na mao**, resolvendo a
+contradicao de exigir somente os Reis na mesa e um peao em campo. Variantes
+aprimoradas/perfeitas tambem atendem ao requisito e a carta nao e consumida.
+
+A Armadura dos herois comeca em zero. Se houver Armadura, ela absorve dano
+antes da vida, inclusive depois da Ativacao do Rei, e e exibida na mesa.
+O catalogo atual ainda nao tem cartas que concedem Armadura; a condicao de
+Gaveta ja a verifica explicitamente para suportar essa mecanica.
+
+Anastasia recebeu requisitos de pressao sobre o inimigo e uma terceira unidade
+aliada para nao virar apenas uma dupla facil na ponta. Em Boden, dois Bispos
+sozinhos nao bastam: os dois lacaios intermediarios criam compromisso de mesa.
+O proprio Boden e o terceiro feitico, permitindo uma sequencia real com a mana
+atual (por exemplo, duas Colunas Abertas de custo 2 e Boden de custo 5 = 9).
+O contador de feiticos e reiniciado no inicio do turno do dono e exibido no
+painel de comandos.
+
+Os puzzles usam `anastasiaMate`, `bodenMate`, `smotheredMate`, `backRankMate`,
+`operaMate` e `pawnEndgame` (aproximacao de oposicao) para Endgame Puro. Qualidades
+aprimoradas/perfeitas **nao reduzem custo nem requisitos de mate**; os bonus
+auxiliares de crafting seguem a ordem dos efeitos e nao executam depois de
+uma vitoria, pois a partida ja terminou.
+
 ## Estrutura
 
 | Arquivo | Responsabilidade |
@@ -219,6 +296,7 @@ da fila e precisa esperar para atacar, como uma unidade sem Investida.
 | `tools\generate_impacts.py` | Geracao reproduzivel dos sons originais de impacto |
 | `deck_store.py` | Validacao de decks e persistencia local em JSON |
 | `game_engine.py` | Estado, jogadas legais, combate, turnos, compras, Endgame e IA |
+| `mate_rules.py` | Formacoes anunciadas, cancelamento e vitorias alternativas |
 | `effect_parser.py` | Resolucao de alvos, condicoes e execucao ordenada dos efeitos |
 | `csv_to_json.py` | Conversao e validacao do catalogo; utilizavel sem pygame |
 | `data\cards.csv` | Fonte editavel em planilha, UTF-8 e delimitador virgula |
@@ -250,6 +328,13 @@ assets\
     zugzwang\
     roque\
     sacrificio_da_dama\
+    mate_anastasia\
+    mate_boden\
+    mate_abafado\
+    mate_gaveta\
+    mate_opera\
+    endgame_puro\
+    peao_passado\
     rei\
 ```
 
@@ -306,6 +391,7 @@ id,name,category,card_type,cost,attack,health,keywords,trigger,effect_code,descr
 `card_type` aceita `minion` ou `spell`; ataque e vida sao obrigatorios para
 lacaios. `keywords` aceita identificadores ingleses ou os nomes portugueses
 separados por `|`. Os IDs devem ser unicos e estaveis.
+Categoria `Lendario` gera `"rarity": "legendary"` no JSON.
 
 ```powershell
 python csv_to_json.py
@@ -319,6 +405,11 @@ feiticos nao podem usar gatilhos futuros, pois nao permanecem na mesa.
 Uma conversao invalida nao substitui o catalogo existente.
 
 ### Efeitos
+
+Vitoria alternativa usa `{"trigger":"on_play","action":"win_pattern","pattern":"anastasia"}`.
+Os padroes aceitos sao `anastasia`, `boden`, `smothered`, `back_rank`, `opera` e
+`opposition`, apenas em feiticos lendarios. O parser encaminha a
+acao para o modulo de regras de mate; padroes desconhecidos sao rejeitados.
 
 O formato curto aceita `DAMAGE`, `HEAL`, `DRAW` e `FREEZE`, separados por `|`:
 
@@ -392,5 +483,4 @@ simuladas; nao dependem de internet nem modificam o inventario local.
 
 ### TODO
 
-- Pode haver cartas de padrões de mate específicas (que dependem de condições especificas) pra vencer o jogo mesmo sem levar a vida do oponente a 0.
 - Vamos adicionar classes de heroes que seriam os campeões de chess. Seriam 4 classes dos perfis de jogadores, ativista, pragmático, reflector, teorista.

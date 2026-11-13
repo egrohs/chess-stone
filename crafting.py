@@ -27,6 +27,13 @@ THEMES = {
     "zugzwang": ("zugzwang", "Zugzwang"),
     "roque": ("castling", "Roque"),
     "sacrificio_da_dama": ("sacrifice", "Sacrificio (nao necessariamente da dama)"),
+    "mate_anastasia": ("anastasiaMate", "Mate de Anastasia"),
+    "mate_boden": ("bodenMate", "Mate de Boden"),
+    "mate_abafado": ("smotheredMate", "Mate abafado"),
+    "mate_gaveta": ("backRankMate", "Mate de gaveta"),
+    "mate_opera": ("operaMate", "Mate da Opera"),
+    "endgame_puro": ("pawnEndgame", "Final de peoes (aproximacao de oposicao)"),
+    "peao_passado": ("advancedPawn", "Peao avancado (aproximacao de peao passado)"),
 }
 DEFAULT_INVENTORY = Path(__file__).resolve().parent / "data" / "collection.json"
 

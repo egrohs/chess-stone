@@ -242,5 +242,119 @@
       }
     ],
     "description": "Destrua sua Dama. Cause 5 a todos os inimigos e compre 2 cartas."
+  },
+  {
+    "id": "mate_anastasia",
+    "name": "Mate de Anastasia",
+    "category": "Lendario",
+    "type": "spell",
+    "cost": 9,
+    "keywords": [],
+    "effects": [
+      {
+        "action": "win_pattern",
+        "pattern": "anastasia",
+        "trigger": "on_play"
+      }
+    ],
+    "description": "Anuncie Torre na ponta junto a Cavalo com pelo menos 3 unidades aliadas. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: venca se o inimigo tem ate 15 de vida e pelo menos 2 lacaios sem nenhum Provocar.",
+    "rarity": "legendary"
+  },
+  {
+    "id": "mate_boden",
+    "name": "Mate de Boden",
+    "category": "Lendario",
+    "type": "spell",
+    "cost": 5,
+    "keywords": [],
+    "effects": [
+      {
+        "action": "win_pattern",
+        "pattern": "boden",
+        "trigger": "on_play"
+      }
+    ],
+    "description": "Anuncie Bispos nas duas pontas com pelo menos 2 lacaios entre eles. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: apos jogar 2 outros feiticos neste turno venca a partida.",
+    "rarity": "legendary"
+  },
+  {
+    "id": "mate_abafado",
+    "name": "Mate Abafado",
+    "category": "Lendario",
+    "type": "spell",
+    "cost": 6,
+    "keywords": [],
+    "effects": [
+      {
+        "action": "win_pattern",
+        "pattern": "smothered",
+        "trigger": "on_play"
+      }
+    ],
+    "description": "Anuncie um Cavalo e preserve-o por um turno inimigo. Sem atacar nem estar congelado: venca se o inimigo controla oito lacaios sem nenhum Provocar. Rei nao conta como lacaio.",
+    "rarity": "legendary"
+  },
+  {
+    "id": "mate_gaveta",
+    "name": "Mate de Gaveta",
+    "category": "Lendario",
+    "type": "spell",
+    "cost": 8,
+    "keywords": [],
+    "effects": [
+      {
+        "action": "win_pattern",
+        "pattern": "back_rank",
+        "trigger": "on_play"
+      }
+    ],
+    "description": "Anuncie uma Torre e preserve-a por um turno inimigo. Ela deve atacar e sobreviver neste turno sem estar congelada. Venca se o inimigo tem zero de Armadura e pelo menos tres lacaios que sejam Peoes ou tenham Provocar.",
+    "rarity": "legendary"
+  },
+  {
+    "id": "mate_opera",
+    "name": "Mate da Ópera",
+    "category": "Lendario",
+    "type": "spell",
+    "cost": 7,
+    "keywords": [],
+    "effects": [
+      {
+        "action": "win_pattern",
+        "pattern": "opera",
+        "trigger": "on_play"
+      }
+    ],
+    "description": "Anuncie exatamente uma Torre e um Bispo adjacentes e preserve-os por um turno inimigo. Ambos devem ter atacado nesta partida mas nao neste turno nem estar congelados. Venca se o inimigo tem ate 15 de vida e exatamente um lacaio.",
+    "rarity": "legendary"
+  },
+  {
+    "id": "endgame_puro",
+    "name": "Endgame Puro (Rei e Peão)",
+    "category": "Lendario",
+    "type": "spell",
+    "cost": 10,
+    "keywords": [],
+    "effects": [
+      {
+        "action": "win_pattern",
+        "pattern": "opposition",
+        "trigger": "on_play"
+      }
+    ],
+    "description": "Anuncie seu Rei quando so restarem os dois Reis no tabuleiro e preserve essa mesa por um turno inimigo. Sem atacar nem estar congelado: venca se possui Peao Passado na mao e seu Rei tem mais vida que o inimigo.",
+    "rarity": "legendary"
+  },
+  {
+    "id": "peao_passado",
+    "name": "Peão Passado",
+    "category": "Peças",
+    "type": "minion",
+    "cost": 2,
+    "keywords": [],
+    "effects": [],
+    "description": "Peca de apoio: mantenha na mao para executar Endgame Puro. Nao e uma das cinco pecas basicas liberadas.",
+    "attack": 2,
+    "health": 3
   }
 ]

@@ -82,6 +82,9 @@ class EffectParser:
                 game.log("Condicao do efeito nao atendida.")
                 return
         action = effect["action"]
+        if action == "win_pattern":
+            game.mates.execute(owner, effect["pattern"])
+            return
         if action == "draw":
             for _ in range(effect["amount"]):
                 if not game.over:

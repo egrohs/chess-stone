@@ -77,7 +77,7 @@ class CraftingTests(unittest.TestCase):
     def test_all_variants_valid_and_originals_unchanged(self):
         originals = copy.deepcopy(self.cards)
         catalog = self.inventory.catalog(all_variants=True)
-        self.assertEqual(len(catalog), 36)
+        self.assertEqual(len(catalog), len(self.cards) * 3)
         game = Game(catalog, deck_size=30, seed=3)
         self.assertTrue(all("__" not in card_id for player in game.players for card_id in player.deck))
         self.assertEqual(self.cards, originals)

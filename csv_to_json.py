@@ -7,6 +7,7 @@ import csv
 import json
 import unicodedata
 from pathlib import Path
+from mate_rules import PATTERNS
 
 
 ROOT = Path(__file__).resolve().parent
@@ -23,7 +24,7 @@ KEYWORD_ALIASES = {
 TRIGGERS = {"on_play", "on_death", "on_turn_start", "on_turn_end"}
 ACTIONS = {
     "damage", "heal", "buff", "draw", "summon", "freeze",
-    "grant_keyword", "activate_king", "destroy",
+    "grant_keyword", "activate_king", "destroy", "win_pattern",
 }
 TARGETS = {
     "self", "own_hero", "enemy_hero", "target_enemy", "target_enemy_minion",
@@ -55,7 +56,7 @@ def validate_effect(effect: object, label: str, nested: bool = False) -> None:
         raise ValueError(f"{label}: efeito deve ser um objeto")
     allowed = {
         "trigger", "action", "amount", "target", "count", "on_kill",
-        "attack", "health", "duration", "keyword", "card_id", "condition",
+        "attack", "health", "duration", "keyword", "card_id", "condition", "pattern",
     }
     if set(effect) - allowed:
         raise ValueError(f"{label}: campos desconhecidos {sorted(set(effect) - allowed)}")
@@ -75,7 +76,12 @@ def validate_effect(effect: object, label: str, nested: bool = False) -> None:
         and not nested and effect["trigger"] != "on_play"
     ):
         raise ValueError(f"{label}: apenas on_play pode solicitar alvo manual")
-    if action not in {"draw", "summon", "activate_king"} and "target" not in effect:
+    if action == "win_pattern" and (
+        not isinstance(effect.get("pattern"), str) or effect["pattern"] not in PATTERNS
+        or nested or effect.get("trigger") != "on_play"
+    ):
+        raise ValueError(f"{label}: padrao de mate invalido (exige on_play)")
+    if action not in {"draw", "summon", "activate_king", "win_pattern"} and "target" not in effect:
         raise ValueError(f"{label}: acao {action} exige target")
     if action in {"damage", "heal", "draw"}:
         integer(effect.get("amount"), f"{label}.amount", 1)
@@ -148,8 +154,14 @@ def validate_cards(cards: object) -> list[dict]:
             raise ValueError(f"{label}: keywords invalidas")
         if not isinstance(card.get("effects"), list):
             raise ValueError(f"{label}: effects deve ser uma lista")
+        if "rarity" in card and card["rarity"] != "legendary":
+            raise ValueError(f"{label}: raridade desconhecida")
         for effect in card["effects"]:
             validate_effect(effect, label)
+            if effect["action"] == "win_pattern" and (
+                card["type"] != "spell" or card.get("rarity") != "legendary"
+            ):
+                raise ValueError(f"{label}: mate exige feitico lendario")
             if card["type"] == "spell" and effect["trigger"] != "on_play":
                 raise ValueError(f"{label}: feiticos nao persistem para gatilhos futuros")
     for card in cards:
@@ -237,6 +249,8 @@ def convert_csv(source: Path, destination: Path) -> list[dict]:
                 }
                 if card["type"] == "minion":
                     card.update(attack=int(row["attack"]), health=int(row["health"]))
+                if normalize(row["category"]) == "lendario":
+                    card["rarity"] = "legendary"
                 cards.append(card)
             except (ValueError, TypeError) as error:
                 raise ValueError(f"Linha {line}: {error}") from error

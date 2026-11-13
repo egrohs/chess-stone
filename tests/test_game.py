@@ -62,7 +62,7 @@ class CatalogTests(unittest.TestCase):
             lambda c: c[0].update(effects=[{
                 "trigger": "on_death", "action": "damage", "amount": 1, "target": "target_enemy",
             }]),
-            lambda c: c[-1].update(effects=[{
+            lambda c: next(card for card in c if card["id"] == "roque").update(effects=[{
                 "trigger": "on_turn_end", "action": "draw", "amount": 1,
             }]),
         ]

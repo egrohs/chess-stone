@@ -10,8 +10,9 @@ from pathlib import Path
 from typing import Callable
 
 from csv_to_json import validate_cards
-from deck_store import validate_deck
+from deck_store import validate_deck, validate_legendary
 from effect_parser import EffectParser, MANUAL_TARGETS
+from mate_rules import MateRules
 
 
 BOARD_LIMIT = 8
@@ -53,6 +54,7 @@ class Unit:
     temporary_attack: int = 0
     is_king: bool = False
     definition_id: str = ""
+    has_attacked: bool = False
 
 
 @dataclass(eq=False)
@@ -70,6 +72,8 @@ class Player:
     turns_started: int = 0
     endgame_ready: bool = False
     king: Unit | None = None
+    spells_played: int = 0
+    armor: int = 0
 
     @property
     def health(self) -> int:
@@ -105,6 +109,8 @@ class Game:
             raise ValueError("opening_hand deve estar entre 0 e 10")
         self.catalog = {card["id"]: card for card in cards}
         custom_deck = validate_deck(player_deck, self.catalog) if player_deck is not None else None
+        if custom_deck is not None:
+            validate_legendary(custom_deck, self.catalog)
         self.rng = random.Random(seed)
         self._next_uid = 1
         self.messages: deque[str] = deque(maxlen=150)
@@ -123,13 +129,19 @@ class Game:
             for owner, name in enumerate(("Jogador", "Adversario"))
         ]
         self.parser = EffectParser(self)
+        self.mates = MateRules(self)
         for owner in (0, 1):
             for _ in range(min(opening_hand, len(self.players[owner].deck))):
                 self.draw_card(owner)
         self.start_turn()
 
     def _make_deck(self, size: int) -> list[str]:
-        ids = [card_id for card_id, card in self.catalog.items() if "base_id" not in card]
+        ids = [
+            card_id for card_id, card in self.catalog.items()
+            if "base_id" not in card and card.get("rarity") != "legendary"
+        ]
+        if not ids:
+            raise ValueError("O catalogo exige ao menos uma carta nao lendaria para decks automaticos.")
         deck = [ids[index % len(ids)] for index in range(size)]
         self.rng.shuffle(deck)
         return deck
@@ -174,6 +186,7 @@ class Game:
     def start_turn(self) -> None:
         player = self.players[self.current]
         player.turns_started += 1
+        player.spells_played = 0
         player.max_mana = min(10, player.max_mana + 1)
         player.mana = player.max_mana
         for unit in player.board:
@@ -195,6 +208,8 @@ class Game:
                 unit.temporary_attack = 0
         if self.over:
             return
+        self.mates.invalidate()
+        self.mates.announce(owner)
         # Eight complete rounds = sixteen individual player turns.
         if self.turn_number >= 16 and sum(len(p.board) for p in self.players) <= 3:
             for player in self.players:
@@ -228,6 +243,7 @@ class Game:
         )
         player.king = king
         player.board.append(king)
+        self.mates.invalidate()
         self.log(f"{player.name} ativa o Rei: 2/{king.health}.")
         return True
 
@@ -243,6 +259,7 @@ class Game:
             definition_id=card_id,
         )
         player.board.insert(len(player.board) if position is None else position, unit)
+        self.mates.invalidate()
         self.log(f"{player.name} invoca {unit.name}.")
         return unit
 
@@ -273,7 +290,16 @@ class Game:
             and card.definition["cost"] <= player.mana
             and (card.definition["type"] != "minion" or len(player.board) < BOARD_LIMIT)
             and (not self.manual_effects(card) or bool(self.valid_card_targets(owner, card)))
+            and not self.mate_unavailable_reason(owner, card)
         )
+
+    def mate_unavailable_reason(self, owner: int, card: Card) -> str:
+        for effect in card.definition["effects"]:
+            if effect["action"] == "win_pattern":
+                reason = self.mates.unavailable_reason(owner, effect["pattern"])
+                if reason:
+                    return reason
+        return ""
 
     def play_card(
         self, owner: int, card: Card, target: Entity | None = None,
@@ -298,6 +324,9 @@ class Game:
             raise RuleError("Escolha um alvo valido para a carta.")
         if not self.manual_effects(card) and target is not None:
             raise RuleError("Esta carta nao exige alvo.")
+        reason = self.mate_unavailable_reason(owner, card)
+        if reason:
+            raise RuleError(reason)
         player.mana -= definition["cost"]
         player.hand.remove(card)
         self.log(f"{player.name} joga {card.name}.")
@@ -305,6 +334,8 @@ class Game:
         if definition["type"] == "minion":
             source = self.summon(owner, definition["id"], position)
         self.parser.execute(definition["effects"], "on_play", owner, source, target)
+        if definition["type"] == "spell":
+            player.spells_played += 1
         self.cleanup()
 
     def attack_targets(self, unit: Unit) -> list[Entity]:
@@ -334,6 +365,7 @@ class Game:
         if unit.owner != owner or target not in self.attack_targets(unit):
             raise RuleError("Ataque invalido: verifique prontidao, congelamento e Provocar.")
         unit.attacks_used += 1
+        unit.has_attacked = True
         retaliation = target.attack if isinstance(target, Unit) else 0
         self.log(f"{unit.name} ataca {target.name}.")
         self.damage(target, unit.attack)
@@ -348,7 +380,12 @@ class Game:
             target.keywords.remove("divine_shield")
             self.log(f"{target.name}: Escudo Divino absorve o dano.")
             return
-        target.health -= amount
+        hero = target if isinstance(target, Player) else self.players[target.owner] if target.is_king else None
+        absorbed = min(hero.armor, amount) if hero is not None else 0
+        if hero is not None and absorbed:
+            hero.armor -= absorbed
+            self.log(f"{hero.name}: Armadura absorve {absorbed} de dano.")
+        target.health -= amount - absorbed
         if self.on_damage is not None:
             self.on_damage(amount)
         self.log(f"{target.name} sofre {amount} de dano.")
@@ -359,6 +396,7 @@ class Game:
         self.log(f"{target.name} recupera {healed} de vida.")
 
     def cleanup(self) -> None:
+        self.mates.invalidate()
         if self._cleaning:
             self.check_winner()
             return
@@ -369,6 +407,7 @@ class Game:
                 for unit in dead:
                     self.players[unit.owner].board.remove(unit)
                     self.log(f"{unit.name} saiu da mesa.")
+                self.mates.invalidate()
                 self.check_winner()
                 if self.over or not dead:
                     break

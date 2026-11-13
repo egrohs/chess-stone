@@ -160,6 +160,8 @@ class CollectionView:
                 else f"Copias criadas: {available}" if available else "Bloqueada: resolva um puzzle para criar.",
                 f"Qualidade: {QUALITY_LABELS.get(card.get('quality', 'basic'), 'Basica')}",
                 f"Categoria: {card['category']}",
+                "Lendaria: uma copia por deck entre todas as qualidades."
+                if card.get("rarity") == "legendary" else "",
                 f"Tipo: {TYPE_LABELS[card['type']]} | Custo: {card['cost']} mana",
                 "Puzzle: " + THEMES.get(base_id, ("", "Tema nao configurado"))[1],
             ]
