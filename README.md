@@ -1,5 +1,7 @@
 # Chess Stone
 
+![Arte de apresentacao do Chess Stone](assets/artwork.jpg)
+
 Prototipo 2D de card game de xadrez para um jogador contra IA, em Python 3.10+,
 **pygame-ce** e **python-chess** (pacote `chess`). Sem imagens externas ou
 animacoes: regras e efeitos independem da interface.
