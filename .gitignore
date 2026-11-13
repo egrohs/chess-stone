@@ -4,3 +4,5 @@ __pycache__/
 .pytest_cache/
 data/decks.json
 data/decks.json.*.tmp
+data/collection.json
+data/collection.json.*.tmp

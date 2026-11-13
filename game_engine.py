@@ -51,6 +51,7 @@ class Unit:
     frozen_through: int = -1
     temporary_attack: int = 0
     is_king: bool = False
+    definition_id: str = ""
 
 
 @dataclass(eq=False)
@@ -125,7 +126,7 @@ class Game:
         self.start_turn()
 
     def _make_deck(self, size: int) -> list[str]:
-        ids = list(self.catalog)
+        ids = [card_id for card_id, card in self.catalog.items() if "base_id" not in card]
         deck = [ids[index % len(ids)] for index in range(size)]
         self.rng.shuffle(deck)
         return deck
@@ -234,8 +235,9 @@ class Game:
             return None
         card = self.catalog[card_id]
         unit = Unit(
-            self.uid(), owner, card_id, card["name"], card["attack"], card["health"],
+            self.uid(), owner, card.get("base_id", card_id), card["name"], card["attack"], card["health"],
             card["health"], set(card["keywords"]), card["effects"], self.turn_number,
+            definition_id=card_id,
         )
         player.board.insert(len(player.board) if position is None else position, unit)
         self.log(f"{player.name} invoca {unit.name}.")

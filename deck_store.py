@@ -12,6 +12,23 @@ from typing import Collection
 DEFAULT_PATH = Path(__file__).resolve().parent / "data" / "decks.json"
 
 
+def write_json(path: Path, data: object) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", encoding="utf-8", dir=path.parent,
+            prefix=path.name + ".", suffix=".tmp", delete=False,
+        ) as stream:
+            temporary = Path(stream.name)
+            json.dump(data, stream, ensure_ascii=False, indent=2)
+            stream.write("\n")
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None and temporary.exists():
+            temporary.unlink()
+
+
 def validate_deck(cards: object, catalog: Collection[str]) -> list[str]:
     if not isinstance(cards, list) or not cards:
         raise ValueError("O deck deve conter pelo menos uma carta.")
@@ -46,17 +63,4 @@ class DeckStore:
 
     def save(self, decks: dict[str, list[str]]) -> None:
         validated = self.validate(decks)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        temporary: Path | None = None
-        try:
-            with tempfile.NamedTemporaryFile(
-                mode="w", encoding="utf-8", dir=self.path.parent,
-                prefix=self.path.name + ".", suffix=".tmp", delete=False,
-            ) as stream:
-                temporary = Path(stream.name)
-                json.dump(validated, stream, ensure_ascii=False, indent=2)
-                stream.write("\n")
-            os.replace(temporary, self.path)
-        finally:
-            if temporary is not None and temporary.exists():
-                temporary.unlink()
+        write_json(self.path, validated)

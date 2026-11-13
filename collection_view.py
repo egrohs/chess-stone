@@ -1,4 +1,4 @@
-"""Read-only, paginated catalog browser for the pygame client."""
+"""Paginated catalog browser and entry point for puzzle crafting."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import pygame
 from csv_to_json import normalize
 from game_engine import KEYWORD_LABELS
 from ui_theme import BLUE, GOLD, MUTED, PANEL
+from crafting import THEMES, QUALITY_LABELS
 
 if TYPE_CHECKING:
     from main import App
@@ -40,6 +41,7 @@ class CollectionView:
         self.previous = pygame.Rect(30, 850, 220, 48)
         self.next = pygame.Rect(680, 850, 220, 48)
         self.detail_rect = pygame.Rect(950, 210, 440, 590)
+        self.craft_button = pygame.Rect(950, 850, 440, 48)
         self.refresh()
 
     def filtered_cards(self) -> list[dict]:
@@ -61,8 +63,11 @@ class CollectionView:
     def refresh(self) -> None:
         self.page = 0
         matches = self.filtered_cards()
-        if self.selected not in matches:
-            self.selected = matches[0] if matches else None
+        selected_id = self.selected["id"] if self.selected else None
+        self.selected = next(
+            (card for card in matches if card["id"] == selected_id),
+            matches[0] if matches else None,
+        )
         self.detail_scroll = 0
 
     def rows(self) -> list[tuple[dict, pygame.Rect]]:
@@ -147,10 +152,16 @@ class CollectionView:
         pygame.draw.rect(app.screen, PANEL, (930, 180, 480, 645), border_radius=6)
         if self.selected:
             card = self.selected
+            available = app.inventory.count(card["id"])
+            base_id = card.get("base_id", card["id"])
             sections = [
                 card["name"], f"ID: {card['id']}",
+                "Disponivel: base liberada (copias livres)" if available is None
+                else f"Copias criadas: {available}" if available else "Bloqueada: resolva um puzzle para criar.",
+                f"Qualidade: {QUALITY_LABELS.get(card.get('quality', 'basic'), 'Basica')}",
                 f"Categoria: {card['category']}",
                 f"Tipo: {TYPE_LABELS[card['type']]} | Custo: {card['cost']} mana",
+                "Puzzle: " + THEMES.get(base_id, ("", "Tema nao configurado"))[1],
             ]
             if card["type"] == "minion":
                 sections.append(f"Ataque: {card['attack']} | Vida: {card['health']}")
@@ -168,6 +179,7 @@ class CollectionView:
                 app.text(line, (self.detail_rect.x, self.detail_rect.y + index * line_height))
             if len(lines) > capacity:
                 app.text("Role o mouse sobre os detalhes para ler mais.", (950, 800), MUTED, app.small)
+        app.button(self.craft_button, "Criar carta: resolver puzzle", self.selected is not None and not app.inventory.error)
         app.button(self.previous, "Pagina anterior", self.page > 0)
         app.button(self.next, "Proxima pagina", (self.page + 1) * PAGE_SIZE < len(matches))
         app.text(f"Pagina {self.page + 1} / {max(1, (len(matches) + PAGE_SIZE - 1) // PAGE_SIZE)}", (365, 865), MUTED)

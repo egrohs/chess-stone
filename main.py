@@ -14,6 +14,8 @@ from game_engine import BOARD_LIMIT, KEYWORD_LABELS, Card, Entity, Game, RuleErr
 from deck_store import DEFAULT_PATH, DeckStore
 from collection_view import CollectionView
 from ui_theme import BG, PANEL, WHITE, MUTED, GREEN, GOLD, RED, BLUE
+from crafting import CraftingInventory, STARTER_IDS
+from puzzle_view import PuzzleView
 
 
 WIDTH, HEIGHT = 1440, 940
@@ -25,6 +27,7 @@ class State(Enum):
     MENU = auto()
     DECK_BUILDER = auto()
     COLLECTION = auto()
+    PUZZLE = auto()
     MATCH = auto()
     GAME_OVER = auto()
 
@@ -41,11 +44,16 @@ class App:
         self.font = pygame.font.SysFont("segoeui", 18)
         self.small = pygame.font.SysFont("segoeui", 15)
         self.large = pygame.font.SysFont("segoeui", 30, bold=True)
-        self.cards = load_cards()
+        self.base_cards = load_cards()
+        self.inventory = CraftingInventory(self.base_cards, decks_path.with_name("collection.json"))
+        self.cards = self.inventory.catalog()
         self.collection = CollectionView(self.cards)
+        self.puzzle_view = PuzzleView(self.inventory)
         self.deck_size = deck_size
         self.seed = seed
-        self.deck_store = DeckStore([card["id"] for card in self.cards], decks_path)
+        self.deck_store = DeckStore(
+            [card["id"] for card in self.inventory.catalog(all_variants=True)], decks_path,
+        )
         self.saved_decks: dict[str, list[str]] = {}
         self.active_deck: str | None = None
         self.library_error = False
@@ -82,13 +90,33 @@ class App:
         self.menu_button = pygame.Rect(1120, 868, 296, 48)
 
     def start_game(self) -> None:
-        self.game = Game(
-            self.cards, deck_size=self.deck_size, seed=self.seed,
-            player_deck=self.saved_decks[self.active_deck] if self.active_deck else None,
+        starter_ids = [card["id"] for card in self.base_cards if card["id"] in STARTER_IDS]
+        deck = (
+            self.saved_decks[self.active_deck] if self.active_deck
+            else [starter_ids[i % len(starter_ids)] for i in range(self.deck_size)]
         )
+        try:
+            self.inventory.validate_owned(deck)
+            self.game = Game(self.cards, deck_size=self.deck_size, seed=self.seed, player_deck=deck)
+        except ValueError as error:
+            self.deck_message = f"Erro ao iniciar partida: {error}"
+            self.state = State.MENU
+            return
         self.state = State.MATCH
         self.clear_selection()
         self.ai_at = pygame.time.get_ticks() + 450
+
+    def refresh_collection(self) -> None:
+        self.cards = self.inventory.catalog()
+        self.collection.cards = self.cards
+        self.collection.refresh()
+
+    def open_puzzle(self) -> None:
+        if self.collection.selected is None:
+            return
+        card = self.collection.selected
+        self.puzzle_view.open(card.get("base_id", card["id"]))
+        self.state = State.PUZZLE
 
     def reload_decks(self) -> None:
         try:
@@ -132,10 +160,11 @@ class App:
     def save_draft(self) -> None:
         if self.library_error:
             return
-        cards = [card["id"] for card in self.cards for _ in range(self.draft[card["id"]])]
+        cards = list(self.draft.elements())
         name = self.draft_name.strip()
         candidate = {**self.saved_decks, name: cards}
         try:
+            self.inventory.validate_owned(cards)
             self.deck_store.save(candidate)
         except (OSError, ValueError) as error:
             self.deck_message = f"Erro ao salvar: {error}"
@@ -171,6 +200,10 @@ class App:
         else:
             for card, minus, plus in self.catalog_rows():
                 if plus.collidepoint(point):
+                    available = self.inventory.count(card["id"])
+                    if available is not None and self.draft[card["id"]] >= available:
+                        self.deck_message = "Sem copias disponiveis. Resolva puzzles na colecao para criar esta carta."
+                        return
                     self.draft[card["id"]] += 1
                     return
                 if minus.collidepoint(point):
@@ -270,8 +303,16 @@ class App:
             self.click_builder(point)
             return
         if self.state == State.COLLECTION:
+            if self.collection.craft_button.collidepoint(point):
+                self.open_puzzle()
+                return
             if self.collection.click(point):
                 self.state = State.MENU
+            return
+        if self.state == State.PUZZLE:
+            if self.puzzle_view.click(point):
+                self.refresh_collection()
+                self.state = State.COLLECTION
             return
         if self.state == State.GAME_OVER:
             if self.start_button.collidepoint(point):
@@ -498,7 +539,9 @@ class App:
             )
         elif self.selected_unit:
             unit = self.selected_unit
-            description = self.game.catalog.get(unit.card_id, {}).get("description", "A vida do Rei e a vida do heroi.")
+            description = self.game.catalog.get(unit.definition_id or unit.card_id, {}).get(
+                "description", "A vida do Rei e a vida do heroi.",
+            )
             self.paragraph(f"{unit.name}: {description}", pygame.Rect(1120, 298, 296, 128))
         else:
             self.paragraph(
@@ -516,7 +559,7 @@ class App:
 
     def draw_builder(self) -> None:
         self.text("MONTAR DECK", (30, 25), GOLD, self.large)
-        self.text("Copias livres | Minimo: 1 carta | Salvar com o mesmo nome substitui o deck.", (350, 38), MUTED)
+        self.text("Pecas basicas livres; demais copias exigem crafting | Mesmo nome substitui o deck.", (350, 38), MUTED)
         pygame.draw.rect(self.screen, PANEL, self.name_rect, border_radius=5)
         pygame.draw.rect(self.screen, GOLD if self.name_focused else MUTED, self.name_rect, 2)
         self.paragraph(
@@ -548,7 +591,8 @@ class App:
             self.paragraph(
                 str(self.draft[card["id"]]), pygame.Rect(722, y + 12, 55, 24), GOLD,
             )
-            self.button(plus, "+")
+            available = self.inventory.count(card["id"])
+            self.button(plus, "+", available is None or self.draft[card["id"]] < available)
         for name, rect in self.saved_rows():
             pygame.draw.rect(self.screen, PANEL, rect, border_radius=5)
             pygame.draw.rect(self.screen, GOLD if name == self.active_deck else MUTED, rect, 2)
@@ -576,6 +620,8 @@ class App:
             self.draw_builder()
         elif self.state == State.COLLECTION:
             self.collection.draw(self)
+        elif self.state == State.PUZZLE:
+            self.puzzle_view.draw(self)
         elif self.state == State.MENU:
             self.text("CHESS STONE", (600, 220), GOLD, self.large)
             self.text("Card game de xadrez | Jogador x IA", (548, 292))
@@ -590,7 +636,10 @@ class App:
                 self.deck_select_button.inflate(-20, -14), font=self.font,
             )
             self.button(self.quit_button, "Sair")
-            self.paragraph(self.deck_message, pygame.Rect(360, 830, 720, 100), RED if self.library_error else GREEN)
+            self.paragraph(
+                self.inventory.error or self.deck_message, pygame.Rect(360, 830, 720, 100),
+                RED if self.library_error or self.inventory.error or self.deck_message.startswith("Erro") else GREEN,
+            )
         else:
             game = self.game
             title = "Empate!" if game is None or game.winner is None else (
@@ -602,6 +651,9 @@ class App:
         pygame.display.flip()
 
     def update(self) -> None:
+        if self.state == State.PUZZLE:
+            self.puzzle_view.update()
+            return
         game = self.game
         if self.state != State.MATCH or game is None:
             return
@@ -623,6 +675,13 @@ class App:
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT:
             self.running = False
+        elif self.state == State.PUZZLE:
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                self.puzzle_view.leave()
+                self.refresh_collection()
+                self.state = State.COLLECTION
+            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                self.click(event.pos)
         elif self.state == State.COLLECTION:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 self.click(event.pos)
@@ -657,6 +716,7 @@ class App:
                 self.draw()
                 self.clock.tick(60)
         finally:
+            self.puzzle_view.close()
             pygame.quit()
 
 
@@ -678,11 +738,21 @@ def main() -> None:
         parser.exit(1, f"Erro ao iniciar o jogo: {error}\n")
     if args.smoke_test:
         try:
+            from puzzles import Puzzle, PuzzleSession
+
             app.draw()
             app.click(app.collection_button.center)
             app.draw()
             app.click(app.collection.next.center)
             app.draw()
+            app.puzzle_view.base_id = "peao"
+            app.puzzle_view.session = PuzzleSession(Puzzle(
+                "smoke", "pawnEndgame", 1500,
+                "4k3/P7/8/8/8/8/8/4K3 w - - 0 1", ("a7a8q",),
+            ))
+            app.state = State.PUZZLE
+            app.draw()
+            app.click(app.puzzle_view.back_button.center)
             app.click(app.collection.back_button.center)
             app.click(app.builder_button.center)
             app.draw()
@@ -696,6 +766,7 @@ def main() -> None:
             if app.state != State.GAME_OVER:
                 raise RuntimeError("Transicao para fim de jogo falhou")
         finally:
+            app.puzzle_view.close()
             pygame.quit()
     else:
         app.run()
