@@ -22,124 +22,17 @@ Para um deck menor e resultados reproduziveis:
 .\.venv\Scripts\python.exe main.py --deck-size 12 --seed 42
 ```
 
-O deck automatico do jogador usa copias ciclicas das cinco pecas basicas,
-embaralhadas. A IA usa o catalogo base completo, sem variantes de crafting.
-O tamanho padrao e 30. Cada jogador recebe tres
-cartas iniciais (ou o tamanho do deck, se menor). O primeiro jogador tambem
-compra no inicio do seu primeiro turno. Nao ha mulligan, moeda, armas ou poder
-heroico.
+## Manual do jogador
 
-## Colecao de cartas
+Consulte o **[MANUAL.md](MANUAL.md)** para controles, regras de combate,
+palavras-chave, Endgame, condicoes dos seis mates, colecao, crafting e
+montagem de decks. Este README concentra instalacao e documentacao tecnica.
 
-No menu, **Colecao de cartas** mostra todo o catalogo base e as variantes
-adquiridas, sem alterar decks ou a partida durante a consulta. As cartas aparecem em grade com custo, tipo,
-atributos e um resumo; clique em uma para consultar a descricao completa,
-categoria, ID, palavras-chave e gatilhos no painel lateral.
+## Persistencia e integracao
 
-A busca aceita nome, ID, categoria, descricao e palavras-chave, ignorando
-acentos e maiusculas. Clique no filtro para alternar entre todos os tipos,
-lacaios e feiticos, e no botao de ordem para alternar entre custo e nome.
-Use os botoes de pagina para percorrer a colecao. Descricoes longas podem ser
-roladas com o mouse sobre o painel de detalhes. **Voltar ao Menu** ou Esc sai.
-
-### Crafting por puzzles Lichess
-
-As versoes basicas de **Peao, Cavalo, Bispo, Torre e Dama** sao liberadas desde o
-inicio, com copias livres, para permitir jogar sem internet. As cartas taticas
-comecam bloqueadas. O painel indica copias disponiveis, qualidade e tema do puzzle.
-
-Selecione uma carta e clique em **Criar carta: resolver puzzle**. Um puzzle
-e baixado por requisicao, apenas quando solicitado, pela
-[API oficial Lichess](https://lichess.org/api#tag/Puzzles/operation/apiPuzzleNext)
-(`GET /api/puzzle/next?angle=...`), sem token. Nao ha download massivo nem
-envio de desempenho/credenciais ao Lichess. Os puzzles Lichess sao de
-[dominio publico](https://database.lichess.org/#puzzles).
-
-O tabuleiro padrao 8x8 fica dentro do Pygame, orientado com o lado do jogador
-embaixo; a biblioteca `python-chess` valida movimentos, xeque, roque, en passant
-e promocao. Clique na peca e no destino; destinos legais ficam marcados.
-Promocoes pedem escolha explicita entre Dama, Torre, Bispo e Cavalo.
-O adversario responde automaticamente conforme a solucao do puzzle. Nao e
-necessario instalar o aplicativo PyChess, outro motor ou Stockfish.
-
-Cada tentativa incorreta soma um erro e mantem a posicao. O treinador exige
-a sequencia UCI publicada pelo Lichess: nao analisa alternativas equivalentes
-com um motor de xadrez. O tempo comeca depois do download e para na conclusao.
-Nao ha prazo para terminar.
-
-| Qualidade | Desempenho | Bonus em relacao a carta base |
-|---|---|---|
-| Perfeita | 0 erros, ate 60 segundos por lance do jogador na solucao | Lacaio: +2/+2 e compra 1 ao jogar. Feitico: cura extra de 2 no Rei e compra extra de 1. |
-| Aprimorada | Ate 1 erro, ate 120 segundos por lance do jogador na solucao | Lacaio: +1/+1. Feitico: cura extra de 1 no Rei. |
-| Basica | Demais resultados, desde que conclua | Atributos e efeitos originais. |
-
-O custo de mana nao muda; efeitos originais sao preservados. Os limites de tempo
-sao para o puzzle inteiro, multiplicados pela quantidade total de lances do
-jogador na solucao (nao incluem as respostas adversarias). Por exemplo, uma
-solucao com tres lances seus permite ate 180 segundos para qualidade Perfeita.
-
-Depois de concluir, clique em **Receber carta** para salvar uma copia da qualidade
-obtida. Falhas ao gravar mostram erro e permitem tentar receber novamente sem
-resolver outra vez. Voltar ou Esc abandona o puzzle e nao concede recompensa nao
-resgatada. Cada ID de puzzle so concede uma recompensa no perfil inteiro, mesmo
-se for sorteado para outra carta. Puzzles repetidos nao concedem novas copias;
-volte e solicite outro. Nao ha repeticao automatica de requisicoes.
-
-Os downloads nao bloqueiam eventos/desenho, tem timeout de 15 segundos e intervalo
-minimo de tres segundos. HTTP 429 bloqueia novas tentativas por pelo menos 60
-segundos. Falhas de rede ou dados invalidos sao exibidos na tela, sem conceder
-cartas nem substituir o puzzle por um de outro tema. O crafting exige internet;
-nao ha cache offline de puzzles.
-
-| Carta | Tema Lichess |
-|---|---|
-| Peao / Cavalo / Bispo / Torre / Dama | `pawnEndgame` / `knightEndgame` / `bishopEndgame` / `rookEndgame` / `queenEndgame` |
-| Cravada Absoluta | `pin` (inclui cravadas relativas) |
-| Ataque Duplo | `fork` |
-| Par de Bispos | `doubleBishopMate` |
-| Coluna Aberta | `clearance` (aproximacao: desobstrucao, nao necessariamente de coluna) |
-| Zugzwang | `zugzwang` |
-| Roque | `castling` |
-| Sacrificio da Dama | `sacrifice` (nao garante sacrificio especificamente da dama) |
-
-Esses temas oficiais estao em [lichess.org/training/themes](https://lichess.org/training/themes);
-as aproximacoes tambem aparecem na tela. A associacao fica em `crafting.py`.
-Cartas novas sem associacao exibem erro ao solicitar crafting.
-
-O inventario e o historico de recompensas ficam em `data\collection.json`,
-criado no primeiro resgate e ignorado pelo Git. As variantes tem IDs estaveis,
-como `torre__improved` e `torre__perfect`, e seus atributos sao derivados
-deterministicamente do catalogo base. As pecas aprimoradas continuam contando
-como sua peca de origem para Par de Bispos e Sacrificio da Dama.
-Arquivo corrompido bloqueia novos resgates para evitar perda de progresso:
-corrija-o e reinicie o jogo. Nenhum progresso e salvo apenas por abrir a tela.
-
-## Deck builder
-
-No menu, use **Montar / editar decks**. Clique no campo de nome para digitar e
-use **+** / **-** para ajustar as copias de cada carta. As paginas permitem
-percorrer todo o catalogo e variantes adquiridas. Nao ha tamanho fixo: o deck deve
-conter pelo menos uma carta. Pecas basicas tem copias livres; cartas taticas e
-variantes respeitam as quantidades criadas na colecao. Uma copia pode ser usada
-em varios decks, mas nao repetida no mesmo deck alem do inventario. Salvar/jogar
-nao consome cartas. O painel mostra total, tipos de carta e custo medio.
-
-**Salvar / substituir e selecionar** grava o deck e o seleciona para a proxima
-partida. Salvar com um nome existente substitui sua composicao; mudar o nome
-cria outro deck. Clique em um deck salvo para carrega-lo e edita-lo.
-**Novo**, **Voltar** e Esc descartam alteracoes nao salvas.
-
-No menu, clique no seletor **Deck** para alternar entre os salvos e o automatico.
-A selecao vale durante a sessao; os decks permanecem salvos ao fechar o jogo.
-O deck escolhido e usado pelo jogador, inclusive ao jogar novamente. A IA
-continua usando o deck automatico de `--deck-size` cartas; essa opcao nao altera
-o tamanho do deck personalizado. Ambos sao embaralhados antes da partida.
-Decks antigos com cartas ainda nao adquiridas permanecem no arquivo, mas nao
-podem ser usados ate ajustar as copias ou criar as cartas necessarias; o erro
-informa a quantidade solicitada e disponivel. Nao ha remocao silenciosa de cartas.
-
-Os decks ficam em `data\decks.json`, criado no primeiro salvamento e ignorado
-pelo Git por ser um arquivo local do jogador. Formato:
+Os arquivos locais `data\decks.json` e `data\collection.json` sao criados no
+primeiro salvamento/resgate e ignorados pelo Git. Decks sao um objeto JSON
+que associa nomes a listas de IDs:
 
 ```json
 {
@@ -148,144 +41,20 @@ pelo Git por ser um arquivo local do jogador. Formato:
 }
 ```
 
-Nomes aceitam ate 40 caracteres. IDs desconhecidos, decks vazios e JSON
-malformado geram uma mensagem visivel; um arquivo invalido nao e sobrescrito
-pelo editor. Corrija-o e reabra o editor para recarregar. Os salvamentos usam
-substituicao atomica para preservar o arquivo anterior se houver falha.
+O inventario registra o historico de recompensas. Variantes tem IDs estaveis,
+como `torre__improved` e `torre__perfect`; seus atributos sao derivados
+deterministicamente do catalogo base em `crafting.py`.
 
-## Controles
-
-- Clique em uma carta: borda dourada indica selecao; verde indica alvos validos.
-- Lacaio: clique em um espaco verde vazio para adicionar ao fim da fila. As
-  barras verdes entre unidades permitem escolher a posicao de insercao.
-- Feitico com alvo: clique em um alvo verde. Sem alvo: use **Jogar carta**.
-- Clique em uma unidade aliada pronta e depois em um inimigo verde para atacar.
-  Azul indica prontidao; vermelho destaca Provocar. Clique direito ou Esc cancela.
-- **Passar Turno**, **Ativar Rei (Endgame)** e **Voltar ao Menu** ficam a direita.
-  O painel mostra a descricao completa da carta selecionada e as ultimas jogadas.
-
-## Regras adotadas
-
-Cada jogador comeca com 30 de vida. A mana maxima aumenta em um no inicio de
-cada turno proprio, ate 10, e e totalmente restaurada. A mao comporta 10 cartas;
-compras excedentes sao descartadas, mas consomem a carta do deck. Cada lado
-comporta **oito unidades, incluindo o Rei**. Combate causa dano simultaneo e
-mantem dano entre turnos. Morte dos dois Reis na mesma acao resulta em empate.
-
-| Palavra-chave | Comportamento |
-|---|---|
-| Provocar | Ataques devem escolher uma unidade inimiga com Provocar. Nao restringe feiticos. |
-| Investida | Permite atacar imediatamente, inclusive o heroi/Rei. |
-| Rapidez | No turno de invocacao permite atacar unidades, mas nao o heroi nem o Rei ativado. |
-| Escudo Divino | Absorve a primeira instancia de dano positivo; nao impede destruir. |
-| Furia dos Ventos | Permite dois ataques por turno, sem remover a espera de invocacao. |
-| Elusivo | Impede selecao manual por feiticos de ambos os lados. Nao bloqueia ataques, efeitos de area/aleatorios nem efeitos de entrada de lacaios. |
-
-Congelamento impede ataques ate o fim do proximo turno do dono da unidade,
-incluindo o restante do turno atual se aplicado durante ele. Bonus temporario
-de ataque termina no fim do turno em que foi aplicado. Invocacoes por efeitos
-nao executam `on_play`; palavras-chave impressas continuam funcionando. Efeitos
-de morte acontecem depois de remover as baixas simultaneas. A morte de um heroi
-encerra a partida antes de novos efeitos de morte ou compras por abate.
-
-### Ativacao do Rei
-
-Foi escolhida a variante **2 de ataque / vida atual do heroi**, nao a variante
-2/8. A vida e compartilhada: causar dano ou curar o Rei afeta diretamente a
-condicao de vitoria. O retrato deixa de ser um alvo separado. O Rei entra no fim
-da fila e precisa esperar para atacar, como uma unidade sem Investida.
-
-- Ao comprar a ultima carta, o Rei e ativado automaticamente. Mesa cheia adia
-  sua entrada ate surgir uma vaga; o heroi continua vulneravel enquanto espera.
-- Comprar de um deck vazio causa fadiga crescente: 1, 2, 3... de dano.
-- Ao terminar a oitava rodada completa (16 turnos individuais), ou qualquer turno
-  posterior, **ate tres unidades somadas entre os dois lados** liberam a ativacao
-  manual para ambos. A elegibilidade, uma vez obtida, nao e perdida.
-- Um efeito `activate_king` tambem libera e tenta ativar o Rei imediatamente.
-- Ativacao manual e gratuita, apenas no turno do dono. Nunca cria um segundo Rei
-  nem excede oito unidades. O Rei conta como unidade para alvos e efeitos de area.
-
-### Vitorias alternativas: seis padroes de mate
-
-As seis cartas de mate sao feiticos **lendarios**, adquiridos por crafting.
-Cada deck aceita no maximo uma copia de cada mate, somando todas as qualidades.
-Os decks automaticos nao incluem lendarias.
-
-A mesa continua sendo uma **fila compactada**: mortes aproximam as unidades.
-Ponta significa primeira/ultima unidade da fila, nao slot fisico 1/8.
-O Rei ocupa posicao na fila, mas nao conta como lacaio nos requisitos abaixo.
-
-| Carta | Mana | Formacao a anunciar | Condicoes adicionais para executar |
-|---|---|---|---|
-| Mate de Anastasia | 9 | Torre na primeira ou ultima posicao, com Cavalo adjacente; pelo menos tres unidades aliadas | Inimigo com ate 15 de vida, ao menos dois lacaios e nenhuma unidade com Provocar |
-| Mate de Boden | 5 | Bispos nas duas pontas; pelo menos dois lacaios entre eles | Jogar dois outros feiticos no mesmo turno antes do mate |
-| Mate Abafado | 6 | Um Cavalo | Inimigo com oito lacaios e nenhum Provocar; Rei nao conta para os oito |
-| Mate de Gaveta | 8 | Uma Torre | Essa mesma Torre deve ter atacado e sobrevivido no turno atual; inimigo com zero de Armadura e pelo menos tres lacaios que sejam Peoes ou tenham Provocar |
-| Mate da Opera | 7 | Exatamente uma Torre e um Bispo aliados, adjacentes; outras pecas sao permitidas | Ambos devem ter atacado nesta partida; inimigo com ate 15 de vida e exatamente um lacaio |
-| Endgame Puro (Rei e Peao) | 10 | Ambos os Reis ativados, sem nenhuma outra unidade em qualquer lado | Peao Passado na mao e seu Rei com estritamente mais vida que o Rei inimigo |
-
-Ao terminar seu turno com uma dessas formacoes, ela e **anunciada
-automaticamente**, mesmo sem a carta na mao. O log identifica o dono, o padrao
-e os IDs das pecas envolvidas; uma faixa por lado resume seus padroes anunciados,
-e as pecas participantes recebem uma borda interna dourada.
-O adversario recebe um turno completo para responder antes de voce poder
-executar o mate.
-
-As mesmas pecas precisam permanecer vivas, com ataque positivo,
-descongeladas e na geometria exigida. Se a formacao for rompida por morte,
-congelamento ou mudanca de posicao/quantidade, a preparacao e cancelada.
-Reconstruir a mesma formacao naquele turno nao restaura a ameaca: e preciso
-anuncia-la novamente no fim de um turno proprio. Novas pecas do mesmo tipo
-nao substituem os IDs anunciados. Mortes intermediarias que deixem a formacao
-valida nao cancelam a preparacao.
-
-No turno da execucao, as pecas nao podem ter atacado, **exceto em Gaveta**,
-que exige um ataque real da Torre nesse turno. A carta
-revalida todos os requisitos antes de gastar mana ou sair da mao; uma tentativa
-invalida exibe o motivo e nao consome recursos. O mate bem-sucedido compromete
-os ataques restantes das pecas e encerra a partida **sem reduzir a vida
-inimiga a zero**. Somente Endgame Puro exige os Reis ativados. Provocar bloqueia
-Anastasia e Abafado mesmo congelado; os outros mates podem vencer atraves de
-Provocar. Em Gaveta, um Peao com Provocar conta uma unica vez entre os tres
-bloqueadores; Peao Passado tambem conta como Peao. O Rei nao conta como bloqueador.
-
-O historico de ataque da Opera pertence a cada unidade individual: invocar
-outra Torre/Bispo nao herda ataques da anterior. Os ataques precisam ter ocorrido
-antes do turno da execucao, pois a dupla nao pode atacar nesse turno.
-Os requisitos inimigos de vida/quantidade/Provocar/Armadura sao revalidados
-na execucao; a formacao aliada e que precisa permanecer intacta durante a
-preparacao. No Endgame Puro, qualquer outra unidade em qualquer mesa cancela
-a preparacao, mesmo se for removida logo depois.
-
-O **Peao Passado** e uma carta de apoio 2/3 de custo 2, criada por puzzles
-`advancedPawn` (aproximacao: peao avancado). Nao e uma das cinco pecas iniciais
-liberadas. Para Endgame Puro, ele precisa permanecer **na mao**, resolvendo a
-contradicao de exigir somente os Reis na mesa e um peao em campo. Variantes
-aprimoradas/perfeitas tambem atendem ao requisito e a carta nao e consumida.
-
-A Armadura dos herois comeca em zero. Se houver Armadura, ela absorve dano
-antes da vida, inclusive depois da Ativacao do Rei, e e exibida na mesa.
-O catalogo atual ainda nao tem cartas que concedem Armadura; a condicao de
-Gaveta ja a verifica explicitamente para suportar essa mecanica.
-
-Anastasia recebeu requisitos de pressao sobre o inimigo e uma terceira unidade
-aliada para nao virar apenas uma dupla facil na ponta. Em Boden, dois Bispos
-sozinhos nao bastam: os dois lacaios intermediarios criam compromisso de mesa.
-O proprio Boden e o terceiro feitico, permitindo uma sequencia real com a mana
-atual (por exemplo, duas Colunas Abertas de custo 2 e Boden de custo 5 = 9).
-O contador de feiticos e reiniciado no inicio do turno do dono e exibido no
-painel de comandos.
-
-Os puzzles usam `anastasiaMate`, `bodenMate`, `smotheredMate`, `backRankMate`,
-`operaMate` e `pawnEndgame` (aproximacao de oposicao) para Endgame Puro. Qualidades
-aprimoradas/perfeitas **nao reduzem custo nem requisitos de mate**; os bonus
-auxiliares de crafting seguem a ordem dos efeitos e nao executam depois de
-uma vitoria, pois a partida ja terminou.
+Os puzzles usam a [API oficial Lichess](https://lichess.org/api#tag/Puzzles/operation/apiPuzzleNext)
+(`GET /api/puzzle/next?angle=...`). A associacao entre cartas e temas fica em
+`crafting.py`; os temas e as regras de recompensa estao no
+[manual](MANUAL.md#crafting-por-puzzles-lichess).
 
 ## Estrutura
 
 | Arquivo | Responsabilidade |
 |---|---|
+| `MANUAL.md` | Regras e guia do jogador |
 | `main.py` | Estados Menu/Colecao/Puzzle/Deck builder/Partida/Fim, desenho, cliques, agenda da IA sem bloquear eventos |
 | `collection_view.py` | Catalogo com busca, filtros, detalhes, disponibilidade e entrada do crafting |
 | `crafting.py` | Temas por carta, qualidades, variantes e inventario persistente |
