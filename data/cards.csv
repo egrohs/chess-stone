@@ -1,0 +1,13 @@
+id,name,category,card_type,cost,attack,health,keywords,trigger,effect_code,description
+peao,Peão,Peças,minion,1,1,2,,on_death,DRAW:1:SELF,Ao morrer: compre uma carta.
+cavalo,Cavalo,Peças,minion,3,3,2,Rapidez,on_play,"[{""action"":""buff"",""attack"":1,""target"":""adjacent_allies""}]",Rapidez. Ao entrar: aliados adjacentes ganham +1 de ataque.
+bispo,Bispo,Peças,minion,3,2,4,Elusivo,on_turn_end,HEAL:1:OWN_HERO,Elusivo. No fim do seu turno: cure seu Rei em 1.
+torre,Torre,Peças,minion,4,3,5,Provocar|Escudo Divino,on_play,,Provocar. Escudo Divino.
+dama,Dama,Peças,minion,7,5,5,Investida|Fúria dos Ventos,on_play,,Investida. Fúria dos Ventos.
+cravada_absoluta,Cravada Absoluta,Táticas,spell,2,,,,on_play,FREEZE:1:TARGET_ENEMY_MINION,Congele uma unidade inimiga até o fim do próximo turno dela.
+ataque_duplo,Ataque Duplo (Garfo),Táticas,spell,3,,,,on_play,DAMAGE:2:TARGET_2_ENEMIES|DRAW:1:IF_KILLED,Cause 2 a duas unidades inimigas aleatórias distintas. Compre 1 por abate.
+par_de_bispos,Par de Bispos,Estratégia,spell,3,,,,on_play,"[{""action"":""buff"",""attack"":1,""health"":1,""target"":""all_allied_minions"",""condition"":{""type"":""friendly_count"",""card_id"":""bispo"",""at_least"":2}}]",Se controlar pelo menos dois Bispos: suas unidades ganham +1/+1.
+coluna_aberta,Coluna Aberta,Estratégia,spell,2,,,,on_play,"[{""action"":""buff"",""attack"":2,""duration"":""until_end_of_turn"",""target"":""target_ally_minion""},{""action"":""grant_keyword"",""keyword"":""rush"",""target"":""target_ally_minion""}]",Uma unidade aliada ganha +2 de ataque neste turno e Rapidez permanente.
+zugzwang,Zugzwang,Estratégia,spell,5,,,,on_play,FREEZE:1:ALL_ENEMY_MINIONS,Congele todas as unidades inimigas até o fim do próximo turno delas.
+roque,Roque,Defesa,spell,4,,,,on_play,"[{""action"":""heal"",""amount"":4,""target"":""own_hero""},{""action"":""summon"",""card_id"":""torre"",""count"":1}]",Cure seu Rei em 4 e invoque uma Torre se houver espaço.
+sacrificio_da_dama,Sacrifício da Dama,Táticas,spell,6,,,,on_play,"[{""action"":""destroy"",""target"":""target_ally_minion"",""card_id"":""dama""},{""action"":""damage"",""amount"":5,""target"":""all_enemies""},{""action"":""draw"",""amount"":2}]",Destrua sua Dama. Cause 5 a todos os inimigos e compre 2 cartas.

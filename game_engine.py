@@ -1,0 +1,402 @@
+"""Pure-Python game rules, shared by the human UI and the simple AI."""
+
+from __future__ import annotations
+
+import json
+import random
+from collections import deque
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from csv_to_json import validate_cards
+from effect_parser import EffectParser, MANUAL_TARGETS
+
+
+BOARD_LIMIT = 8
+HAND_LIMIT = 10
+KEYWORD_LABELS = {
+    "taunt": "Provocar", "charge": "Investida", "rush": "Rapidez",
+    "divine_shield": "Escudo Divino", "windfury": "Furia dos Ventos", "elusive": "Elusivo",
+}
+
+
+class RuleError(ValueError):
+    """A rejected player action; the caller must display its message."""
+
+
+@dataclass(eq=False)
+class Card:
+    uid: int
+    definition: dict
+
+    @property
+    def name(self) -> str:
+        return self.definition["name"]
+
+
+@dataclass(eq=False)
+class Unit:
+    uid: int
+    owner: int
+    card_id: str
+    name: str
+    attack: int
+    health: int
+    max_health: int
+    keywords: set[str]
+    effects: list[dict]
+    summoned_turn: int
+    attacks_used: int = 0
+    frozen_through: int = -1
+    temporary_attack: int = 0
+    is_king: bool = False
+
+
+@dataclass(eq=False)
+class Player:
+    owner: int
+    name: str
+    deck: list[str]
+    hand: list[Card] = field(default_factory=list)
+    board: list[Unit] = field(default_factory=list)
+    _health: int = 30
+    max_health: int = 30
+    max_mana: int = 0
+    mana: int = 0
+    fatigue: int = 0
+    turns_started: int = 0
+    endgame_ready: bool = False
+    king: Unit | None = None
+
+    @property
+    def health(self) -> int:
+        return self.king.health if self.king else self._health
+
+    @health.setter
+    def health(self, value: int) -> None:
+        if self.king:
+            self.king.health = value
+        else:
+            self._health = value
+
+
+Entity = Player | Unit
+
+
+def load_cards(path: Path | None = None) -> list[dict]:
+    path = path or Path(__file__).resolve().parent / "data" / "cards.json"
+    return validate_cards(json.loads(path.read_text(encoding="utf-8")))
+
+
+class Game:
+    def __init__(
+        self, cards: list[dict], deck_size: int = 30, seed: int | None = None,
+        opening_hand: int = 3,
+    ):
+        validate_cards(cards)
+        if isinstance(deck_size, bool) or not isinstance(deck_size, int) or deck_size < 1:
+            raise ValueError("deck_size deve ser inteiro positivo")
+        if isinstance(opening_hand, bool) or not isinstance(opening_hand, int) or not 0 <= opening_hand <= HAND_LIMIT:
+            raise ValueError("opening_hand deve estar entre 0 e 10")
+        self.catalog = {card["id"]: card for card in cards}
+        self.rng = random.Random(seed)
+        self._next_uid = 1
+        self.messages: deque[str] = deque(maxlen=150)
+        self.current = 0
+        self.turn_number = 1
+        self.over = False
+        self.winner: int | None = None
+        self._cleaning = False
+        self.players = [
+            Player(owner, name, self._make_deck(deck_size))
+            for owner, name in enumerate(("Jogador", "Adversario"))
+        ]
+        self.parser = EffectParser(self)
+        for owner in (0, 1):
+            for _ in range(min(opening_hand, deck_size)):
+                self.draw_card(owner)
+        self.start_turn()
+
+    def _make_deck(self, size: int) -> list[str]:
+        ids = list(self.catalog)
+        deck = [ids[index % len(ids)] for index in range(size)]
+        self.rng.shuffle(deck)
+        return deck
+
+    def uid(self) -> int:
+        result = self._next_uid
+        self._next_uid += 1
+        return result
+
+    def log(self, text: str) -> None:
+        self.messages.append(text)
+
+    def hero_target(self, owner: int) -> Entity:
+        return self.players[owner].king or self.players[owner]
+
+    def require_turn(self, owner: int) -> None:
+        if self.over:
+            raise RuleError("A partida terminou.")
+        if self.current != owner:
+            raise RuleError("Aguarde seu turno.")
+
+    def draw_card(self, owner: int) -> None:
+        player = self.players[owner]
+        if not player.deck:
+            player.endgame_ready = True
+            self.activate_king(owner)
+            player.fatigue += 1
+            self.log(f"{player.name}: fadiga {player.fatigue}.")
+            self.damage(self.hero_target(owner), player.fatigue)
+            self.cleanup()
+            return
+        card_id = player.deck.pop()
+        if len(player.hand) >= HAND_LIMIT:
+            self.log(f"{player.name}: mao cheia, {self.catalog[card_id]['name']} descartada.")
+        else:
+            player.hand.append(Card(self.uid(), self.catalog[card_id]))
+            self.log(f"{player.name} compra uma carta.")
+        if not player.deck:
+            player.endgame_ready = True
+            self.activate_king(owner)
+
+    def start_turn(self) -> None:
+        player = self.players[self.current]
+        player.turns_started += 1
+        player.max_mana = min(10, player.max_mana + 1)
+        player.mana = player.max_mana
+        for unit in player.board:
+            unit.attacks_used = 0
+        self.log(f"Turno {self.turn_number} - {player.name} ({player.mana} mana).")
+        self.draw_card(self.current)
+        for unit in list(player.board):
+            if not self.over and unit in player.board:
+                self.parser.execute(unit.effects, "on_turn_start", self.current, unit)
+
+    def end_turn(self, owner: int) -> None:
+        self.require_turn(owner)
+        for unit in list(self.players[owner].board):
+            if not self.over and unit in self.players[owner].board:
+                self.parser.execute(unit.effects, "on_turn_end", owner, unit)
+        for player in self.players:
+            for unit in player.board:
+                unit.attack -= unit.temporary_attack
+                unit.temporary_attack = 0
+        if self.over:
+            return
+        # Eight complete rounds = sixteen individual player turns.
+        if self.turn_number >= 16 and sum(len(p.board) for p in self.players) <= 3:
+            for player in self.players:
+                if not player.endgame_ready:
+                    self.log(f"{player.name}: Endgame disponivel por mesa reduzida.")
+                player.endgame_ready = True
+        self.current = 1 - owner
+        self.turn_number += 1
+        self.start_turn()
+
+    def can_activate_king(self, owner: int) -> bool:
+        player = self.players[owner]
+        return (
+            not self.over and player.health > 0 and player.endgame_ready
+            and player.king is None and len(player.board) < BOARD_LIMIT
+        )
+
+    def activate_king(self, owner: int, *, manual: bool = False) -> bool:
+        if manual:
+            self.require_turn(owner)
+            if not self.can_activate_king(owner):
+                raise RuleError("Rei indisponivel: exige Endgame e um espaco livre.")
+        if not self.can_activate_king(owner):
+            if not self.over and self.players[owner].endgame_ready and not self.players[owner].king:
+                self.log(f"{self.players[owner].name}: Rei aguarda um espaco livre.")
+            return False
+        player = self.players[owner]
+        king = Unit(
+            self.uid(), owner, "rei", f"Rei ({player.name})", 2, player.health,
+            player.max_health, set(), [], self.turn_number, is_king=True,
+        )
+        player.king = king
+        player.board.append(king)
+        self.log(f"{player.name} ativa o Rei: 2/{king.health}.")
+        return True
+
+    def summon(self, owner: int, card_id: str, position: int | None = None) -> Unit | None:
+        player = self.players[owner]
+        if len(player.board) >= BOARD_LIMIT:
+            self.log(f"{player.name}: invocacao de {self.catalog[card_id]['name']} falhou, mesa cheia.")
+            return None
+        card = self.catalog[card_id]
+        unit = Unit(
+            self.uid(), owner, card_id, card["name"], card["attack"], card["health"],
+            card["health"], set(card["keywords"]), card["effects"], self.turn_number,
+        )
+        player.board.insert(len(player.board) if position is None else position, unit)
+        self.log(f"{player.name} invoca {unit.name}.")
+        return unit
+
+    def manual_effects(self, card: Card) -> list[dict]:
+        return [
+            effect for effect in card.definition["effects"]
+            if effect["trigger"] == "on_play" and effect.get("target") in MANUAL_TARGETS
+        ]
+
+    def valid_card_targets(self, owner: int, card: Card) -> list[Entity]:
+        effects = self.manual_effects(card)
+        if not effects:
+            return []
+        # A minion's battlecry is not a spell and can select Elusive units.
+        groups = [
+            self.parser.resolve_targets(
+                effect, owner, preview=True,
+                allow_elusive=card.definition["type"] == "minion",
+            )
+            for effect in effects
+        ]
+        return [entity for entity in groups[0] if all(entity in group for group in groups[1:])]
+
+    def playable(self, owner: int, card: Card) -> bool:
+        player = self.players[owner]
+        return (
+            not self.over and self.current == owner and card in player.hand
+            and card.definition["cost"] <= player.mana
+            and (card.definition["type"] != "minion" or len(player.board) < BOARD_LIMIT)
+            and (not self.manual_effects(card) or bool(self.valid_card_targets(owner, card)))
+        )
+
+    def play_card(
+        self, owner: int, card: Card, target: Entity | None = None,
+        position: int | None = None,
+    ) -> None:
+        self.require_turn(owner)
+        player = self.players[owner]
+        if card not in player.hand:
+            raise RuleError("Carta nao esta na mao.")
+        definition = card.definition
+        if definition["cost"] > player.mana:
+            raise RuleError("Mana insuficiente.")
+        if definition["type"] == "minion":
+            if len(player.board) >= BOARD_LIMIT:
+                raise RuleError("Sua mesa ja tem 8 unidades.")
+            if position is not None and (
+                isinstance(position, bool) or not isinstance(position, int)
+                or not 0 <= position <= len(player.board)
+            ):
+                raise RuleError("Posicao de invocacao invalida.")
+        if self.manual_effects(card) and target not in self.valid_card_targets(owner, card):
+            raise RuleError("Escolha um alvo valido para a carta.")
+        if not self.manual_effects(card) and target is not None:
+            raise RuleError("Esta carta nao exige alvo.")
+        player.mana -= definition["cost"]
+        player.hand.remove(card)
+        self.log(f"{player.name} joga {card.name}.")
+        source = None
+        if definition["type"] == "minion":
+            source = self.summon(owner, definition["id"], position)
+        self.parser.execute(definition["effects"], "on_play", owner, source, target)
+        self.cleanup()
+
+    def attack_targets(self, unit: Unit) -> list[Entity]:
+        if (
+            self.over or unit.owner != self.current
+            or unit not in self.players[unit.owner].board or unit.health <= 0
+            or unit.attack <= 0 or unit.attacks_used >= (2 if "windfury" in unit.keywords else 1)
+            or self.players[unit.owner].turns_started <= unit.frozen_through
+        ):
+            return []
+        just_summoned = unit.summoned_turn == self.turn_number
+        if just_summoned and not ({"charge", "rush"} & unit.keywords):
+            return []
+        enemy = self.players[1 - unit.owner]
+        targets: list[Entity] = list(enemy.board)
+        if not enemy.king:
+            targets.append(enemy)
+        taunts = [entity for entity in targets if "taunt" in getattr(entity, "keywords", set())]
+        if taunts:
+            targets = taunts
+        if just_summoned and "charge" not in unit.keywords:
+            targets = [entity for entity in targets if entity is not self.hero_target(enemy.owner)]
+        return targets
+
+    def attack(self, owner: int, unit: Unit, target: Entity) -> None:
+        self.require_turn(owner)
+        if unit.owner != owner or target not in self.attack_targets(unit):
+            raise RuleError("Ataque invalido: verifique prontidao, congelamento e Provocar.")
+        unit.attacks_used += 1
+        retaliation = target.attack if isinstance(target, Unit) else 0
+        self.log(f"{unit.name} ataca {target.name}.")
+        self.damage(target, unit.attack)
+        if retaliation:
+            self.damage(unit, retaliation)
+        self.cleanup()
+
+    def damage(self, target: Entity, amount: int) -> None:
+        if amount <= 0:
+            return
+        if isinstance(target, Unit) and "divine_shield" in target.keywords:
+            target.keywords.remove("divine_shield")
+            self.log(f"{target.name}: Escudo Divino absorve o dano.")
+            return
+        target.health -= amount
+        self.log(f"{target.name} sofre {amount} de dano.")
+
+    def heal(self, target: Entity, amount: int) -> None:
+        healed = min(amount, max(0, target.max_health - target.health))
+        target.health += healed
+        self.log(f"{target.name} recupera {healed} de vida.")
+
+    def cleanup(self) -> None:
+        if self._cleaning:
+            self.check_winner()
+            return
+        self._cleaning = True
+        try:
+            while True:
+                dead = [unit for p in self.players for unit in p.board if unit.health <= 0]
+                for unit in dead:
+                    self.players[unit.owner].board.remove(unit)
+                    self.log(f"{unit.name} saiu da mesa.")
+                self.check_winner()
+                if self.over or not dead:
+                    break
+                for unit in dead:
+                    self.parser.execute(unit.effects, "on_death", unit.owner, unit)
+            if not self.over:
+                for player in self.players:
+                    # Exhausted decks activate automatically as soon as space is available.
+                    if not player.deck and self.can_activate_king(player.owner):
+                        self.activate_king(player.owner)
+        finally:
+            self._cleaning = False
+
+    def check_winner(self) -> None:
+        if self.over:
+            return
+        defeated = [p.owner for p in self.players if p.health <= 0]
+        if defeated:
+            self.over = True
+            self.winner = 1 - defeated[0] if len(defeated) == 1 else None
+            self.log("Empate!" if self.winner is None else f"{self.players[self.winner].name} venceu!")
+
+    def ai_step(self) -> None:
+        """Perform one legal action; the UI schedules steps without blocking events."""
+        if self.over or self.current != 1:
+            return
+        if self.can_activate_king(1):
+            self.activate_king(1, manual=True)
+            return
+        player = self.players[1]
+        options = [card for card in player.hand if self.playable(1, card)]
+        if options:
+            card = max(options, key=lambda c: c.definition["cost"])
+            targets = self.valid_card_targets(1, card)
+            target = self.rng.choice(targets) if targets else None
+            self.play_card(1, card, target)
+            return
+        for unit in player.board:
+            targets = self.attack_targets(unit)
+            if targets:
+                hero = self.hero_target(0)
+                target = hero if hero in targets else min(targets, key=lambda e: e.health)
+                self.attack(1, unit, target)
+                return
+        self.end_turn(1)
