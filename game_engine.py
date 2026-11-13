@@ -7,6 +7,7 @@ import random
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 from csv_to_json import validate_cards
 from deck_store import validate_deck
@@ -95,6 +96,7 @@ class Game:
         self, cards: list[dict], deck_size: int = 30, seed: int | None = None,
         opening_hand: int = 3,
         player_deck: list[str] | None = None,
+        on_damage: Callable[[int], None] | None = None,
     ):
         validate_cards(cards)
         if isinstance(deck_size, bool) or not isinstance(deck_size, int) or deck_size < 1:
@@ -111,6 +113,7 @@ class Game:
         self.over = False
         self.winner: int | None = None
         self._cleaning = False
+        self.on_damage = on_damage
         decks = [self._make_deck(deck_size) if custom_deck is None else custom_deck,
                  self._make_deck(deck_size)]
         if custom_deck is not None:
@@ -346,6 +349,8 @@ class Game:
             self.log(f"{target.name}: Escudo Divino absorve o dano.")
             return
         target.health -= amount
+        if self.on_damage is not None:
+            self.on_damage(amount)
         self.log(f"{target.name} sofre {amount} de dano.")
 
     def heal(self, target: Entity, amount: int) -> None:

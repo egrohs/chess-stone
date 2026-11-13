@@ -213,6 +213,8 @@ da fila e precisa esperar para atacar, como uma unidade sem Investida.
 | `puzzles.py` | Download Lichess, validacao FEN/PGN/UCI, sessao e desempenho |
 | `puzzle_view.py` | Tabuleiro de xadrez no Pygame, requisicoes em segundo plano e resgate |
 | `ui_theme.py` | Paleta de cores compartilhada pelas telas |
+| `audio.py` | Impactos genericos pre-carregados e reproducao imediata ao aplicar dano |
+| `tools\generate_impacts.py` | Geracao reproduzivel dos sons originais de impacto |
 | `deck_store.py` | Validacao de decks e persistencia local em JSON |
 | `game_engine.py` | Estado, jogadas legais, combate, turnos, compras, Endgame e IA |
 | `effect_parser.py` | Resolucao de alvos, condicoes e execucao ordenada dos efeitos |
@@ -220,6 +222,76 @@ da fila e precisa esperar para atacar, como uma unidade sem Investida.
 | `data\cards.csv` | Fonte editavel em planilha, UTF-8 e delimitador virgula |
 | `data\cards.json` | Catalogo validado carregado pelo jogo |
 | `tests\` | Testes de dados, regras, cliques da interface e partidas completas reproduziveis |
+
+## Imagens e sons das cartas
+
+A pasta `assets\cards\` possui uma subpasta para cada ID de carta do catalogo,
+alem de `rei` para o heroi. Coloque a imagem e os sons juntos na pasta da carta:
+
+```text
+assets\
+  cards\
+    peao\
+      art.png
+      on_play.ogg
+      on_attack.ogg
+      on_death.ogg
+      on_effect.ogg
+    cavalo\
+    bispo\
+    torre\
+    dama\
+    cravada_absoluta\
+    ataque_duplo\
+    par_de_bispos\
+    coluna_aberta\
+    zugzwang\
+    roque\
+    sacrificio_da_dama\
+    rei\
+```
+
+Os arquivos mostrados em `peao` sao exemplos de nomes; nenhuma imagem ou som
+foi incluido. Use essa mesma convencao em cada pasta: `art.png` para a arte,
+`on_play.ogg` ao jogar, `on_attack.ogg` ao atacar, `on_death.ogg` ao morrer e
+`on_effect.ogg` para o efeito. Prefira PNG com transparencia e audio OGG ou WAV
+(`on_play.wav`, por exemplo). Eventos que nao se aplicam a uma carta podem
+ficar sem arquivo.
+
+Para artes/sons exclusivos das qualidades, use subpastas opcionais `improved`
+e `perfect` dentro da pasta base, por exemplo
+`assets\cards\torre\perfect\art.png`. Para novas cartas, crie uma pasta com o
+mesmo `id` do CSV, sem acentos ou espacos.
+
+Os arquivos `.gitkeep` apenas preservam as pastas vazias no Git e podem ser
+removidos depois de adicionar seus recursos. **Esta estrutura ainda nao carrega
+nem reproduz os arquivos no jogo**; a interface continua minimalista.
+
+### Sons genericos de impacto
+
+O jogo ja reproduz os impactos originais incluidos em `assets\sounds\impacts\`:
+`light.wav` para 1-2 de dano, `medium.wav` para 3-4 e `heavy.wav` para 5 ou mais.
+Sao sons sintetizados, sem recursos de terceiros, com duracoes de 120, 180 e
+260 ms, respectivamente. Podem ser recriados com:
+
+```powershell
+python tools\generate_impacts.py
+```
+
+Os WAVs sao carregados uma vez ao iniciar. O motor notifica o cliente
+sincronamente logo apos descontar a vida; o som e iniciado nesse mesmo ponto,
+sem esperar o proximo frame, percorrer o log ou usar temporizadores. Isso cobre
+ataques do jogador/IA, contra-ataques, feiticos, efeitos em area, dano letal e
+fadiga, inclusive contra o Rei. Cada alvo atingido dispara um impacto;
+impactos simultaneos podem se sobrepor. Cura, destruir sem dano, dano zero e
+dano absorvido por Escudo Divino nao disparam o som.
+
+O mixer usa buffer de 256 amostras a 44,1 kHz (aproximadamente 5,8 ms por buffer),
+volume de 45% e pelo menos 16 canais. A latencia audivel final tambem depende do
+driver e do dispositivo; nao e possivel garantir latencia fisica zero. Nenhuma
+reproducao bloqueia o loop. Se o dispositivo ou os WAVs estiverem indisponiveis,
+o jogo continua com aviso visivel no menu/partida e detalhes no console.
+Os sons especificos de `assets\cards\` continuam sem carregamento automatico.
 
 ## Editar as cartas
 
@@ -315,3 +387,8 @@ Para executar somente as regras, sem depender de pygame, use
 Os testes de decks usam arquivos temporarios e nao alteram sua biblioteca.
 Os testes de crafting tambem usam arquivos temporarios e respostas de rede
 simuladas; nao dependem de internet nem modificam o inventario local.
+
+### TODO
+
+- Pode haver cartas de padrões de mate específicas (que dependem de condições especificas) pra vencer o jogo mesmo sem levar a vida do oponente a 0.
+- Vamos adicionar classes de heroes que seriam os campeões de chess. Seriam 4 classes dos perfis de jogadores, ativista, pragmático, reflector, teorista.

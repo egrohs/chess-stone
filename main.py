@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 from collections import Counter
 from enum import Enum, auto
 from pathlib import Path
@@ -16,6 +17,7 @@ from collection_view import CollectionView
 from ui_theme import BG, PANEL, WHITE, MUTED, GREEN, GOLD, RED, BLUE
 from crafting import CraftingInventory, STARTER_IDS
 from puzzle_view import PuzzleView
+from audio import ImpactAudio
 
 
 WIDTH, HEIGHT = 1440, 940
@@ -37,7 +39,11 @@ class App:
         self, *, deck_size: int = 30, seed: int | None = None,
         decks_path: Path = DEFAULT_PATH,
     ):
+        pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=256)
         pygame.init()
+        self.audio = ImpactAudio()
+        if self.audio.error:
+            print(self.audio.error, file=sys.stderr)
         pygame.display.set_caption("Chess Stone - prototipo")
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
@@ -97,12 +103,17 @@ class App:
         )
         try:
             self.inventory.validate_owned(deck)
-            self.game = Game(self.cards, deck_size=self.deck_size, seed=self.seed, player_deck=deck)
+            self.game = Game(
+                self.cards, deck_size=self.deck_size, seed=self.seed, player_deck=deck,
+                on_damage=self.audio.play_damage,
+            )
         except ValueError as error:
             self.deck_message = f"Erro ao iniciar partida: {error}"
             self.state = State.MENU
             return
         self.state = State.MATCH
+        if self.audio.error:
+            self.game.log(self.audio.error)
         self.clear_selection()
         self.ai_at = pygame.time.get_ticks() + 450
 
@@ -523,6 +534,8 @@ class App:
             return
         pygame.draw.rect(self.screen, PANEL, (SIDEBAR, 0, WIDTH - SIDEBAR, HEIGHT))
         self.text("COMANDOS", (1120, 28), GOLD, self.large)
+        if self.audio.error:
+            self.text("Audio indisponivel (veja o console)", (1120, 70), RED, self.small)
         human_turn = game.current == 0 and not game.over
         self.button(self.end_button, "Passar Turno", human_turn)
         self.button(self.king_button, "Ativar Rei (Endgame)", human_turn and game.can_activate_king(0))
@@ -640,6 +653,8 @@ class App:
                 self.inventory.error or self.deck_message, pygame.Rect(360, 830, 720, 100),
                 RED if self.library_error or self.inventory.error or self.deck_message.startswith("Erro") else GREEN,
             )
+            if self.audio.error:
+                self.text("Audio indisponivel (detalhes no console).", (30, 910), RED, self.small)
         else:
             game = self.game
             title = "Empate!" if game is None or game.winner is None else (
