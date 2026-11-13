@@ -260,5 +260,105 @@ class DeckBuilderTests(unittest.TestCase):
         self.assertIsNone(self.app.active_deck)
 
 
+class CollectionTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.path = Path(self.temporary.name) / "decks.json"
+        self.app = App(decks_path=self.path)
+        self.addCleanup(pygame.quit)
+        self.app.click(self.app.collection_button.center)
+        self.collection = self.app.collection
+
+    def click(self, rect):
+        self.app.handle_event(pygame.event.Event(
+            pygame.MOUSEBUTTONDOWN, button=1, pos=rect.center,
+        ))
+
+    def search(self, query):
+        self.click(self.collection.search_rect)
+        self.app.handle_event(pygame.event.Event(pygame.TEXTINPUT, text=query))
+
+    def test_paginated_catalog_and_detail_selection(self):
+        self.assertEqual(self.app.state, State.COLLECTION)
+        first = self.collection.rows()
+        self.assertEqual(len(first), 8)
+        self.app.draw()
+        self.click(self.collection.next)
+        second = self.collection.rows()
+        self.assertEqual(len(second), 4)
+        self.assertEqual(len({c["id"] for c, _ in first + second}), 12)
+        self.click(second[0][1])
+        self.assertIs(self.collection.selected, second[0][0])
+        self.app.draw()
+        self.click(self.collection.next)
+        self.assertEqual(self.collection.page, 1)
+        self.click(self.collection.previous)
+        self.assertEqual(self.collection.page, 0)
+        self.click(self.collection.previous)
+        self.assertEqual(self.collection.page, 0)
+        self.assertFalse(self.path.exists())
+
+    def test_accent_insensitive_search_and_empty_results(self):
+        self.search("peao")
+        self.assertEqual([c["id"] for c in self.collection.filtered_cards()], ["peao"])
+        self.app.draw()
+        self.app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_BACKSPACE))
+        self.assertEqual(self.collection.query, "pea")
+        self.search("inexistente")
+        self.assertEqual(self.collection.rows(), [])
+        self.assertIsNone(self.collection.selected)
+        self.app.draw()
+        self.click(self.collection.next)
+        self.assertEqual(self.collection.page, 0)
+
+    def test_keywords_type_filter_sort_and_reset_page(self):
+        self.search("provocar")
+        self.assertEqual([c["id"] for c in self.collection.filtered_cards()], ["torre"])
+        self.collection.query = ""
+        self.collection.refresh()
+        self.click(self.collection.next)
+        self.click(self.collection.type_button)
+        self.assertEqual(self.collection.page, 0)
+        self.assertTrue(all(c["type"] == "minion" for c in self.collection.filtered_cards()))
+        self.click(self.collection.type_button)
+        self.assertTrue(all(c["type"] == "spell" for c in self.collection.filtered_cards()))
+        self.click(self.collection.type_button)
+        self.assertEqual(len(self.collection.filtered_cards()), 12)
+        self.click(self.collection.sort_button)
+        self.assertTrue(self.collection.sort_by_name)
+        self.assertEqual(self.collection.filtered_cards()[0]["id"], "ataque_duplo")
+        self.app.draw()
+
+    def test_back_escape_and_unmodified_game_and_deck(self):
+        self.app.saved_decks = {"Teste": ["peao"]}
+        self.app.active_deck = "Teste"
+        self.app.draft["dama"] = 2
+        self.click(self.collection.back_button)
+        self.assertEqual(self.app.state, State.MENU)
+        self.app.click(self.app.collection_button.center)
+        self.search("dama")
+        self.app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+        self.assertEqual(self.app.state, State.MENU)
+        self.assertFalse(self.collection.search_focused)
+        self.assertEqual(self.app.saved_decks, {"Teste": ["peao"]})
+        self.assertEqual(self.app.active_deck, "Teste")
+        self.assertEqual(self.app.draft["dama"], 2)
+        self.assertIsNone(self.app.game)
+
+    def test_long_details_scroll_and_clamp(self):
+        original = self.collection.selected
+        self.collection.selected = dict(original, description="Descricao longa. " * 500)
+        self.collection.detail_scroll = 9999
+        self.app.draw()
+        self.assertGreater(self.collection.detail_scroll, 0)
+        self.assertLess(self.collection.detail_scroll, 9999)
+        with patch("pygame.mouse.get_pos", return_value=self.collection.detail_rect.center):
+            self.app.handle_event(pygame.event.Event(pygame.MOUSEWHEEL, y=9999))
+        self.assertEqual(self.collection.detail_scroll, 0)
+        self.collection.selected = original
+        self.app.draw()
+
+
 if __name__ == "__main__":
     unittest.main()

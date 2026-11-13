@@ -12,17 +12,11 @@ import pygame
 
 from game_engine import BOARD_LIMIT, KEYWORD_LABELS, Card, Entity, Game, RuleError, Unit, load_cards
 from deck_store import DEFAULT_PATH, DeckStore
+from collection_view import CollectionView
+from ui_theme import BG, PANEL, WHITE, MUTED, GREEN, GOLD, RED, BLUE
 
 
 WIDTH, HEIGHT = 1440, 940
-BG = (22, 27, 35)
-PANEL = (34, 41, 52)
-WHITE = (235, 239, 245)
-MUTED = (165, 176, 191)
-GREEN = (100, 220, 155)
-GOLD = (249, 203, 90)
-RED = (228, 107, 112)
-BLUE = (107, 170, 239)
 SLOT_WIDTH, SLOT_HEIGHT, SLOT_STEP = 118, 150, 130
 SIDEBAR = 1100
 
@@ -30,6 +24,7 @@ SIDEBAR = 1100
 class State(Enum):
     MENU = auto()
     DECK_BUILDER = auto()
+    COLLECTION = auto()
     MATCH = auto()
     GAME_OVER = auto()
 
@@ -47,6 +42,7 @@ class App:
         self.small = pygame.font.SysFont("segoeui", 15)
         self.large = pygame.font.SysFont("segoeui", 30, bold=True)
         self.cards = load_cards()
+        self.collection = CollectionView(self.cards)
         self.deck_size = deck_size
         self.seed = seed
         self.deck_store = DeckStore([card["id"] for card in self.cards], decks_path)
@@ -68,7 +64,8 @@ class App:
         self.running = True
         self.ai_at = 0
         self.start_button = pygame.Rect(540, 440, 360, 65)
-        self.quit_button = pygame.Rect(540, 690, 360, 60)
+        self.quit_button = pygame.Rect(540, 750, 360, 60)
+        self.collection_button = pygame.Rect(540, 675, 360, 60)
         self.builder_button = pygame.Rect(540, 520, 360, 60)
         self.deck_select_button = pygame.Rect(440, 600, 560, 60)
         self.name_rect = pygame.Rect(30, 95, 820, 48)
@@ -261,6 +258,8 @@ class App:
                 self.start_game()
             elif self.builder_button.collidepoint(point):
                 self.open_builder()
+            elif self.collection_button.collidepoint(point):
+                self.state = State.COLLECTION
             elif self.deck_select_button.collidepoint(point):
                 options = [None, *sorted(self.saved_decks, key=str.casefold)]
                 self.active_deck = options[(options.index(self.active_deck) + 1) % len(options)]
@@ -269,6 +268,10 @@ class App:
             return
         if self.state == State.DECK_BUILDER:
             self.click_builder(point)
+            return
+        if self.state == State.COLLECTION:
+            if self.collection.click(point):
+                self.state = State.MENU
             return
         if self.state == State.GAME_OVER:
             if self.start_button.collidepoint(point):
@@ -571,12 +574,15 @@ class App:
             self.draw_match()
         elif self.state == State.DECK_BUILDER:
             self.draw_builder()
+        elif self.state == State.COLLECTION:
+            self.collection.draw(self)
         elif self.state == State.MENU:
             self.text("CHESS STONE", (600, 220), GOLD, self.large)
             self.text("Card game de xadrez | Jogador x IA", (548, 292))
             self.text(f"IA: {self.deck_size} cartas | 8 unidades por lado | 30 de vida", (493, 336), MUTED)
             self.button(self.start_button, "Iniciar partida")
             self.button(self.builder_button, "Montar / editar decks")
+            self.button(self.collection_button, "Colecao de cartas")
             self.button(self.deck_select_button, "")
             self.paragraph(
                 f"Deck: {self.active_deck} (clique para trocar)" if self.active_deck
@@ -584,7 +590,7 @@ class App:
                 self.deck_select_button.inflate(-20, -14), font=self.font,
             )
             self.button(self.quit_button, "Sair")
-            self.paragraph(self.deck_message, pygame.Rect(360, 800, 720, 100), RED if self.library_error else GREEN)
+            self.paragraph(self.deck_message, pygame.Rect(360, 830, 720, 100), RED if self.library_error else GREEN)
         else:
             game = self.game
             title = "Empate!" if game is None or game.winner is None else (
@@ -617,6 +623,11 @@ class App:
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT:
             self.running = False
+        elif self.state == State.COLLECTION:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                self.click(event.pos)
+            elif self.collection.handle_event(event):
+                self.state = State.MENU
         elif self.state == State.DECK_BUILDER and event.type == pygame.TEXTINPUT and self.name_focused:
             self.draft_name = (self.draft_name + "".join(c for c in event.text if c.isprintable()))[:40]
         elif self.state == State.DECK_BUILDER and event.type == pygame.KEYDOWN:
@@ -653,7 +664,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--deck-size", type=int, default=30, help="Quantidade de cartas por deck (>= 1)")
     parser.add_argument("--seed", type=int, help="Semente para partidas reproduziveis")
-    parser.add_argument("--smoke-test", action="store_true", help="Renderiza os quatro estados sem janela")
+    parser.add_argument("--smoke-test", action="store_true", help="Renderiza todos os estados sem janela")
     args = parser.parse_args()
     if args.deck_size < 1:
         parser.error("--deck-size deve ser >= 1")
@@ -668,6 +679,11 @@ def main() -> None:
     if args.smoke_test:
         try:
             app.draw()
+            app.click(app.collection_button.center)
+            app.draw()
+            app.click(app.collection.next.center)
+            app.draw()
+            app.click(app.collection.back_button.center)
             app.click(app.builder_button.center)
             app.draw()
             app.click(app.back_deck_button.center)

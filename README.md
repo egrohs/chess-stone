@@ -26,6 +26,19 @@ cartas iniciais (ou o tamanho do deck, se menor). O primeiro jogador tambem
 compra no inicio do seu primeiro turno. Nao ha mulligan, moeda, armas ou poder
 heroico.
 
+## Colecao de cartas
+
+No menu, **Colecao de cartas** abre um visualizador de todo o catalogo, sem
+alterar decks ou a partida. As cartas aparecem em grade com custo, tipo,
+atributos e um resumo; clique em uma para consultar a descricao completa,
+categoria, ID, palavras-chave e gatilhos no painel lateral.
+
+A busca aceita nome, ID, categoria, descricao e palavras-chave, ignorando
+acentos e maiusculas. Clique no filtro para alternar entre todos os tipos,
+lacaios e feiticos, e no botao de ordem para alternar entre custo e nome.
+Use os botoes de pagina para percorrer a colecao. Descricoes longas podem ser
+roladas com o mouse sobre o painel de detalhes. **Voltar ao Menu** ou Esc sai.
+
 ## Deck builder
 
 No menu, use **Montar / editar decks**. Clique no campo de nome para digitar e
@@ -115,7 +128,9 @@ da fila e precisa esperar para atacar, como uma unidade sem Investida.
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `main.py` | Estados Menu/Deck builder/Partida/Fim, desenho, cliques, agenda da IA sem bloquear eventos |
+| `main.py` | Estados Menu/Colecao/Deck builder/Partida/Fim, desenho, cliques, agenda da IA sem bloquear eventos |
+| `collection_view.py` | Visualizador do catalogo com busca, filtros, paginacao e detalhes |
+| `ui_theme.py` | Paleta de cores compartilhada pelas telas |
 | `deck_store.py` | Validacao de decks e persistencia local em JSON |
 | `game_engine.py` | Estado, jogadas legais, combate, turnos, compras, Endgame e IA |
 | `effect_parser.py` | Resolucao de alvos, condicoes e execucao ordenada dos efeitos |
