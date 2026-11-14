@@ -10,7 +10,7 @@ import chess
 
 from crafting import CraftingInventory, STARTER_IDS, THEMES, grade, make_variant
 from game_engine import Game, load_cards
-from puzzles import Puzzle, PuzzleError, PuzzleSession, download_puzzle
+from chess_puzzles import Puzzle, PuzzleError, PuzzleSession, download_puzzle
 
 
 def puzzle_response(theme="fork"):
@@ -160,9 +160,9 @@ class PuzzleTests(unittest.TestCase):
 
     def test_wrong_move_does_not_change_position_and_clock_freezes(self):
         puzzle = Puzzle.from_response(puzzle_response(), "fork")
-        with patch("puzzles.time.monotonic", return_value=100):
+        with patch("chess_puzzles.session.time.monotonic", return_value=100):
             session = PuzzleSession(puzzle)
-        with patch("puzzles.time.monotonic", return_value=150):
+        with patch("chess_puzzles.session.time.monotonic", return_value=150):
             self.assertFalse(session.play(chess.Move.from_uci("d2d4")))
             self.assertEqual(session.board.fen(), chess.STARTING_FEN)
             self.assertEqual(session.errors, 1)
@@ -172,7 +172,7 @@ class PuzzleTests(unittest.TestCase):
             self.assertTrue(session.play(chess.Move.from_uci("g1f3")))
             self.assertTrue(session.done)
             self.assertEqual(session.quality, "improved")
-        with patch("puzzles.time.monotonic", return_value=9999):
+        with patch("chess_puzzles.session.time.monotonic", return_value=9999):
             self.assertEqual(session.elapsed, 50)
         with self.assertRaises(PuzzleError):
             session.play(chess.Move.from_uci("b1c3"))
@@ -203,7 +203,7 @@ class PuzzleTests(unittest.TestCase):
 
     def test_download_request_and_errors(self):
         payload = json.dumps(puzzle_response()).encode()
-        with patch("puzzles.urlopen") as mock:
+        with patch("chess_puzzles.lichess.urlopen") as mock:
             mock.return_value.__enter__.return_value.read.return_value = payload
             puzzle = download_puzzle("fork")
             self.assertEqual(puzzle.theme, "fork")
@@ -215,9 +215,9 @@ class PuzzleTests(unittest.TestCase):
             HTTPError("https://lichess.org", 503, "down", {}, None),
             URLError("offline"), TimeoutError(),
         ):
-            with patch("puzzles.urlopen", side_effect=error), self.assertRaises(PuzzleError):
+            with patch("chess_puzzles.lichess.urlopen", side_effect=error), self.assertRaises(PuzzleError):
                 download_puzzle("fork")
-        with patch("puzzles.urlopen") as mock:
+        with patch("chess_puzzles.lichess.urlopen") as mock:
             mock.return_value.__enter__.return_value.read.return_value = b"bad"
             with self.assertRaises(PuzzleError):
                 download_puzzle("fork")

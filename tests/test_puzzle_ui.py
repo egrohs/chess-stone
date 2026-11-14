@@ -13,7 +13,7 @@ import pygame
 
 from crafting import CraftingInventory
 from main import App, State
-from puzzles import Puzzle, PuzzleError
+from chess_puzzles import Puzzle, PuzzleError
 
 
 class PuzzleInterfaceTests(unittest.TestCase):
@@ -59,9 +59,14 @@ class PuzzleInterfaceTests(unittest.TestCase):
         self.assertEqual(self.view.session.index, 2)
         self.move("g1f3")
         self.assertTrue(self.view.session.done)
+        result = self.view.session.result
+        self.assertIsNotNone(result)
         self.assertEqual(self.app.inventory.rewards, [])
         self.app.click(self.view.claim_button.center)
         self.assertTrue(self.view.saved)
+        reward = self.app.inventory.rewards[0]
+        self.assertEqual((reward["puzzle_id"], reward["errors"], reward["elapsed"], reward["moves"], reward["quality"]),
+                         (result.puzzle_id, result.errors, result.elapsed, result.player_moves, result.quality))
         self.app.click(self.view.claim_button.center)
         self.assertEqual(len(self.app.inventory.rewards), 1)
         self.app.draw()

@@ -58,7 +58,8 @@ Os puzzles usam a [API oficial Lichess](https://lichess.org/api#tag/Puzzles/oper
 | `main.py` | Estados Menu/Colecao/Puzzle/Deck builder/Partida/Fim, desenho, cliques, agenda da IA sem bloquear eventos |
 | `collection_view.py` | Catalogo com busca, filtros, detalhes, disponibilidade e entrada do crafting |
 | `crafting.py` | Temas por carta, qualidades, variantes e inventario persistente |
-| `puzzles.py` | Download Lichess, validacao FEN/PGN/UCI, sessao e desempenho |
+| `chess_puzzles\` | Modulo independente de puzzles: download Lichess, validacao, sessao e resultado |
+| `puzzles.py` | Imports de compatibilidade para o modulo `chess_puzzles` |
 | `puzzle_view.py` | Tabuleiro de xadrez no Pygame, requisicoes em segundo plano e resgate |
 | `ui_theme.py` | Paleta de cores compartilhada pelas telas |
 | `audio.py` | Impactos genericos pre-carregados e reproducao imediata ao aplicar dano |
@@ -71,6 +72,44 @@ Os puzzles usam a [API oficial Lichess](https://lichess.org/api#tag/Puzzles/oper
 | `data\cards.csv` | Fonte editavel em planilha, UTF-8 e delimitador virgula |
 | `data\cards.json` | Catalogo validado carregado pelo jogo |
 | `tests\` | Testes de dados, regras, cliques da interface e partidas completas reproduziveis |
+
+## Reutilizar os puzzles em outro jogo
+
+Copie a pasta `chess_puzzles\` para o outro projeto e instale `chess>=1.11.2,<2`.
+O modulo nao depende de pygame, cartas, interface ou persistencia do Chess Stone.
+`download_puzzle` e sincrono; execute-o em uma thread se a interface nao puder
+esperar pela rede. O tema e um identificador da API Lichess, nao um ID de carta.
+
+```python
+import chess
+from chess_puzzles import PuzzleError, PuzzleSession, download_puzzle
+
+try:
+    puzzle = download_puzzle("fork", user_agent="MeuJogo/1.0")
+    session = PuzzleSession(puzzle)
+    # Para cada tentativa do jogador:
+    correct = session.play(chess.Move.from_uci("e2e4"))
+    if session.result is not None:
+        result = session.result
+        print(result.quality, result.errors, result.elapsed, result.player_moves)
+except PuzzleError as error:
+    print(error)  # error.retry_after informa o tempo de espera, se aplicavel.
+```
+
+O lance do exemplo deve ser substituido pelo lance escolhido pelo jogador.
+Um lance incorreto incrementa `errors` sem alterar o tabuleiro; um correto
+aplica tambem a resposta do adversario, quando existir. `result` e `None`
+antes da conclusao e depois retorna um `PuzzleResult` imutavel com ID, tema,
+rating, erros, tempo em segundos, numero de lances do jogador e qualidade.
+O tempo e a qualidade ficam congelados ao concluir; abandonar nao produz resultado.
+
+A classificacao padrao e `perfect` (sem erros, ate 60 segundos por lance),
+`improved` (ate um erro, ate 120 segundos por lance) ou `basic` (demais casos).
+Outro jogo pode fornecer `PuzzleSession(puzzle, grader=funcao)`, onde a funcao
+recebe `(errors, elapsed, player_moves)` e retorna uma string de classificacao.
+A propriedade `quality` durante a sessao e uma previa, nao um resultado final.
+Cada jogo decide suas recompensas e persistencia; o Chess Stone conserva as regras
+padrao e o formato existente da colecao.
 
 ## Imagens e sons das cartas
 

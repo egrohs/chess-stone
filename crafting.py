@@ -8,6 +8,7 @@ import math
 from collections import Counter
 from pathlib import Path
 
+from chess_puzzles import grade
 from csv_to_json import validate_cards
 from deck_store import write_json
 
@@ -36,14 +37,6 @@ THEMES = {
     "peao_passado": ("advancedPawn", "Peao avancado (aproximacao de peao passado)"),
 }
 DEFAULT_INVENTORY = Path(__file__).resolve().parent / "data" / "collection.json"
-
-
-def grade(errors: int, elapsed: float, moves: int) -> str:
-    if errors == 0 and elapsed <= moves * 60:
-        return "perfect"
-    if errors <= 1 and elapsed <= moves * 120:
-        return "improved"
-    return "basic"
 
 
 def variant_id(base_id: str, quality: str) -> str:

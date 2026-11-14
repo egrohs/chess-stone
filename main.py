@@ -796,7 +796,7 @@ def main() -> None:
         parser.exit(1, f"Erro ao iniciar o jogo: {error}\n")
     if args.smoke_test:
         try:
-            from puzzles import Puzzle, PuzzleSession
+            from chess_puzzles import Puzzle, PuzzleSession
 
             app.draw()
             app.click(app.collection_button.center)

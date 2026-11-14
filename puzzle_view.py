@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING
 import chess
 import pygame
 
+from chess_puzzles import Puzzle, PuzzleError, PuzzleSession, download_puzzle
 from crafting import QUALITY_LABELS, THEMES, CraftingInventory
-from puzzles import Puzzle, PuzzleError, PuzzleSession, download_puzzle
 from ui_theme import BLUE, GOLD, GREEN, MUTED, PANEL, RED, WHITE
 
 if TYPE_CHECKING:
@@ -74,7 +74,9 @@ class PuzzleView:
             return
         self.message = "Baixando puzzle do Lichess..."
         self.next_request = time.monotonic() + 3
-        self.pending = self.executor.submit(download_puzzle, THEMES[self.base_id][0])
+        self.pending = self.executor.submit(
+            download_puzzle, THEMES[self.base_id][0], user_agent="ChessStonePrototype/1.0",
+        )
 
     def update(self) -> None:
         if self.pending is None or not self.pending.done() or not self.active:
@@ -129,10 +131,13 @@ class PuzzleView:
             return False
         session = self.session
         if self.claim_button.collidepoint(point) and session.done and not self.saved:
+            result = session.result
+            if result is None:
+                raise RuntimeError("Puzzle concluido sem resultado.")
             try:
                 card = self.inventory.award(
-                    self.base_id, session.puzzle.puzzle_id, session.errors,
-                    session.elapsed, session.player_moves,
+                    self.base_id, result.puzzle_id, result.errors,
+                    result.elapsed, result.player_moves,
                 )
             except (OSError, ValueError) as error:
                 self.message = f"Erro ao salvar recompensa: {error}. Tente receber novamente."
