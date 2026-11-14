@@ -265,13 +265,17 @@ class InterfaceTests(unittest.TestCase):
         self.assertIn(card, self.player.hand)
         self.assertEqual(self.player.mana, 10)
 
-    def test_slots_match_board_image_and_are_labeled_for_both_players(self):
+    def test_slots_match_board_image_without_labels_for_both_players(self):
         labels = ["1 Canto", "2 Borda", "3 Centro", "4 Centro", "5 Borda", "6 Canto"]
+        self.game.summon(0, "peao", 0)
         with patch.object(self.app, "text", wraps=self.app.text) as text:
             self.app.draw()
         rendered = [call.args[0] for call in text.call_args_list]
         for label in labels:
-            self.assertEqual(rendered.count(label), 2)
+            self.assertNotIn(label, rendered)
+        self.assertNotIn("1", rendered)
+        round_call = next(call for call in text.call_args_list if call.args[0].startswith("Rodada "))
+        self.assertLess(round_call.args[1][1] + self.app.large.get_linesize(), self.app.board_rect.top)
         x_edges = (187, 302, 428, 553, 679, 805, 930)
         for owner, top, bottom in ((1, 298, 416), (0, 416, 545)):
             slots = self.app.slots(owner)
@@ -410,7 +414,9 @@ class InterfaceTests(unittest.TestCase):
             self.app.draw()
         rendered = [call.args[0] for call in text.call_args_list]
         self.assertFalse(any(label.startswith(("Tempo:", "Deck:", "Mao:", "Descarte:")) for label in rendered))
-        self.assertTrue(any("+1 tempo no proximo turno" in label for label in rendered))
+        with patch.object(self.app, "pointer_in_window", True):
+            self.app.update_info_tooltip(self.app.zone_rects(0)["tempo"].center, 1000)
+        self.assertIn("+1 tempo no proximo turno", self.app.info_tooltip.text)
         unit = self.game.summon(0, "peao", 0)
         self.game.move_unit(0, unit, 2)
         self.assertIn("(1 tempo)", self.game.messages[-1])
@@ -428,7 +434,7 @@ class InterfaceTests(unittest.TestCase):
         labels = [call.args[0] for call in text.call_args_list + paragraph.call_args_list]
         for keyword in ("Proteção", "Ataque duplo", "Iniciativa", "Desenvolvimento"):
             self.assertTrue(any(keyword in label for label in labels))
-        self.assertTrue(any("Tabuleiro: 3/6" in label for label in labels))
+        self.assertFalse(any("Tabuleiro:" in label for label in labels))
         self.assertTrue(any(call.args[1] == "Ativar Rei (Final de jogo)" for call in button.call_args_list))
         for label in labels:
             self.assertNotRegex(

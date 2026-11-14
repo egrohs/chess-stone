@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pygame
 
-from game_engine import BOARD_LIMIT, CASTLE_ARMOR, CENTER_SLOTS, KEYWORD_LABELS, STARTING_HEALTH, Card, Entity, Game, PlayMode, RuleError, Unit, load_cards
+from game_engine import BOARD_LIMIT, CASTLE_ARMOR, KEYWORD_LABELS, STARTING_HEALTH, Card, Entity, Game, PlayMode, RuleError, Unit, load_cards
 from deck_store import DEFAULT_PATH, DeckStore, validate_deck, validate_legendary
 from collection_view import CollectionView
 from ui_theme import BG, PANEL, WHITE, MUTED, GREEN, GOLD, RED, BLUE
@@ -19,7 +19,6 @@ from crafting import CraftingInventory, STARTER_IDS
 from puzzle_view import PuzzleView
 from audio import BackgroundMusic, ImpactAudio
 from mate_rules import LABELS as MATE_LABELS
-from board_rules import CORNER_SLOTS
 from hand_view import CARD_SIZE, CardMotion, HandView
 from card_tooltip import CardTooltip, InfoTooltip
 
@@ -755,8 +754,6 @@ class App:
             return
         self.screen.blit(self.board_image, self.board_rect)
         for rect in (
-            pygame.Rect(15, 230, 460, 67),
-            pygame.Rect(15, 555, 460, 22),
             pygame.Rect(15, 669, 780, 48),
         ):
             pygame.draw.rect(self.screen, PANEL, rect, border_radius=4)
@@ -765,26 +762,13 @@ class App:
         self.text(
             f"Rodada {(game.turn_number + 1) // 2} | Turno {game.turn_number}"
             f" | {'Sua vez' if game.current == 0 else 'IA jogando...'}",
-            (24, 235), WHITE, self.large,
+            (350, 18), WHITE, self.large,
         )
         for owner, player in enumerate(game.players):
             for index, rect in enumerate(self.slots(owner)):
                 unit = player.unit_at(index)
                 if unit:
                     self.draw_unit(unit, rect.inflate(-4, -4), targets)
-                    self.text(str(index + 1), (rect.right - 15, rect.y + 3), MUTED, self.small)
-                else:
-                    label = f"{index + 1} {'Centro' if index in CENTER_SLOTS else 'Canto' if index in CORNER_SLOTS else 'Borda'}"
-                    label_rect = pygame.Rect(rect.x + 4, rect.y + 4, self.small.size(label)[0] + 8, self.small.get_linesize())
-                    pygame.draw.rect(self.screen, PANEL, label_rect, border_radius=3)
-                    self.text(label, (label_rect.x + 4, label_rect.y), WHITE, self.small)
-            self.text(
-                "Cantos: 1 e 6 | Bordas: 2 e 5 | Centro: 3 e 4"
-                f" | Controle: {game.center_control(owner)}"
-                f" | Tabuleiro: {len(player.board)}/{BOARD_LIMIT}"
-                + (" | +1 tempo no proximo turno" if player.center_bonus_pending else ""),
-                (24, 560 if owner == 0 else 275), BLUE, self.small,
-            )
             hero = self.hero_rect(owner)
             if not player.king and player in targets:
                 pygame.draw.rect(self.screen, GREEN, hero, 3, border_radius=6)
@@ -1043,7 +1027,8 @@ class App:
                         "deck": f"{len(player.deck)} cartas restantes no deck.",
                         "discard": f"{len(player.discard)} cartas no descarte.",
                         "tempo": f"{player.mana} disponivel de {player.max_mana} permanente"
-                        + (f" + {player.temporary_mana} temporario" if player.temporary_mana else "") + ".",
+                        + (f" + {player.temporary_mana} temporario" if player.temporary_mana else "") + "."
+                        + (" +1 tempo no proximo turno por dominio do Centro." if player.center_bonus_pending else ""),
                     }[zone]
                     key, anchor = (owner, zone), rect
                     break
