@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from csv_to_json import ROOT, convert_csv, parse_effect_code, validate_cards
+from csv_to_json import CATEGORIES, ROOT, convert_csv, parse_effect_code, validate_cards
 from game_engine import BOARD_LIMIT, Card, Game, RuleError, load_cards
 
 
@@ -25,6 +25,34 @@ class CatalogTests(unittest.TestCase):
                 "on_kill": {"action": "draw", "amount": 1},
             }],
         )
+
+    def test_categories_and_mate_rarity(self):
+        with tempfile.TemporaryDirectory() as directory:
+            cards = convert_csv(ROOT / "data" / "cards.csv", Path(directory) / "cards.json")
+        self.assertEqual({card["category"] for card in cards}, CATEGORIES)
+        mates = [
+            card for card in cards
+            if any(effect["action"] == "win_pattern" for effect in card["effects"])
+        ]
+        self.assertEqual(len(mates), 6)
+        for card in mates:
+            self.assertEqual(card["category"], "Tática")
+            self.assertEqual(card["rarity"], "legendary")
+
+    def test_invalid_category_csv_does_not_overwrite_json(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "bad.csv"
+            destination = Path(directory) / "cards.json"
+            source.write_text(
+                (ROOT / "data" / "cards.csv").read_text(encoding="utf-8").replace(
+                    ",Peça,", ",Defesa,", 1
+                ),
+                encoding="utf-8",
+            )
+            destination.write_text("preservado", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "category"):
+                convert_csv(source, destination)
+            self.assertEqual(destination.read_text(encoding="utf-8"), "preservado")
 
     def test_structured_triggers_are_preserved(self):
         effects = parse_effect_code(
@@ -46,6 +74,10 @@ class CatalogTests(unittest.TestCase):
             lambda c: c.append(copy.deepcopy(c[0])),
             lambda c: c[0].update(cost=11),
             lambda c: c[0].update(health=0),
+            lambda c: c[0].update(category="Peças"),
+            lambda c: c[0].update(category="Táticas"),
+            lambda c: c[0].update(category="Defesa"),
+            lambda c: c[0].update(category="Lendario"),
             lambda c: c[0].update(keywords=["flight"]),
             lambda c: c[0].update(keywords=[{}]),
             lambda c: c[0].update(effects=[{"trigger": "on_play", "action": "typo"}]),

@@ -2,7 +2,7 @@
   {
     "id": "peao",
     "name": "Peão",
-    "category": "Peças",
+    "category": "Peça",
     "type": "minion",
     "cost": 1,
     "keywords": [],
@@ -20,7 +20,7 @@
   {
     "id": "cavalo",
     "name": "Cavalo",
-    "category": "Peças",
+    "category": "Peça",
     "type": "minion",
     "cost": 3,
     "keywords": [
@@ -41,7 +41,7 @@
   {
     "id": "bispo",
     "name": "Bispo",
-    "category": "Peças",
+    "category": "Peça",
     "type": "minion",
     "cost": 3,
     "keywords": [
@@ -62,7 +62,7 @@
   {
     "id": "torre",
     "name": "Torre",
-    "category": "Peças",
+    "category": "Peça",
     "type": "minion",
     "cost": 4,
     "keywords": [
@@ -77,7 +77,7 @@
   {
     "id": "dama",
     "name": "Dama",
-    "category": "Peças",
+    "category": "Peça",
     "type": "minion",
     "cost": 7,
     "keywords": [
@@ -92,7 +92,7 @@
   {
     "id": "cravada_absoluta",
     "name": "Cravada Absoluta",
-    "category": "Táticas",
+    "category": "Tática",
     "type": "spell",
     "cost": 2,
     "keywords": [],
@@ -109,7 +109,7 @@
   {
     "id": "ataque_duplo",
     "name": "Ataque Duplo (Garfo)",
-    "category": "Táticas",
+    "category": "Tática",
     "type": "spell",
     "cost": 3,
     "keywords": [],
@@ -195,7 +195,7 @@
   {
     "id": "roque",
     "name": "Roque",
-    "category": "Defesa",
+    "category": "Estratégia",
     "type": "spell",
     "cost": 4,
     "keywords": [],
@@ -218,7 +218,7 @@
   {
     "id": "sacrificio_da_dama",
     "name": "Sacrifício da Dama",
-    "category": "Táticas",
+    "category": "Tática",
     "type": "spell",
     "cost": 6,
     "keywords": [],
@@ -246,7 +246,7 @@
   {
     "id": "mate_anastasia",
     "name": "Mate de Anastasia",
-    "category": "Lendario",
+    "category": "Tática",
     "type": "spell",
     "cost": 9,
     "keywords": [],
@@ -263,7 +263,7 @@
   {
     "id": "mate_boden",
     "name": "Mate de Boden",
-    "category": "Lendario",
+    "category": "Tática",
     "type": "spell",
     "cost": 5,
     "keywords": [],
@@ -280,7 +280,7 @@
   {
     "id": "mate_abafado",
     "name": "Mate Abafado",
-    "category": "Lendario",
+    "category": "Tática",
     "type": "spell",
     "cost": 6,
     "keywords": [],
@@ -297,7 +297,7 @@
   {
     "id": "mate_gaveta",
     "name": "Mate de Gaveta",
-    "category": "Lendario",
+    "category": "Tática",
     "type": "spell",
     "cost": 8,
     "keywords": [],
@@ -314,7 +314,7 @@
   {
     "id": "mate_opera",
     "name": "Mate da Ópera",
-    "category": "Lendario",
+    "category": "Tática",
     "type": "spell",
     "cost": 7,
     "keywords": [],
@@ -331,7 +331,7 @@
   {
     "id": "endgame_puro",
     "name": "Endgame Puro (Rei e Peão)",
-    "category": "Lendario",
+    "category": "Tática",
     "type": "spell",
     "cost": 10,
     "keywords": [],
@@ -348,7 +348,7 @@
   {
     "id": "peao_passado",
     "name": "Peão Passado",
-    "category": "Peças",
+    "category": "Peça",
     "type": "minion",
     "cost": 2,
     "keywords": [],

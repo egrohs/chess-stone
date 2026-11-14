@@ -160,7 +160,9 @@ id,name,category,card_type,cost,attack,health,keywords,trigger,effect_code,descr
 `card_type` aceita `minion` ou `spell`; ataque e vida sao obrigatorios para
 lacaios. `keywords` aceita identificadores ingleses ou os nomes portugueses
 separados por `|`. Os IDs devem ser unicos e estaveis.
-Categoria `Lendario` gera `"rarity": "legendary"` no JSON.
+`category` aceita somente `Peça`, `Tática` ou `Estratégia`.
+Raridade e categoria sao independentes: efeitos `win_pattern` geram
+`"rarity": "legendary"` no JSON, preservando a restricao dos mates no deck.
 
 ```powershell
 python csv_to_json.py

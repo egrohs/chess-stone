@@ -16,6 +16,7 @@ COLUMNS = {
     "keywords", "trigger", "effect_code", "description",
 }
 KEYWORDS = {"taunt", "charge", "rush", "divine_shield", "windfury", "elusive"}
+CATEGORIES = {"Peça", "Tática", "Estratégia"}
 KEYWORD_ALIASES = {
     "provocar": "taunt", "investida": "charge", "rapidez": "rush",
     "escudo_divino": "divine_shield", "furia_dos_ventos": "windfury",
@@ -136,6 +137,8 @@ def validate_cards(cards: object) -> list[dict]:
         for field in ("id", "name", "category", "description"):
             if not isinstance(card.get(field), str) or not card[field].strip():
                 raise ValueError(f"{label}: {field} deve ser texto nao vazio")
+        if card["category"] not in CATEGORIES:
+            raise ValueError(f"{label}: category deve ser Peça, Tática ou Estratégia")
         if card["id"] in ids:
             raise ValueError(f"ID duplicado: {card['id']}")
         ids.add(card["id"])
@@ -249,7 +252,7 @@ def convert_csv(source: Path, destination: Path) -> list[dict]:
                 }
                 if card["type"] == "minion":
                     card.update(attack=int(row["attack"]), health=int(row["health"]))
-                if normalize(row["category"]) == "lendario":
+                if any(effect["action"] == "win_pattern" for effect in card["effects"]):
                     card["rarity"] = "legendary"
                 cards.append(card)
             except (ValueError, TypeError) as error:
