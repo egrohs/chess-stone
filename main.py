@@ -20,6 +20,7 @@ from puzzle_view import PuzzleView
 from audio import ImpactAudio
 from mate_rules import LABELS as MATE_LABELS
 from board_rules import CORNER_SLOTS
+from hand_view import CARD_SIZE, HandView
 
 
 WIDTH, HEIGHT = 1440, 940
@@ -49,6 +50,7 @@ class App:
         pygame.display.set_caption("Chess Stone - prototipo")
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         self.clock = pygame.time.Clock()
+        self.hand_view = HandView()
         self.font = pygame.font.SysFont("segoeui", 18)
         self.small = pygame.font.SysFont("segoeui", 15)
         self.large = pygame.font.SysFont("segoeui", 30, bold=True)
@@ -116,6 +118,7 @@ class App:
             self.state = State.MENU
             return
         self.state = State.MATCH
+        self.hand_view = HandView()
         if self.audio.error:
             self.game.log(self.audio.error)
         self.clear_selection()
@@ -405,16 +408,16 @@ class App:
             if self.play_button.collidepoint(point) and self.selected_card:
                 self.choose_maneuver(point)
                 return
-            for card, rect in self.hand_rects():
-                if rect.collidepoint(point):
-                    if card is self.selected_card:
-                        self.clear_selection()
-                    else:
-                        self.clear_selection()
-                        self.selected_card = card
-                        if not game.playable(0, card):
-                            game.log("Carta indisponivel nos dois modos: verifique tempo, casas e alvos.")
-                    return
+            card = self.hand_view.card_at(self.hand_rects(), point, self.selected_card)
+            if card:
+                if card is self.selected_card:
+                    self.clear_selection()
+                else:
+                    self.clear_selection()
+                    self.selected_card = card
+                    if not game.playable(0, card):
+                        game.log("Carta indisponivel nos dois modos: verifique tempo, casas e alvos.")
+                return
             if self.selected_card:
                 if self.selected_mode is None:
                     for position, rect in enumerate(self.slots(0)):
@@ -455,9 +458,11 @@ class App:
 
     def text(
         self, text: str, position: tuple[int, int], color: tuple = WHITE,
-        font: pygame.font.Font | None = None,
+        font: pygame.font.Font | None = None, *, surface: pygame.Surface | None = None,
     ) -> None:
-        self.screen.blit((font or self.font).render(text, True, color), position)
+        (surface if surface is not None else self.screen).blit(
+            (font or self.font).render(text, True, color), position,
+        )
 
     def wrap(self, text: str, width: int, font: pygame.font.Font | None = None) -> list[str]:
         font = font or self.small
@@ -477,6 +482,7 @@ class App:
     def paragraph(
         self, text: str, rect: pygame.Rect, color: tuple = WHITE,
         *, font: pygame.font.Font | None = None, limit: int | None = None,
+        surface: pygame.Surface | None = None,
     ) -> None:
         font = font or self.small
         lines = self.wrap(text, rect.width, font)
@@ -487,7 +493,7 @@ class App:
                 while line and font.size(line + "...")[0] > rect.width:
                     line = line[:-1]
                 line += "..."
-            self.text(line, (rect.x, rect.y + index * font.get_linesize()), color, font)
+            self.text(line, (rect.x, rect.y + index * font.get_linesize()), color, font, surface=surface)
 
     def button(self, rect: pygame.Rect, label: str, enabled: bool = True) -> None:
         pygame.draw.rect(self.screen, (48, 77, 84) if enabled else PANEL, rect, border_radius=6)
@@ -606,23 +612,42 @@ class App:
             hint = "Escolha um inimigo verde para atacar."
         self.text(hint, (24, 674), GREEN if self.selected_card or self.selected_unit else MUTED, self.small)
         self.text("Clique direito / ESC: cancelar selecao", (24, 696), MUTED, self.small)
-        for card, rect in self.hand_rects():
+        for card, motion in self.hand_view.layers(self.hand_rects(), self.selected_card):
+            image = self.hand_card_image(card)
+            image = pygame.transform.rotozoom(image, motion.angle, motion.scale)
+            rect = image.get_rect(center=(round(motion.x), round(motion.y)))
+            shadow = pygame.Surface(image.get_size(), pygame.SRCALPHA)
+            shadow.blit(image, (0, 0))
+            shadow.fill((0, 0, 0, 110), special_flags=pygame.BLEND_RGBA_MULT)
+            self.screen.blit(shadow, rect.move(4, 6 + round(8 * motion.focus)))
+            self.screen.blit(image, rect)
+        self.draw_sidebar()
+
+    def hand_card_image(self, card: Card) -> pygame.Surface:
+        image = pygame.Surface(CARD_SIZE, pygame.SRCALPHA)
+        rect = image.get_rect()
+        game = self.game
+        if game:
             definition = card.definition["piece_mode"]
             playable = game.playable(0, card)
             pygame.draw.rect(
-                self.screen, (43, 61, 77),
+                image, (43, 61, 77),
                 rect, border_radius=5,
             )
             border = GOLD if card is self.selected_card else GREEN if playable else MUTED
-            pygame.draw.rect(self.screen, border, rect, 3 if card is self.selected_card else 1, border_radius=5)
-            self.text(str(definition["cost"]), (rect.x + 8, rect.y + 5), BLUE, self.large)
-            self.paragraph(card.name, pygame.Rect(rect.x + 7, rect.y + 46, 85, 49), font=self.small)
+            focused = card is self.selected_card or card is self.hand_view.hovered
+            pygame.draw.rect(image, border, rect, 3 if focused else 1, border_radius=5)
+            self.text(str(definition["cost"]), (8, 5), BLUE, self.large, surface=image)
+            self.paragraph(card.name, pygame.Rect(7, 46, 85, 49), surface=image)
             self.paragraph(
-                card.definition["description"], pygame.Rect(rect.x + 7, rect.y + 98, 85, 62),
-                WHITE if playable else MUTED,
+                card.definition["description"], pygame.Rect(7, 98, 85, 62),
+                WHITE if playable else MUTED, surface=image,
             )
-            self.text(f"{definition['attack']}/{definition['health']} ou M", (rect.x + 8, rect.bottom - 28), WHITE, self.small)
-        self.draw_sidebar()
+            self.text(
+                f"{definition['attack']}/{definition['health']} ou M",
+                (8, rect.bottom - 28), WHITE, self.small, surface=image,
+            )
+        return image
 
     def draw_sidebar(self) -> None:
         game = self.game
@@ -766,7 +791,7 @@ class App:
             self.button(self.quit_button, "Voltar ao Menu")
         pygame.display.flip()
 
-    def update(self) -> None:
+    def update(self, dt: float = 0.0) -> None:
         if self.state == State.PUZZLE:
             self.puzzle_view.update()
             return
@@ -781,6 +806,7 @@ class App:
             self.clear_selection()
         if self.selected_unit and self.selected_unit not in game.players[0].board:
             self.clear_selection()
+        self.hand_view.update(self.hand_rects(), pygame.mouse.get_pos(), dt, self.selected_card)
         now = pygame.time.get_ticks()
         if game.current == 1 and now >= self.ai_at:
             game.ai_step()
@@ -832,7 +858,7 @@ class App:
             while self.running:
                 for event in pygame.event.get():
                     self.handle_event(event)
-                self.update()
+                self.update(self.clock.get_time() / 1000.0)
                 self.draw()
                 self.clock.tick(60)
         finally:

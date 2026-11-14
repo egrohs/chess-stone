@@ -39,7 +39,8 @@ primeiro turno. Nao ha mulligan, moeda, armas ou poder heroico.
 
 | Acao | Como executar |
 |---|---|
-| Selecionar carta | Clique na carta da mao; a borda fica dourada |
+| Inspecionar carta | Passe o mouse na mao para elevar e ampliar suavemente a carta; retirar o mouse restaura sua posicao |
+| Selecionar carta | Clique na carta da mao, inclusive na parte ampliada; a borda fica dourada e ela permanece levemente elevada |
 | Jogar como Peca | Selecione a carta e clique numa das suas seis casas vazias; pecas existentes nao sao deslocadas |
 | Jogar como Manobra | Selecione a carta e clique fora das suas casas ou em **Jogar como Manobra** |
 | Manobra com alvo | Clique direto no inimigo valido, ou escolha Manobra fora das casas e depois clique no alvo verde (inclusive aliado) |

@@ -40,6 +40,41 @@ class InterfaceTests(unittest.TestCase):
     def select_first_card(self):
         self.app.click(self.app.hand_rects()[0][1].center)
 
+    def test_hover_update_and_click_on_raised_card_preserve_piece_play(self):
+        card = self.add_card("peao")
+        rect = self.app.hand_rects()[0][1]
+        with patch("pygame.mouse.get_pos", return_value=rect.center):
+            self.app.update(0.25)
+        self.assertIs(self.app.hand_view.hovered, card)
+        motion = self.app.hand_view.motions[card.uid]
+        self.app.draw()
+        self.app.click((rect.centerx, round(motion.y - 100)))
+        self.assertIs(self.app.selected_card, card)
+        self.app.click(self.app.slots(0)[0].center)
+        self.assertEqual(self.player.board[0].card_id, "peao")
+        self.assertNotIn(card, self.player.hand)
+        self.app.update(1 / 60)
+        self.assertNotIn(card.uid, self.app.hand_view.motions)
+
+    def test_hover_during_enemy_turn_does_not_allow_play(self):
+        card = self.add_card("peao")
+        rect = self.app.hand_rects()[0][1]
+        self.game.end_turn(0)
+        self.app.ai_at = pygame.time.get_ticks() + 10000
+        with patch("pygame.mouse.get_pos", return_value=rect.center):
+            self.app.update(0.25)
+        self.assertIs(self.app.hand_view.hovered, card)
+        self.app.click(rect.center)
+        self.assertIsNone(self.app.selected_card)
+        self.assertIn(card, self.player.hand)
+
+    def test_new_match_resets_hand_animation(self):
+        self.add_card("peao")
+        self.app.hand_view.update(self.app.hand_rects(), self.app.hand_rects()[0][1].center, 1, None)
+        self.app.start_game()
+        self.assertEqual(self.app.hand_view.motions, {})
+        self.assertIsNone(self.app.hand_view.hovered)
+
     def test_outside_board_click_plays_piece_card_as_maneuver(self):
         card = self.add_card("peao")
         self.select_first_card()

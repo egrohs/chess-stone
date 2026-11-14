@@ -3,8 +3,9 @@
 ![Arte de apresentacao do Chess Stone](assets/artwork.jpg)
 
 Prototipo 2D de card game de xadrez para um jogador contra IA, em Python 3.10+,
-**pygame-ce** e **python-chess** (pacote `chess`). Sem imagens externas ou
-animacoes: regras e efeitos independem da interface.
+**pygame-ce** e **python-chess** (pacote `chess`). Sem imagens externas;
+regras e efeitos independem da interface. As cartas da mao usam interpolacao
+exponencial independente do FPS para zoom, elevacao e inclinacao ao passar o mouse.
 
 ## Executar
 
@@ -62,6 +63,7 @@ Os puzzles usam a [API oficial Lichess](https://lichess.org/api#tag/Puzzles/oper
 | `puzzles.py` | Imports de compatibilidade para o modulo `chess_puzzles` |
 | `puzzle_view.py` | Tabuleiro de xadrez no Pygame, requisicoes em segundo plano e resgate |
 | `ui_theme.py` | Paleta de cores compartilhada pelas telas |
+| `hand_view.py` | Animacao da mao, ordem de desenho e deteccao de cliques nas cartas transformadas |
 | `audio.py` | Impactos genericos pre-carregados e reproducao imediata ao aplicar dano |
 | `tools\generate_impacts.py` | Geracao reproduzivel dos sons originais de impacto |
 | `deck_store.py` | Validacao de decks e persistencia local em JSON |
