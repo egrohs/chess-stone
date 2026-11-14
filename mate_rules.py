@@ -1,4 +1,4 @@
-"""Telegraphed alternate victories for a compacting, ordered board."""
+"""Telegraphed alternate victories on eight fixed board slots."""
 
 from __future__ import annotations
 
@@ -33,15 +33,19 @@ class MateRules:
         board = self.game.players[owner].board
         pairs = []
         if pattern == "anastasia" and len(board) >= 3:
-            for rook, knight in ((board[0], board[1]), (board[-1], board[-2])):
-                if rook.card_id == "torre" and knight.card_id == "cavalo":
+            player = self.game.players[owner]
+            for rook_slot, knight_slot in ((0, 1), (7, 6)):
+                rook, knight = player.unit_at(rook_slot), player.unit_at(knight_slot)
+                if rook and knight and rook.card_id == "torre" and knight.card_id == "cavalo":
                     pairs.append((rook, knight))
         elif pattern == "boden" and len(board) >= 4:
+            player = self.game.players[owner]
+            left, right = player.unit_at(0), player.unit_at(7)
             if (
-                board[0].card_id == board[-1].card_id == "bispo"
-                and sum(not unit.is_king for unit in board[1:-1]) >= 2
+                left and right and left.card_id == right.card_id == "bispo"
+                and sum(not unit.is_king and 0 < unit.slot < 7 for unit in board) >= 2
             ):
-                pairs.append((board[0], board[-1]))
+                pairs.append((left, right))
         elif pattern == "smothered":
             pairs.extend((unit,) for unit in board if unit.card_id == "cavalo")
         elif pattern == "back_rank":
@@ -51,7 +55,7 @@ class MateRules:
             bishops = [unit for unit in board if unit.card_id == "bispo"]
             if len(rooks) == len(bishops) == 1:
                 rook, bishop = rooks[0], bishops[0]
-                if abs(board.index(rook) - board.index(bishop)) == 1:
+                if abs(rook.slot - bishop.slot) == 1:
                     pairs.append((rook, bishop))
         elif pattern == "opposition":
             player = self.game.players[owner]

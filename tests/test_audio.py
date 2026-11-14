@@ -44,7 +44,7 @@ class DamageEventTests(unittest.TestCase):
         queen = self.game.summon(0, "dama")
         bishop = self.game.summon(1, "bispo")
         self.game.attack(0, queen, bishop)
-        self.assertEqual(self.events, [5, 2])
+        self.assertEqual(self.events, [6, 3])
 
     def test_area_effect_and_hero_damage(self):
         self.game.summon(1, "bispo")

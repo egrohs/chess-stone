@@ -50,12 +50,12 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(self.player.board[0].card_id, "peao")
         self.assertIsNone(self.app.selected_card)
 
-    def test_insertion_bar_click(self):
-        left = self.game.summon(0, "peao")
-        right = self.game.summon(0, "peao")
+    def test_free_slot_click_between_allies(self):
+        left = self.game.summon(0, "peao", 0)
+        right = self.game.summon(0, "peao", 2)
         self.add_card("cavalo")
         self.select_first_card()
-        position, rect = self.app.placement_rects()[1]
+        position, rect = self.app.placement_rects()[0]
         self.assertEqual(position, 1)
         self.app.click(rect.center)
         self.assertEqual(self.player.board[1].card_id, "cavalo")
@@ -70,6 +70,47 @@ class InterfaceTests(unittest.TestCase):
         self.app.click(self.app.slots(1)[0].center)
         self.assertGreater(enemy.frozen_through, 0)
         self.assertIsNone(self.app.selected_card)
+
+    def test_fixed_slots_render_and_target_after_interior_death(self):
+        removed = self.game.summon(1, "peao", 0)
+        enemy = self.game.summon(1, "peao", 7)
+        removed.effects = []
+        removed.health = 0
+        self.game.cleanup()
+        self.add_card("cravada_absoluta")
+        self.select_first_card()
+        rectangles = dict(self.app.entity_rects())
+        self.assertEqual(rectangles[enemy], self.app.slots(1)[7])
+        self.app.draw()
+        self.app.click(self.app.slots(1)[7].center)
+        self.assertGreater(enemy.frozen_through, 0)
+        self.assertEqual(enemy.slot, 7)
+
+    def test_placement_highlights_only_vacant_physical_slots(self):
+        self.game.summon(0, "peao", 2)
+        self.game.summon(0, "peao", 7)
+        self.add_card("dama")
+        self.select_first_card()
+        self.assertEqual([slot for slot, _ in self.app.placement_rects()], [0, 1, 3, 4, 5, 6])
+        self.app.click(self.app.slots(0)[5].center)
+        self.assertEqual(self.player.unit_at(5).card_id, "dama")
+        self.app.draw()
+
+    def test_deterministic_spell_preview_and_center_bonus_render(self):
+        self.game.summon(0, "peao", 3)
+        self.game.summon(1, "bispo", 6)
+        self.game.summon(1, "peao", 7)
+        self.game.end_turn(0)
+        self.app.draw()
+        self.game.end_turn(1)
+        self.player.hand.clear()
+        self.add_card("ataque_duplo")
+        self.select_first_card()
+        self.app.draw()
+        self.assertEqual(self.player.temporary_mana, 1)
+        self.app.click(self.app.play_button.center)
+        self.assertEqual(self.game.players[1].unit_at(6).health, 2)
+        self.assertIsNone(self.game.players[1].unit_at(7))
 
     def test_minion_with_target_uses_two_click_stages(self):
         enemy = self.game.summon(1, "peao")
@@ -142,8 +183,8 @@ class InterfaceTests(unittest.TestCase):
         self.assertFalse(self.app.game.over)
 
     def test_announced_mate_renders_and_wins_through_clicks(self):
-        for card_id in ("bispo", "peao", "peao", "bispo"):
-            self.game.summon(0, card_id)
+        for card_id, slot in (("bispo", 0), ("peao", 1), ("peao", 2), ("bispo", 7)):
+            self.game.summon(0, card_id, slot)
         self.game.end_turn(0)
         self.game.end_turn(1)
         self.player.mana = 10

@@ -117,7 +117,7 @@
       {
         "action": "damage",
         "amount": 2,
-        "target": "random_enemy_minion",
+        "target": "lowest_health_enemy_minion",
         "count": 2,
         "trigger": "on_play",
         "on_kill": {
@@ -126,7 +126,7 @@
         }
       }
     ],
-    "description": "Cause 2 a duas unidades inimigas aleatórias distintas. Compre 1 por abate."
+    "description": "Cause 2 às duas unidades inimigas com menor Vida. Empates: menor slot primeiro. Compre 1 por abate."
   },
   {
     "id": "par_de_bispos",
@@ -257,7 +257,7 @@
         "trigger": "on_play"
       }
     ],
-    "description": "Anuncie Torre na ponta junto a Cavalo com pelo menos 3 unidades aliadas. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: venca se o inimigo tem ate 15 de vida e pelo menos 2 lacaios sem nenhum Provocar.",
+    "description": "Anuncie Torre no slot 1 ou 8 junto a Cavalo adjacente com pelo menos 3 unidades aliadas. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: venca se o inimigo tem ate 15 de vida e pelo menos 2 lacaios sem nenhum Provocar.",
     "rarity": "legendary"
   },
   {
@@ -274,7 +274,7 @@
         "trigger": "on_play"
       }
     ],
-    "description": "Anuncie Bispos nas duas pontas com pelo menos 2 lacaios entre eles. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: apos jogar 2 outros feiticos neste turno venca a partida.",
+    "description": "Anuncie Bispos nos slots 1 e 8 com pelo menos 2 lacaios entre eles. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: apos jogar 2 outros feiticos neste turno venca a partida.",
     "rarity": "legendary"
   },
   {

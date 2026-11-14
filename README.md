@@ -188,8 +188,10 @@ O formato curto aceita `DAMAGE`, `HEAL`, `DRAW` e `FREEZE`, separados por `|`:
 DAMAGE:2:TARGET_2_ENEMIES|DRAW:1:IF_KILLED
 ```
 
-Isso gera dano a ate duas unidades inimigas aleatorias **distintas**, com compra
-de uma carta **por unidade abatida**. Escudo Divino nao conta como abate.
+Isso gera dano a ate duas unidades inimigas **distintas com menor Vida**,
+desempatando pelo menor slot, com compra de uma carta **por unidade abatida**.
+Escudo Divino nao conta como abate. Os efeitos nao usam RNG; decks continuam
+embaralhados e a IA pode escolher alvos manuais aleatoriamente.
 `DRAW:1:SELF` compra para o dono da carta. Para efeitos complexos, use um objeto
 ou uma lista JSON na celula; planilhas normalmente escapam as aspas na exportacao.
 
@@ -228,10 +230,20 @@ Congelamento tem duracao fixa; `amount` no formato curto de FREEZE nao altera is
 
 Alvos: `self`, `own_hero`, `enemy_hero`, `target_enemy`, `target_enemy_minion`,
 `target_ally`, `target_ally_minion`, `all_enemies`, `all_enemy_minions`,
-`all_allies`, `all_allied_minions`, `adjacent_allies`, `random_enemy`,
-`random_enemy_minion`. `self` e o lacaio de origem ou o heroi para feiticos.
-`adjacent_allies` usa a ordem atual da fila. Aleatorios aceitam `count` e usam
-a semente da partida. O filtro opcional `card_id` restringe os alvos a uma carta.
+`all_allies`, `all_allied_minions`, `adjacent_allies`, `lowest_health_enemy`,
+`lowest_health_enemy_minion`. `self` e o lacaio de origem ou o heroi para feiticos.
+`adjacent_allies` usa slots fixos imediatamente vizinhos; lacunas interrompem
+a adjacencia. Seletores `lowest_health_*` aceitam `count`, ordenam por Vida e
+desempatam pelo slot (heroi fora da mesa vem depois dos slots em empates).
+Os alvos sao definidos antes da resolucao da acao.
+Seletores antigos `random_*` sao rejeitados pela validacao.
+O filtro opcional `card_id` restringe os alvos a uma carta.
+
+Cada `Unit.slot` identifica uma posicao fixa de 0 a 7; `Player.board` contem
+apenas unidades ocupantes, ordenadas por slot. `unit_at` e `free_slots` consultam
+ocupacao sem compactar a mesa. Apoio modifica somente dano de combate, antes de
+Escudo Divino/Armadura; o bonus de Centro adiciona 1 mana por um unico turno,
+sem elevar o limite de 10 cristais permanentes. Veja o manual para as regras.
 
 A condicao suportada e `{"type":"friendly_count","card_id":"bispo","at_least":2}`,
 utilizada em Par de Bispos. Se nao atendida, a acao e ignorada com registro no

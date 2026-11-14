@@ -40,7 +40,7 @@ primeiro turno. Nao ha mulligan, moeda, armas ou poder heroico.
 | Acao | Como executar |
 |---|---|
 | Selecionar carta | Clique na carta da mao; a borda fica dourada |
-| Posicionar lacaio | Clique em um espaco verde vazio para adicionar ao fim da fila; barras verdes entre unidades permitem inserir em outra posicao |
+| Posicionar lacaio | Clique no slot verde vazio desejado; unidades existentes nao sao deslocadas |
 | Jogar feitico com alvo | Selecione a carta e clique em um alvo verde |
 | Jogar carta sem alvo | Use **Jogar carta** depois de selecionar |
 | Atacar | Clique em uma unidade aliada pronta e depois em um inimigo verde |
@@ -65,9 +65,26 @@ totalmente restaurada. Cada jogador compra uma carta por turno.
 A mao comporta **10 cartas**. Compras excedentes sao descartadas, mas consomem
 a carta do deck. Cada lado comporta **oito unidades, incluindo o Rei ativado**.
 
-A mesa funciona como uma **fila compactada**: mortes aproximam as unidades.
-Ponta significa primeira/ultima unidade da fila, nao slot fisico 1/8.
-Adjacencia depende da ordem atual da fila.
+A mesa tem **oito slots fixos**. Mortes deixam lacunas e nao deslocam as demais
+pecas. Adjacencia significa slots imediatamente vizinhos; uma lacuna interrompe
+o apoio. Invocacoes por efeitos e o Rei ocupam o primeiro slot livre, da esquerda
+para a direita. O jogador escolhe o slot ao jogar lacaios da mao.
+
+**Apoio:** uma unidade com aliado vivo imediatamente ao lado recebe **-1 de dano
+de combate**, ate o minimo de zero. Sem esse aliado, fica **Pendurada** e recebe
+**+1 de dano de combate**. Isso vale para atacante, defensor e Reis na mesa;
+o apoio e calculado antes dos dois danos simultaneos. Nao modifica dano de
+feiticos, efeitos ou fadiga. Dano reduzido a zero nao consome Escudo Divino.
+Remover o defensor pode, portanto, aumentar o dano dos ataques seguintes.
+
+**Pressao territorial:** slots **1-2 e 7-8** sao as Alas; **3-6** sao o Centro.
+Ao terminar seu proprio turno, depois dos efeitos de fim de turno, controlar
+mais slots centrais que o adversario concede **+1 de mana temporaria no proximo
+turno proprio**. Empates nao concedem bonus. Reis na mesa tambem contam.
+O bonus nao acumula nem aumenta cristais permanentes: pode haver 11 de mana
+disponivel com 10 cristais, e a mana nao usada nao passa ao turno seguinte.
+Uma vez conquistado, o bonus permanece mesmo se o adversario remover pecas.
+Ataques diretos ao heroi/Rei continuam permitidos, respeitando Provocar e Rapidez.
 
 Uma unidade normalmente precisa esperar ate seu proximo turno para atacar,
 e pode atacar uma vez por turno. O combate causa dano simultaneo entre
@@ -89,7 +106,7 @@ Mate de Gaveta ja a verifica explicitamente.
 | Rapidez | No turno de invocacao permite atacar unidades, mas nao o heroi nem o Rei ativado. |
 | Escudo Divino | Absorve a primeira instancia de dano positivo; nao impede destruir. |
 | Furia dos Ventos | Permite dois ataques por turno, sem remover a espera de invocacao. |
-| Elusivo | Impede selecao manual por feiticos de ambos os lados. Nao bloqueia ataques, efeitos de area/aleatorios nem efeitos de entrada de lacaios. |
+| Elusivo | Impede selecao manual por feiticos de ambos os lados. Nao bloqueia ataques, efeitos de area/menor Vida nem efeitos de entrada de lacaios. |
 
 Congelamento impede ataques ate o fim do proximo turno do dono da unidade,
 incluindo o restante do turno atual se aplicado durante ele. Bonus temporario
@@ -104,8 +121,12 @@ Efeitos de uma carta sao executados na ordem. Dano em area e aplicado aos alvos
 antes de resolver as mortes. Os efeitos manuais de uma mesma jogada compartilham
 um unico alvo, valido para todos eles.
 
-Ataque Duplo atinge ate duas unidades inimigas aleatorias distintas e compra
-uma carta por unidade abatida; Escudo Divino nao conta como abate.
+Os efeitos nao usam RNG; embaralhamento dos decks e escolhas da IA continuam
+aleatorios. Ataque Duplo atinge ate duas unidades inimigas distintas com **menor
+Vida**, desempata pelo **menor numero de slot** e compra uma carta por unidade
+abatida. Os dois alvos sao definidos antes de aplicar dano; Escudo Divino nao
+conta como abate. O Rei ativado e uma unidade elegivel, mas o heroi fora da mesa
+nao e alvo de Ataque Duplo.
 Par de Bispos exige pelo menos dois Bispos aliados; se a condicao nao estiver
 atendida, o efeito nao acontece, mas o custo da jogada continua sendo pago.
 Sacrificio da Dama exige uma Dama aliada selecionavel, a destroi e executa
@@ -116,7 +137,7 @@ dano em area seguido de compras.
 O Rei entra na mesa com **2 de ataque e a vida atual do heroi**, nao com 8 de
 vida fixa. A vida e compartilhada: causar dano ou curar o Rei afeta diretamente
 a condicao de vitoria. O retrato deixa de ser um alvo separado. O Rei entra
-no fim da fila e precisa esperar para atacar, como uma unidade sem Investida.
+no primeiro slot livre e precisa esperar para atacar, como uma unidade sem Investida.
 
 - Ao comprar a ultima carta, o Rei e ativado automaticamente. Mesa cheia adia
   sua entrada ate surgir uma vaga; o heroi continua vulneravel enquanto espera.
@@ -134,12 +155,12 @@ As seis cartas de mate sao feiticos **lendarios**, adquiridos por crafting.
 Cada deck aceita no maximo uma copia de cada mate, somando todas as qualidades.
 Os decks automaticos nao incluem lendarias.
 
-O Rei ocupa posicao na fila, mas nao conta como lacaio nos requisitos abaixo.
+O Rei ocupa um slot fixo, mas nao conta como lacaio nos requisitos abaixo.
 
 | Carta | Mana | Formacao a anunciar | Condicoes adicionais para executar |
 |---|---|---|---|
-| Mate de Anastasia | 9 | Torre na primeira ou ultima posicao, com Cavalo adjacente; pelo menos tres unidades aliadas | Inimigo com ate 15 de vida, ao menos dois lacaios e nenhuma unidade com Provocar |
-| Mate de Boden | 5 | Bispos nas duas pontas; pelo menos dois lacaios entre eles | Jogar dois outros feiticos no mesmo turno antes do mate |
+| Mate de Anastasia | 9 | Torre no slot 1 ou 8, com Cavalo no slot 2 ou 7 respectivamente; pelo menos tres unidades aliadas | Inimigo com ate 15 de vida, ao menos dois lacaios e nenhuma unidade com Provocar |
+| Mate de Boden | 5 | Bispos nos slots 1 e 8; pelo menos dois lacaios nos slots intermediarios | Jogar dois outros feiticos no mesmo turno antes do mate |
 | Mate Abafado | 6 | Um Cavalo | Inimigo com oito lacaios e nenhum Provocar; Rei nao conta para os oito |
 | Mate de Gaveta | 8 | Uma Torre | Essa mesma Torre deve ter atacado e sobrevivido no turno atual; inimigo com zero de Armadura e pelo menos tres lacaios que sejam Peoes ou tenham Provocar |
 | Mate da Opera | 7 | Exatamente uma Torre e um Bispo aliados, adjacentes; outras pecas sao permitidas | Ambos devem ter atacado nesta partida; inimigo com ate 15 de vida e exatamente um lacaio |

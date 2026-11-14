@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pygame
 
-from game_engine import BOARD_LIMIT, KEYWORD_LABELS, Card, Entity, Game, RuleError, Unit, load_cards
+from game_engine import BOARD_LIMIT, CENTER_SLOTS, KEYWORD_LABELS, Card, Entity, Game, RuleError, Unit, load_cards
 from deck_store import DEFAULT_PATH, DeckStore, validate_legendary
 from collection_view import CollectionView
 from ui_theme import BG, PANEL, WHITE, MUTED, GREEN, GOLD, RED, BLUE
@@ -260,7 +260,8 @@ class App:
             return []
         result: list[tuple[Entity, pygame.Rect]] = []
         for owner, player in enumerate(self.game.players):
-            result.extend(zip(player.board, self.slots(owner)))
+            slots = self.slots(owner)
+            result.extend((unit, slots[unit.slot]) for unit in player.board)
             if not player.king:
                 result.append((player, self.hero_rect(owner)))
         return result
@@ -286,14 +287,8 @@ class App:
     def placement_rects(self) -> list[tuple[int, pygame.Rect]]:
         if not self.game or not self.choosing_position():
             return []
-        count = len(self.game.players[0].board)
-        # Thin insertion bars support adjacency effects without moving occupied slots.
-        bars = [
-            (i, pygame.Rect(16 + i * SLOT_STEP, 399, 8, 162))
-            for i in range(count + 1)
-        ]
-        empty = [(count, rect) for rect in self.slots(0)[count:]]
-        return bars + empty
+        slots = self.slots(0)
+        return [(slot, slots[slot]) for slot in self.game.players[0].free_slots()]
 
     def commit_card(self, target: Entity | None = None) -> None:
         if self.game and self.selected_card:
@@ -465,7 +460,13 @@ class App:
         labels = [KEYWORD_LABELS[k] for k in sorted(unit.keywords)]
         if game and game.players[unit.owner].turns_started <= unit.frozen_through:
             labels.append("Congelado")
-        self.paragraph(" / ".join(labels), pygame.Rect(rect.x + 7, rect.y + 54, rect.width - 14, 61), GOLD)
+        self.paragraph(" / ".join(labels), pygame.Rect(rect.x + 7, rect.y + 54, rect.width - 14, 42), GOLD, font=self.small)
+        if game:
+            self.text(
+                "Apoiada -1" if game.supported(unit) else "Pendurada +1",
+                (rect.x + 7, rect.bottom - 53),
+                GREEN if game.supported(unit) else RED, self.small,
+            )
         self.text(f"{unit.attack} / {unit.health}", (rect.x + 9, rect.bottom - 34), WHITE, self.large)
 
     def draw_match(self) -> None:
@@ -482,10 +483,21 @@ class App:
         for owner, player in enumerate(game.players):
             for index, rect in enumerate(self.slots(owner)):
                 pygame.draw.rect(self.screen, PANEL, rect, border_radius=5)
-                pygame.draw.rect(self.screen, (65, 73, 87), rect, 1, border_radius=5)
-                self.text(str(index + 1), (rect.x + 8, rect.y + 7), MUTED, self.small)
-                if index < len(player.board):
-                    self.draw_unit(player.board[index], rect, targets)
+                pygame.draw.rect(self.screen, BLUE if index in CENTER_SLOTS else MUTED, rect, 1, border_radius=5)
+                self.text(
+                    f"{index + 1} {'Centro' if index in CENTER_SLOTS else 'Ala'}",
+                    (rect.x + 8, rect.y + 7), MUTED, self.small,
+                )
+                unit = player.unit_at(index)
+                if unit:
+                    self.draw_unit(unit, rect, targets)
+                    self.text(str(index + 1), (rect.right - 15, rect.y + 3), MUTED, self.small)
+            self.text(
+                "Alas: 1-2 / 7-8 | Centro: 3-6"
+                f" | Controle: {game.center_control(owner)}"
+                + (" | +1 mana no proximo turno" if player.center_bonus_pending else ""),
+                (24, 568 if owner == 0 else 330), BLUE, self.small,
+            )
             hero = self.hero_rect(owner)
             if player.king:
                 self.text(
@@ -498,7 +510,11 @@ class App:
                 self.text(f"Rei - {player.name}", (hero.x + 12, hero.y + 6))
                 self.text(f"Vida: {player.health} / 30", (hero.x + 12, hero.y + 35), GOLD)
             y = 90 if owner == 1 else 603
-            self.text(f"Mana: {player.mana}/{player.max_mana}", (24, y), BLUE)
+            self.text(
+                f"Mana: {player.mana}/{player.max_mana}"
+                + (f" (+{player.temporary_mana} temporaria)" if player.temporary_mana else ""),
+                (24, y), BLUE,
+            )
             self.text(
                 f"Deck: {len(player.deck)} | Mao: {len(player.hand)}/10 | Mesa: {len(player.board)}/8",
                 (24, y + 28), MUTED, self.small,
@@ -516,7 +532,7 @@ class App:
         hint = "Selecione carta ou unidade. Verde = alvo/espaco valido; azul = pronto; vermelho = Provocar."
         if self.selected_card:
             hint = (
-                "Escolha um espaco verde (barras inserem entre aliados)."
+                "Escolha um slot verde livre. Pecas nao mudam de slot quando outras morrem."
                 if self.choosing_position()
                 else "Escolha um alvo verde ou use Jogar carta para efeitos sem alvo."
             )
@@ -566,8 +582,15 @@ class App:
         )
         self.button(self.play_button, "Jogar carta", can_play)
         if self.selected_card:
+            automatic_targets = [
+                entity.name + (f" (slot {entity.slot + 1})" if isinstance(entity, Unit) else "")
+                for effect in self.selected_card.definition["effects"]
+                if effect.get("target", "").startswith("lowest_health_")
+                for entity in game.parser.resolve_targets(effect, 0, preview=True)
+            ]
             self.paragraph(
-                f"{self.selected_card.name}: {self.selected_card.definition['description']}",
+                ("Alvos agora: " + ", ".join(automatic_targets) + ". " if automatic_targets else "")
+                + f"{self.selected_card.name}: {self.selected_card.definition['description']}",
                 pygame.Rect(1120, 298, 296, 128),
             )
         elif self.selected_unit:

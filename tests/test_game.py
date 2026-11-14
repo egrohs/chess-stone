@@ -21,7 +21,7 @@ class CatalogTests(unittest.TestCase):
             parse_effect_code("DAMAGE:2:TARGET_2_ENEMIES|DRAW:1:IF_KILLED"),
             [{
                 "trigger": "on_play", "action": "damage", "amount": 2,
-                "target": "random_enemy_minion", "count": 2,
+                "target": "lowest_health_enemy_minion", "count": 2,
                 "on_kill": {"action": "draw", "amount": 1},
             }],
         )
@@ -78,6 +78,12 @@ class CatalogTests(unittest.TestCase):
             lambda c: c[0].update(category="Táticas"),
             lambda c: c[0].update(category="Defesa"),
             lambda c: c[0].update(category="Lendario"),
+            lambda c: c[0].update(effects=[{
+                "trigger": "on_play", "action": "damage", "amount": 1, "target": "random_enemy",
+            }]),
+            lambda c: c[0].update(effects=[{
+                "trigger": "on_play", "action": "damage", "amount": 1, "target": "random_enemy_minion",
+            }]),
             lambda c: c[0].update(keywords=["flight"]),
             lambda c: c[0].update(keywords=[{}]),
             lambda c: c[0].update(effects=[{"trigger": "on_play", "action": "typo"}]),
@@ -179,15 +185,18 @@ class RulesTests(unittest.TestCase):
         self.assertIn(card, self.p0.hand)
         self.assertEqual(len(self.p0.board), 8)
 
-    def test_insertion_and_adjacent_battlecry(self):
-        left, right, far = self.unit(), self.unit(), self.unit()
+    def test_fixed_slot_and_adjacent_battlecry(self):
+        left = self.game.summon(0, "peao", 0)
+        right = self.game.summon(0, "peao", 2)
+        far = self.game.summon(0, "peao", 5)
         self.game.play_card(0, self.card("cavalo"), position=1)
         self.assertEqual([u.card_id for u in self.p0.board], ["peao", "cavalo", "peao", "peao"])
+        self.assertEqual([u.slot for u in self.p0.board], [0, 1, 2, 5])
         self.assertEqual((left.attack, right.attack, far.attack), (2, 2, 1))
 
     def test_invalid_position_does_not_consume_card_or_mana(self):
         card = self.card("peao")
-        for position in (-1, 1, 0.5, True):
+        for position in (-1, 8, 0.5, True):
             with self.subTest(position=position), self.assertRaises(RuleError):
                 self.game.play_card(0, card, position=position)
             self.assertIn(card, self.p0.hand)
@@ -226,7 +235,7 @@ class RulesTests(unittest.TestCase):
             self.game.attack(0, queen, self.p1)
         self.game.attack(0, queen, rook)
         self.assertEqual(rook.health, 5)
-        self.assertEqual(queen.health, 2)
+        self.assertEqual(queen.health, 1)
         self.assertNotIn("divine_shield", rook.keywords)
         self.game.attack(0, queen, rook)
         self.assertNotIn(rook, self.p1.board)
@@ -286,7 +295,7 @@ class RulesTests(unittest.TestCase):
         self.game.end_turn(0)
         self.assertIn(self.p0, self.game.attack_targets(knight))
 
-    def test_random_distinct_targets_and_draw_per_kill(self):
+    def test_lowest_health_distinct_targets_and_draw_per_kill(self):
         victims = [self.unit(owner=1) for _ in range(3)]
         for unit in victims:
             unit.effects = []
@@ -463,7 +472,10 @@ class RulesTests(unittest.TestCase):
                 for p in game.players:
                     self.assertLessEqual(len(p.board), 8)
                     self.assertLessEqual(len(p.hand), 10)
-                    self.assertTrue(0 <= p.mana <= p.max_mana <= 10)
+                    self.assertTrue(0 <= p.max_mana <= 10)
+                    self.assertTrue(0 <= p.mana <= p.max_mana + p.temporary_mana <= 11)
+                    self.assertEqual(len({u.slot for u in p.board}), len(p.board))
+                    self.assertTrue(all(0 <= u.slot < 8 for u in p.board))
             self.assertTrue(game.over, f"Partida seed={seed} nao terminou em {step + 1} acoes")
 
 

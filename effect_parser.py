@@ -37,13 +37,12 @@ class EffectParser:
             "target_ally": all_allies, "target_ally_minion": ally_units,
             "all_enemies": all_enemies, "all_enemy_minions": enemy_units,
             "all_allies": all_allies, "all_allied_minions": ally_units,
-            "random_enemy": all_enemies, "random_enemy_minion": enemy_units,
+            "lowest_health_enemy": all_enemies, "lowest_health_enemy_minion": enemy_units,
         }
         if code == "adjacent_allies":
             if source not in allies.board:
                 return []
-            index = allies.board.index(source)
-            candidates = allies.board[max(0, index - 1):index] + allies.board[index + 1:index + 2]
+            candidates = [unit for unit in allies.board if abs(unit.slot - source.slot) == 1]
         else:
             candidates = groups[code]
         candidates = [
@@ -56,8 +55,10 @@ class EffectParser:
             if source is None and not allow_elusive:
                 candidates = [e for e in candidates if "elusive" not in getattr(e, "keywords", set())]
             return candidates if preview else [e for e in candidates if e is target]
-        if code.startswith("random_") and not preview:
-            return game.rng.sample(candidates, min(effect.get("count", 1), len(candidates)))
+        if code.startswith("lowest_health_"):
+            return sorted(candidates, key=lambda entity: (
+                entity.health, getattr(entity, "slot", 8),
+            ))[:effect.get("count", 1)]
         return candidates
 
     def execute(

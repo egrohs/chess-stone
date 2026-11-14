@@ -30,11 +30,11 @@ ACTIONS = {
 TARGETS = {
     "self", "own_hero", "enemy_hero", "target_enemy", "target_enemy_minion",
     "target_ally", "target_ally_minion", "all_enemies", "all_enemy_minions",
-    "all_allies", "all_allied_minions", "adjacent_allies", "random_enemy",
-    "random_enemy_minion",
+    "all_allies", "all_allied_minions", "adjacent_allies", "lowest_health_enemy",
+    "lowest_health_enemy_minion",
 }
 TARGET_ALIASES = {
-    "target_2_enemies": ("random_enemy_minion", 2),
+    "target_2_enemies": ("lowest_health_enemy_minion", 2),
 }
 
 

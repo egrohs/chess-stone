@@ -25,8 +25,8 @@ class MateTests(unittest.TestCase):
     def anastasia(self, right=False):
         if right:
             self.unit("peao")
-            knight = self.unit("cavalo")
-            rook = self.unit("torre")
+            knight = self.unit("cavalo", position=6)
+            rook = self.unit("torre", position=7)
         else:
             rook = self.unit("torre")
             knight = self.unit("cavalo")
@@ -40,7 +40,7 @@ class MateTests(unittest.TestCase):
         left = self.unit("bispo")
         self.unit("peao")
         self.unit("peao")
-        right = self.unit("bispo")
+        right = self.unit("bispo", position=7)
         return left, right
 
     def cycle(self):
@@ -113,15 +113,25 @@ class MateTests(unittest.TestCase):
         self.p0.endgame_ready = True
         self.game.activate_king(0)
         self.unit("peao")
-        self.unit("bispo")
+        self.unit("bispo", position=7)
         self.game.end_turn(0)
         self.assertEqual(self.game.mates.threats[0], [])
 
     def test_bishops_alone_do_not_prepare(self):
         self.unit("bispo")
-        self.unit("bispo")
+        self.unit("bispo", position=7)
         self.game.end_turn(0)
         self.assertEqual(self.game.mates.threats[0], [])
+
+    def test_queue_extremes_are_not_physical_edges(self):
+        self.unit("peao", position=2)
+        self.unit("cavalo", position=4)
+        self.unit("torre", position=5)
+        self.assertEqual(self.game.mates.formations(0, "anastasia"), [])
+        self.p0.board.clear()
+        for card_id, slot in (("bispo", 1), ("peao", 2), ("peao", 3), ("bispo", 6)):
+            self.unit(card_id, position=slot)
+        self.assertEqual(self.game.mates.formations(0, "boden"), [])
 
     def test_formation_broken_then_restored_does_not_rearm(self):
         self.boden()
@@ -187,17 +197,20 @@ class MateTests(unittest.TestCase):
         self.cycle()
         self.assertIn("dois lacaios", self.game.mate_unavailable_reason(0, self.card("mate_anastasia")))
 
-    def test_new_end_unit_breaks_edge_preparation(self):
+    def test_new_unit_in_free_slot_preserves_fixed_edge_preparation(self):
         self.anastasia(right=True)
         self.game.end_turn(0)
         self.unit("peao")
-        self.assertNotIn("anastasia", {t.pattern for t in self.game.mates.threats[0]})
+        self.assertIn("anastasia", {t.pattern for t in self.game.mates.threats[0]})
+        self.game.end_turn(1)
+        self.p0.mana = 10
+        self.assertTrue(self.game.playable(0, self.card("mate_anastasia")))
 
     def test_boden_intermediate_death_with_two_survivors_keeps_threat(self):
         self.unit("bispo")
         for _ in range(3):
             self.unit("peao")
-        self.unit("bispo")
+        self.unit("bispo", position=7)
         self.game.end_turn(0)
         pawn = self.p0.board[2]
         pawn.effects = []
@@ -260,8 +273,8 @@ class MateTests(unittest.TestCase):
 
     def test_ai_executes_legal_alternate_victory(self):
         self.game.end_turn(0)
-        for card_id in ("bispo", "peao", "peao", "bispo"):
-            self.unit(card_id, 1)
+        for card_id, slot in (("bispo", 0), ("peao", 1), ("peao", 2), ("bispo", 7)):
+            self.unit(card_id, 1, slot)
         self.game.end_turn(1)
         self.game.end_turn(0)
         self.p1.hand = [Card(self.game.uid(), self.game.catalog["mate_boden"])]
@@ -429,6 +442,10 @@ class MateTests(unittest.TestCase):
         self.unit("bispo")
         self.assertEqual(self.game.mates.formations(0, "opera"), [])
         self.p0.board.pop(1)
+        self.assertEqual(self.game.mates.formations(0, "opera"), [])
+        # A new bishop in the vacant neighboring slot gives physical adjacency.
+        self.p0.board.pop()
+        self.unit("bispo", position=1)
         self.assertEqual(len(self.game.mates.formations(0, "opera")), 1)
         self.unit("bispo")
         self.assertEqual(self.game.mates.formations(0, "opera"), [])
