@@ -39,7 +39,7 @@ primeiro turno. Nao ha mulligan, moeda, armas ou poder heroico.
 
 | Acao | Como executar |
 |---|---|
-| Inspecionar carta | Passe o mouse na mao para elevar e ampliar suavemente a carta; retirar o mouse restaura sua posicao |
+| Inspecionar carta | Mantenha o mouse sobre a carta por um instante para ler o texto e as explicacoes das mecanicas; na mao, a carta tambem se eleva e amplia |
 | Selecionar carta | Clique na carta da mao, inclusive na parte ampliada; a borda fica dourada e ela permanece levemente elevada |
 | Jogar como Peca | Selecione a carta e clique numa das suas seis casas vazias, ou arraste a carta ate ela; pecas existentes nao sao deslocadas |
 | Jogar como Manobra | Selecione a carta e clique fora das suas casas ou em **Jogar como Manobra**; tambem e possivel arrasta-la ate o botao ou o campo inimigo |
@@ -53,6 +53,9 @@ primeiro turno. Nao ha mulligan, moeda, armas ou poder heroico.
 | Sair da partida | Use **Voltar ao Menu** |
 
 Verde indica alvos/espacos validos; azul indica peça pronta para atacar.
+Os tooltips tambem aparecem sobre peças no tabuleiro, cartas da colecao e do
+editor de decks. Eles mostram as peças desenvolvidas por efeitos da carta,
+quando houver; role a roda do mouse se o conteudo nao couber na tela.
 O painel lateral mostra a descricao da carta
 selecionada e as ultimas jogadas. Pecas envolvidas em ameacas de mate
 anunciadas recebem uma borda interna dourada.

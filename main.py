@@ -21,6 +21,7 @@ from audio import BackgroundMusic, ImpactAudio
 from mate_rules import LABELS as MATE_LABELS
 from board_rules import CORNER_SLOTS
 from hand_view import CARD_SIZE, CardMotion, HandView
+from card_tooltip import CardTooltip
 
 
 WIDTH, HEIGHT = 1440, 940
@@ -82,6 +83,8 @@ class App:
         self.card_art_sizes: dict[tuple[str, tuple[int, int]], pygame.Surface] = {}
         self.clock = pygame.time.Clock()
         self.hand_view = HandView()
+        self.card_tooltip = CardTooltip()
+        self.pointer_in_window = True
         self.font = pygame.font.SysFont("segoeui", 18)
         self.small = pygame.font.SysFont("segoeui", 15)
         self.large = pygame.font.SysFont("segoeui", 30, bold=True)
@@ -161,6 +164,7 @@ class App:
         self.state = State.MATCH
         self.music.update(True)
         self.hand_view = HandView()
+        self.card_tooltip.reset()
         if self.audio.error:
             self.game.log(self.audio.error)
         self.clear_selection()
@@ -976,15 +980,49 @@ class App:
             self.text(title, (610, 290), GOLD, self.large)
             self.button(self.start_button, "Jogar novamente")
             self.button(self.quit_button, "Voltar ao Menu")
+        self.card_tooltip.draw(self)
         pygame.display.flip()
+
+    def update_card_tooltip(self, point: tuple[int, int], now: int) -> None:
+        key = card = anchor = None
+        if self.pointer_in_window and not self.drag_card and not self.drag_unit:
+            if self.state == State.MATCH and self.game:
+                hovered = self.hand_view.hovered
+                if hovered:
+                    motion = self.hand_view.motions[hovered.uid]
+                    image = pygame.transform.rotozoom(
+                        pygame.Surface(CARD_SIZE), motion.angle, motion.scale,
+                    )
+                    anchor = image.get_rect(center=(round(motion.x), round(motion.y)))
+                    key, card = (self.state, "hand", hovered.uid), hovered.definition
+                else:
+                    for entity, rect in self.entity_rects():
+                        if isinstance(entity, Unit) and not entity.is_king and rect.collidepoint(point):
+                            card = self.game.catalog[entity.definition_id or entity.card_id]
+                            key, anchor = (self.state, "unit", entity.uid), rect
+                            break
+            elif self.state == State.COLLECTION:
+                for definition, rect in self.collection.rows():
+                    if rect.collidepoint(point):
+                        key, card, anchor = (self.state, definition["id"]), definition, rect
+                        break
+            elif self.state == State.DECK_BUILDER:
+                for definition, minus, _ in self.catalog_rows():
+                    rect = pygame.Rect(30, minus.y, 620, 55)
+                    if rect.collidepoint(point):
+                        key, card, anchor = (self.state, definition["id"]), definition, rect
+                        break
+        self.card_tooltip.update(key, card, anchor, now)
 
     def update(self, dt: float = 0.0) -> None:
         self.music.update(self.state == State.MATCH)
         if self.state == State.PUZZLE:
+            self.card_tooltip.reset()
             self.puzzle_view.update()
             return
         game = self.game
         if self.state != State.MATCH or game is None:
+            self.update_card_tooltip(pygame.mouse.get_pos(), pygame.time.get_ticks())
             return
         if game.over:
             self.finish_match()
@@ -1003,15 +1041,26 @@ class App:
             self.ai_at = now + 450
             if game.over:
                 self.finish_match()
+        self.update_card_tooltip(point, now)
 
     def finish_match(self) -> None:
         if self.game and self.game.winner == 0:
             self.audio.play_event("victory")
         self.state = State.GAME_OVER
+        self.card_tooltip.reset()
         self.music.update(False)
         self.clear_selection()
 
     def handle_event(self, event: pygame.event.Event) -> None:
+        if event.type in (pygame.WINDOWFOCUSLOST, pygame.WINDOWLEAVE):
+            self.pointer_in_window = False
+            self.card_tooltip.reset()
+        elif event.type in (pygame.WINDOWFOCUSGAINED, pygame.WINDOWENTER):
+            self.pointer_in_window = True
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            self.card_tooltip.reset()
+        elif event.type == pygame.MOUSEWHEEL and self.card_tooltip.wheel(event.y):
+            return
         if event.type == pygame.QUIT:
             self.running = False
         elif self.state == State.PUZZLE:
