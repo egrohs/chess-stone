@@ -20,12 +20,13 @@ from puzzle_view import PuzzleView
 from audio import ImpactAudio
 from mate_rules import LABELS as MATE_LABELS
 from board_rules import CORNER_SLOTS
-from hand_view import CARD_SIZE, HandView
+from hand_view import CARD_SIZE, CardMotion, HandView
 
 
 WIDTH, HEIGHT = 1440, 940
 SLOT_WIDTH, SLOT_HEIGHT, SLOT_STEP = 118, 150, 130
 SIDEBAR = 1100
+DRAG_THRESHOLD = 6
 
 
 class State(Enum):
@@ -80,6 +81,11 @@ class App:
         self.selected_unit: Unit | None = None
         self.selected_mode: PlayMode | None = None
         self.drag_unit: Unit | None = None
+        self.drag_card: Card | None = None
+        self.card_drag_start: tuple[int, int] | None = None
+        self.card_drag_point: tuple[int, int] | None = None
+        self.card_drag_center: tuple[int, int] | None = None
+        self.card_dragging = False
         self.position: int | None = None
         self.running = True
         self.ai_at = 0
@@ -244,6 +250,14 @@ class App:
         self.selected_unit = None
         self.selected_mode = None
         self.position = None
+        self.cancel_card_drag()
+
+    def cancel_card_drag(self) -> None:
+        self.drag_card = None
+        self.card_drag_start = None
+        self.card_drag_point = None
+        self.card_drag_center = None
+        self.card_dragging = False
 
     def slots(self, owner: int) -> list[pygame.Rect]:
         left = (SIDEBAR - ((BOARD_LIMIT - 1) * SLOT_STEP + SLOT_WIDTH)) // 2
@@ -350,6 +364,71 @@ class App:
                 except RuleError as error:
                     game.log(str(error))
                 return
+
+    def begin_card_drag(self, point: tuple[int, int]) -> bool:
+        game = self.game
+        if self.state != State.MATCH or not game or game.current != 0 or game.over:
+            return False
+        card = self.hand_view.card_at(self.hand_rects(), point, self.selected_card)
+        if not card:
+            return False
+        motion = self.hand_view.motions[card.uid]
+        self.drag_card = card
+        self.card_drag_start = point
+        self.card_drag_point = point
+        self.card_drag_center = (round(motion.x), round(motion.y))
+        self.card_dragging = False
+        return True
+
+    def move_card_drag(self, point: tuple[int, int]) -> None:
+        if not self.drag_card or self.card_drag_start is None:
+            return
+        self.card_drag_point = point
+        dx = point[0] - self.card_drag_start[0]
+        dy = point[1] - self.card_drag_start[1]
+        if not self.card_dragging and dx * dx + dy * dy >= DRAG_THRESHOLD ** 2:
+            card = self.drag_card
+            self.selected_card = card
+            self.selected_unit = None
+            self.selected_mode = None
+            self.position = None
+            self.card_dragging = True
+
+    def end_card_drag(self, point: tuple[int, int]) -> None:
+        if not self.drag_card:
+            return
+        self.move_card_drag(point)
+        card = self.drag_card
+        dragging = self.card_dragging
+        start = self.card_drag_start
+        self.cancel_card_drag()
+        game = self.game
+        if self.state != State.MATCH or not game or game.current != 0 or game.over or card not in game.players[0].hand:
+            self.clear_selection()
+            return
+        if not dragging:
+            if start is not None:
+                self.click(start)
+            return
+        try:
+            # A valid friendly maneuver target takes precedence over its occupied slot.
+            if any(
+                entity in self.valid_targets() and rect.collidepoint(point)
+                for entity, rect in self.entity_rects()
+            ):
+                self.choose_maneuver(point)
+            elif any(rect.collidepoint(point) for rect in self.slots(0)):
+                self.click(point)
+            elif (
+                self.play_button.collidepoint(point)
+                or any(rect.collidepoint(point) for rect in self.slots(1))
+                or self.hero_rect(1).collidepoint(point)
+            ):
+                self.choose_maneuver(point)
+            else:
+                self.clear_selection()
+        except RuleError as error:
+            game.log(str(error))
 
     def click(self, point: tuple[int, int]) -> None:
         if self.state == State.MENU:
@@ -602,7 +681,9 @@ class App:
             pygame.draw.rect(self.screen, GOLD, ghost, 2, border_radius=5)
             self.text(self.drag_unit.name, (ghost.x + 8, ghost.y + 8), GOLD, self.small)
         hint = "Selecione carta ou peça. Verde = alvo/espaco valido; azul = pronto."
-        if self.selected_card:
+        if self.card_dragging:
+            hint = "Arraste ate uma casa vazia, alvo verde, campo inimigo ou botao de Manobra."
+        elif self.selected_card:
             hint = (
                 "Casa vazia = Peca; fora das casas = Manobra. Mesmo custo nos dois modos."
                 if self.selected_mode is None
@@ -613,15 +694,27 @@ class App:
         self.text(hint, (24, 674), GREEN if self.selected_card or self.selected_unit else MUTED, self.small)
         self.text("Clique direito / ESC: cancelar selecao", (24, 696), MUTED, self.small)
         for card, motion in self.hand_view.layers(self.hand_rects(), self.selected_card):
-            image = self.hand_card_image(card)
-            image = pygame.transform.rotozoom(image, motion.angle, motion.scale)
-            rect = image.get_rect(center=(round(motion.x), round(motion.y)))
-            shadow = pygame.Surface(image.get_size(), pygame.SRCALPHA)
-            shadow.blit(image, (0, 0))
-            shadow.fill((0, 0, 0, 110), special_flags=pygame.BLEND_RGBA_MULT)
-            self.screen.blit(shadow, rect.move(4, 6 + round(8 * motion.focus)))
-            self.screen.blit(image, rect)
+            if self.card_dragging and card is self.drag_card:
+                continue
+            self.draw_hand_card(card, motion)
         self.draw_sidebar()
+        if self.card_dragging and self.drag_card and self.card_drag_start and self.card_drag_point and self.card_drag_center:
+            motion = self.hand_view.motions[self.drag_card.uid]
+            center = (
+                self.card_drag_center[0] + self.card_drag_point[0] - self.card_drag_start[0],
+                self.card_drag_center[1] + self.card_drag_point[1] - self.card_drag_start[1],
+            )
+            self.draw_hand_card(self.drag_card, motion, center)
+
+    def draw_hand_card(self, card: Card, motion: CardMotion, center: tuple[int, int] | None = None) -> None:
+        image = self.hand_card_image(card)
+        image = pygame.transform.rotozoom(image, motion.angle, motion.scale)
+        rect = image.get_rect(center=center or (round(motion.x), round(motion.y)))
+        shadow = pygame.Surface(image.get_size(), pygame.SRCALPHA)
+        shadow.blit(image, (0, 0))
+        shadow.fill((0, 0, 0, 110), special_flags=pygame.BLEND_RGBA_MULT)
+        self.screen.blit(shadow, rect.move(4, 6 + round(8 * motion.focus)))
+        self.screen.blit(image, rect)
 
     def hand_card_image(self, card: Card) -> pygame.Surface:
         image = pygame.Surface(CARD_SIZE, pygame.SRCALPHA)
@@ -804,9 +897,12 @@ class App:
             return
         if self.selected_card and self.selected_card not in game.players[0].hand:
             self.clear_selection()
+        if self.drag_card and (game.current != 0 or self.drag_card not in game.players[0].hand):
+            self.clear_selection()
         if self.selected_unit and self.selected_unit not in game.players[0].board:
             self.clear_selection()
-        self.hand_view.update(self.hand_rects(), pygame.mouse.get_pos(), dt, self.selected_card)
+        point = (-1000, -1000) if self.card_dragging else pygame.mouse.get_pos()
+        self.hand_view.update(self.hand_rects(), point, dt, self.selected_card)
         now = pygame.time.get_ticks()
         if game.current == 1 and now >= self.ai_at:
             game.ai_step()
@@ -842,16 +938,26 @@ class App:
                 self.name_focused = False
                 pygame.key.stop_text_input()
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            self.drag_unit = None
             self.clear_selection()
+        elif event.type == pygame.WINDOWFOCUSLOST:
+            self.drag_unit = None
+            self.clear_selection()
+        elif event.type == pygame.MOUSEMOTION and self.drag_card:
+            self.move_card_drag(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
-                self.begin_drag(event.pos)
-                self.click(event.pos)
+                if not self.begin_card_drag(event.pos):
+                    self.begin_drag(event.pos)
+                    self.click(event.pos)
             elif event.button == 3:
                 self.drag_unit = None
                 self.clear_selection()
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            self.end_drag(event.pos)
+            if self.drag_card:
+                self.end_card_drag(event.pos)
+            else:
+                self.end_drag(event.pos)
 
     def run(self) -> None:
         try:

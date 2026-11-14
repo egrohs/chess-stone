@@ -40,6 +40,135 @@ class InterfaceTests(unittest.TestCase):
     def select_first_card(self):
         self.app.click(self.app.hand_rects()[0][1].center)
 
+    def card_mouse_down(self, card):
+        rect = next(rect for candidate, rect in self.app.hand_rects() if candidate is card)
+        self.app.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=rect.center))
+        return rect.center
+
+    def card_mouse_up(self, point):
+        self.app.handle_event(pygame.event.Event(pygame.MOUSEBUTTONUP, button=1, pos=point))
+
+    def test_drag_card_to_empty_slot_draws_and_plays_piece(self):
+        card = self.add_card("peao")
+        start = self.card_mouse_down(card)
+        destination = self.app.slots(0)[2].center
+        self.app.handle_event(pygame.event.Event(pygame.MOUSEMOTION, pos=destination, rel=(0, 0), buttons=(1, 0, 0)))
+        self.assertIs(self.app.selected_card, card)
+        self.assertEqual(len(self.app.placement_rects()), 6)
+        with patch.object(self.app, "draw_hand_card", wraps=self.app.draw_hand_card) as draw:
+            self.app.draw()
+        self.assertEqual(draw.call_args.args[2], destination)
+        self.card_mouse_up(destination)
+        self.assertEqual(self.player.unit_at(2).card_id, "peao")
+        self.assertEqual(self.player.mana, 9)
+        self.assertNotIn(card, self.player.hand)
+        self.assertIsNone(self.app.drag_card)
+        self.assertNotEqual(start, destination)
+
+    def test_card_click_and_selected_card_drag(self):
+        card = self.add_card("peao")
+        start = self.card_mouse_down(card)
+        self.card_mouse_up(start)
+        self.assertIs(self.app.selected_card, card)
+        self.card_mouse_down(card)
+        self.card_mouse_up(start)
+        self.assertIsNone(self.app.selected_card)
+        self.card_mouse_down(card)
+        self.card_mouse_up(start)
+        self.card_mouse_down(card)
+        self.card_mouse_up(self.app.slots(0)[0].center)
+        self.assertEqual(self.player.unit_at(0).card_id, "peao")
+
+    def test_drag_maneuvers_to_button_and_valid_targets(self):
+        card = self.add_card("peao")
+        self.card_mouse_down(card)
+        self.card_mouse_up(self.app.play_button.center)
+        self.assertIn(card, self.player.discard)
+        enemy = self.game.summon(1, "peao")
+        card = self.add_card("cravada_absoluta")
+        self.card_mouse_down(card)
+        self.card_mouse_up(self.app.slots(1)[0].center)
+        self.assertGreater(enemy.frozen_through, 0)
+        self.assertIn(card, self.player.discard)
+        ally = self.game.summon(0, "peao")
+        card = self.add_card("torre")
+        self.card_mouse_down(card)
+        self.card_mouse_up(self.app.slots(0)[0].center)
+        self.assertIn("divine_shield", ally.keywords)
+        self.assertIn(card, self.player.discard)
+
+    def test_drag_maneuver_to_enemy_field_or_choose_target_later(self):
+        card = self.add_card("peao")
+        self.card_mouse_down(card)
+        self.card_mouse_up(self.app.slots(1)[2].center)
+        self.assertIn(card, self.player.discard)
+        ally = self.game.summon(0, "peao")
+        card = self.add_card("torre")
+        self.card_mouse_down(card)
+        self.card_mouse_up(self.app.play_button.center)
+        self.assertEqual(self.app.selected_mode, "manobra")
+        self.assertIn(card, self.player.hand)
+        self.app.click(self.app.slots(0)[0].center)
+        self.assertIn("divine_shield", ally.keywords)
+        self.assertIn(card, self.player.discard)
+
+    def test_drag_targeted_piece_then_select_target(self):
+        enemy = self.game.summon(1, "peao")
+        card = self.add_card("peao")
+        card.definition = copy.deepcopy(card.definition)
+        card.definition["piece_mode"]["effects"] = [{
+            "trigger": "on_play", "action": "damage", "amount": 1, "target": "target_enemy",
+        }]
+        self.card_mouse_down(card)
+        self.card_mouse_up(self.app.slots(0)[0].center)
+        self.assertEqual(self.app.selected_mode, "piece")
+        self.assertIn(card, self.player.hand)
+        self.app.click(self.app.slots(1)[0].center)
+        self.assertEqual(enemy.health, 1)
+        self.assertEqual(self.player.unit_at(0).card_id, "peao")
+
+    def test_card_drag_invalid_drops_and_cancellation(self):
+        self.game.summon(0, "peao", 0)
+        card = self.add_card("peao")
+        self.card_mouse_down(card)
+        self.card_mouse_up(self.app.slots(0)[0].center)
+        self.assertIn("Casa ocupada", self.game.messages[-1])
+        self.assertIn(card, self.player.hand)
+        self.card_mouse_down(card)
+        self.card_mouse_up((50, 380))
+        self.assertIsNone(self.app.selected_card)
+        self.assertIn(card, self.player.hand)
+        self.card_mouse_down(card)
+        self.app.handle_event(pygame.event.Event(pygame.MOUSEMOTION, pos=(500, 500), rel=(0, 0), buttons=(1, 0, 0)))
+        self.app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+        self.card_mouse_up(self.app.slots(0)[1].center)
+        self.assertIsNone(self.player.unit_at(1))
+        self.assertEqual(self.player.mana, 10)
+        for cancel in (
+            pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=3, pos=(500, 500)),
+            pygame.event.Event(pygame.WINDOWFOCUSLOST),
+        ):
+            self.card_mouse_down(card)
+            self.app.handle_event(pygame.event.Event(pygame.MOUSEMOTION, pos=(500, 500), rel=(0, 0), buttons=(1, 0, 0)))
+            self.app.handle_event(cancel)
+            self.card_mouse_up(self.app.slots(0)[1].center)
+            self.assertIsNone(self.player.unit_at(1))
+            self.assertIn(card, self.player.hand)
+
+    def test_card_drag_respects_turn_and_mana(self):
+        card = self.add_card("peao")
+        self.player.mana = 0
+        self.card_mouse_down(card)
+        self.card_mouse_up(self.app.slots(0)[0].center)
+        self.assertIn("Tempo insuficiente", self.game.messages[-1])
+        self.assertIn(card, self.player.hand)
+        self.app.clear_selection()
+        self.game.end_turn(0)
+        self.card_mouse_down(card)
+        self.card_mouse_up(self.app.slots(0)[0].center)
+        self.assertIsNone(self.player.unit_at(0))
+        self.assertIsNone(self.app.drag_card)
+
     def test_hover_update_and_click_on_raised_card_preserve_piece_play(self):
         card = self.add_card("peao")
         rect = self.app.hand_rects()[0][1]

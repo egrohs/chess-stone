@@ -41,9 +41,9 @@ primeiro turno. Nao ha mulligan, moeda, armas ou poder heroico.
 |---|---|
 | Inspecionar carta | Passe o mouse na mao para elevar e ampliar suavemente a carta; retirar o mouse restaura sua posicao |
 | Selecionar carta | Clique na carta da mao, inclusive na parte ampliada; a borda fica dourada e ela permanece levemente elevada |
-| Jogar como Peca | Selecione a carta e clique numa das suas seis casas vazias; pecas existentes nao sao deslocadas |
-| Jogar como Manobra | Selecione a carta e clique fora das suas casas ou em **Jogar como Manobra** |
-| Manobra com alvo | Clique direto no inimigo valido, ou escolha Manobra fora das casas e depois clique no alvo verde (inclusive aliado) |
+| Jogar como Peca | Selecione a carta e clique numa das suas seis casas vazias, ou arraste a carta ate ela; pecas existentes nao sao deslocadas |
+| Jogar como Manobra | Selecione a carta e clique fora das suas casas ou em **Jogar como Manobra**; tambem e possivel arrasta-la ate o botao ou o campo inimigo |
+| Manobra com alvo | Clique direto no inimigo valido, escolha Manobra e depois clique no alvo verde, ou arraste a carta diretamente ate o alvo verde (inclusive aliado) |
 | Atacar | Clique em uma peça aliada pronta e depois em um inimigo verde |
 | Reposicionar | Arraste uma peça sua (exceto o Rei) para uma casa vazia (borda azul); custa 1 tempo |
 | Cancelar selecao | Clique direito ou Esc |
@@ -69,6 +69,9 @@ com mao cheia e tem seu tamanho exibido; nao retorna automaticamente ao deck.
 Clicar numa casa sua ocupada nao joga a carta nem dispara Manobra por acidente.
 Botoes de turno, Rei e menu, e cliques na mao continuam sendo controles:
 nao contam como cliques de Manobra. Esc permite cancelar sem pagar Tempo.
+Ao arrastar uma carta, soltar fora das casas, alvos e botao de Manobra cancela
+a jogada. Uma casa aliada ocupada so aceita uma carta se for alvo valido da
+Manobra; caso contrario, permanece ocupada.
 
 ### Modos das cartas
 
