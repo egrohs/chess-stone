@@ -79,7 +79,7 @@ class HandView:
             hovered = card is self.hovered
             focus = 1.0 if hovered else 0.35 if card is selected else 0.0
             tilt = max(-1.0, min(1.0, (point[0] - motion.x) / 65)) if hovered else 0.0
-            targets = (rect.centerx, rect.centery - 20 * focus, focus, -3.0 * tilt)
+            targets = (rect.centerx, rect.centery - 32 * focus, focus, -3.0 * tilt)
             motion.x += (targets[0] - motion.x) * blend
             motion.y += (targets[1] - motion.y) * blend
             motion.focus += (targets[2] - motion.focus) * blend

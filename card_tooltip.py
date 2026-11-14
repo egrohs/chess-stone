@@ -177,3 +177,38 @@ class CardTooltip:
         if self.max_scroll:
             pygame.draw.rect(app.screen, PANEL, (viewport.x, viewport.bottom, width, footer))
             app.text("Role para ver mais", (viewport.x + PADDING, viewport.bottom + 2), MUTED, app.small)
+
+
+class InfoTooltip:
+    def __init__(self) -> None:
+        self.key: object | None = None
+        self.title = ""
+        self.text = ""
+        self.anchor = pygame.Rect(0, 0, 0, 0)
+        self.since = 0
+        self.visible = False
+
+    def update(
+        self, key: object | None, title: str, text: str,
+        anchor: pygame.Rect | None, now: int,
+    ) -> None:
+        if key != self.key:
+            self.since = now
+        self.key, self.title, self.text = key, title, text
+        if anchor is not None:
+            self.anchor = anchor.copy()
+        self.visible = key is not None and now - self.since >= HOVER_DELAY_MS
+
+    def reset(self) -> None:
+        self.update(None, "", "", None, 0)
+
+    def draw(self, app: App) -> None:
+        if not self.visible:
+            return
+        panel = CardTooltip.panel(app, self.title, self.text)
+        screen = app.screen.get_rect()
+        x = max(0, min(self.anchor.left, screen.width - panel.get_width()))
+        y = self.anchor.top - panel.get_height() - GAP
+        if y < 0:
+            y = min(self.anchor.bottom + GAP, screen.height - panel.get_height())
+        app.screen.blit(panel, (x, y))

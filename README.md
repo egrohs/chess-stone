@@ -375,12 +375,14 @@ simuladas; nao dependem de internet nem modificam o inventario local.
 
 ### TODO
 - musicas de https://downloads.khinsider.com/game-soundtracks/album/hearthstone-music-from-the-tavern-anniversary-picks-2024
+- assets de https://github.com/Zero-to-Heroes/coliseum/tree/master/src/assets
 - Vamos adicionar classes de heroes que seriam os campeões de chess. Seriam 4 classes dos perfis de jogadores, ativista, pragmático, reflector, teorista.
 - Vamos modificar o roque com alguns critérios:
   Roque custa 2 "mana", TEMPO.
   Rei não sofreu dano, full hp.
   Nem rei, nem torre moveram nem atacaram no jogo.
   Rei nem slots entre ele e torre estão sendo atacados?!
+  O armor poderia ser a "segurança do rei", e o hp o "posicional".
 
 - Os nomes das Keywords ainda não foram alteradas no csv. Altere-as. 
   E o termo freeze deveria ser "imobiliza".

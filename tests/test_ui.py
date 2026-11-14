@@ -409,7 +409,7 @@ class InterfaceTests(unittest.TestCase):
         with patch.object(self.app, "text", wraps=self.app.text) as text:
             self.app.draw()
         rendered = [call.args[0] for call in text.call_args_list]
-        self.assertIn("Tempo: 10/10 (+1 temporario)", rendered)
+        self.assertFalse(any(label.startswith(("Tempo:", "Deck:", "Mao:", "Descarte:")) for label in rendered))
         self.assertTrue(any("+1 tempo no proximo turno" in label for label in rendered))
         unit = self.game.summon(0, "peao", 0)
         self.game.move_unit(0, unit, 2)

@@ -40,6 +40,7 @@ primeiro turno. Nao ha mulligan, moeda, armas ou poder heroico.
 | Acao | Como executar |
 |---|---|
 | Inspecionar carta | Mantenha o mouse sobre a carta por um instante para ler o texto e as explicacoes das mecanicas; na mao, a carta tambem se eleva e amplia |
+| Inspecionar recursos | Mantenha o mouse sobre o deck, a mao ou o indicador de descarte para ver a quantidade de cartas; passe sobre as bolinhas de Tempo para ver o valor exato |
 | Selecionar carta | Clique na carta da mao, inclusive na parte ampliada; a borda fica dourada e ela permanece levemente elevada |
 | Jogar como Peca | Selecione a carta e clique numa das suas seis casas vazias, ou arraste a carta ate ela; pecas existentes nao sao deslocadas |
 | Jogar como Manobra | Selecione a carta e clique fora das suas casas ou em **Jogar como Manobra**; tambem e possivel arrasta-la ate o botao ou o campo inimigo |
@@ -53,6 +54,11 @@ primeiro turno. Nao ha mulligan, moeda, armas ou poder heroico.
 | Sair da partida | Use **Voltar ao Menu** |
 
 Verde indica alvos/espacos validos; azul indica peça pronta para atacar.
+As bolinhas azuis a direita representam o Tempo disponivel; bolinhas escuras
+representam Tempo gasto ou ainda nao adquirido. O Tempo temporario tem borda
+dourada, inclusive quando o limite permanente de 10 ja foi atingido.
+As zonas de mao, deck e descarte dos dois jogadores exibem suas contagens apenas
+ao passar o mouse. A mao do jogador tem um indicador proprio acima das cartas.
 Os tooltips tambem aparecem sobre peças no tabuleiro, cartas da colecao e do
 editor de decks. Eles mostram as peças desenvolvidas por efeitos da carta,
 quando houver; role a roda do mouse se o conteudo nao couber na tela.
@@ -68,7 +74,7 @@ as duas na mesma jogada. Os dois modos custam o mesmo Tempo. Como Peca, usa
 ataque, vida, palavras-chave e efeitos de Peca, permanecendo no tabuleiro.
 Como Manobra, executa somente o efeito imediato e vai ao descarte, sem ocupar
 casa, mesmo com tabuleiro cheio. O descarte tambem recebe pecas mortas e compras
-com mao cheia e tem seu tamanho exibido; nao retorna automaticamente ao deck.
+com mao cheia; sua quantidade aparece no tooltip e nao retorna automaticamente ao deck.
 
 Clicar numa casa sua ocupada nao joga a carta nem dispara Manobra por acidente.
 Botoes de turno, Rei e menu, e cliques na mao continuam sendo controles:

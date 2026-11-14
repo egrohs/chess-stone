@@ -13,7 +13,7 @@ from hand_view import CARD_SIZE, CardMotion, HandView
 class HandViewTests(unittest.TestCase):
     def setUp(self):
         self.cards = [
-            (Card(i, {}), pygame.Rect(24 + i * 105, 718, *CARD_SIZE))
+            (Card(i, {}), pygame.Rect(24 + i * 105, 740, *CARD_SIZE))
             for i in range(10)
         ]
         self.view = HandView()

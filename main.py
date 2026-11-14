@@ -21,7 +21,7 @@ from audio import BackgroundMusic, ImpactAudio
 from mate_rules import LABELS as MATE_LABELS
 from board_rules import CORNER_SLOTS
 from hand_view import CARD_SIZE, CardMotion, HandView
-from card_tooltip import CardTooltip
+from card_tooltip import CardTooltip, InfoTooltip
 
 
 WIDTH, HEIGHT = 1440, 940
@@ -84,6 +84,7 @@ class App:
         self.clock = pygame.time.Clock()
         self.hand_view = HandView()
         self.card_tooltip = CardTooltip()
+        self.info_tooltip = InfoTooltip()
         self.pointer_in_window = True
         self.font = pygame.font.SysFont("segoeui", 18)
         self.small = pygame.font.SysFont("segoeui", 15)
@@ -165,6 +166,7 @@ class App:
         self.music.update(True)
         self.hand_view = HandView()
         self.card_tooltip.reset()
+        self.info_tooltip.reset()
         if self.audio.error:
             self.game.log(self.audio.error)
         self.clear_selection()
@@ -342,9 +344,49 @@ class App:
         if not self.game:
             return []
         return [
-            (card, pygame.Rect(24 + i * 105, 718, 99, 196))
+            (card, pygame.Rect(24 + i * 105, 740, 99, 196))
             for i, card in enumerate(self.game.players[0].hand)
         ]
+
+    def zone_rects(self, owner: int) -> dict[str, pygame.Rect]:
+        if owner == 0:
+            return {
+                "hand": pygame.Rect(1000, 691, 82, 25),
+                "deck": pygame.Rect(942, 450, 52, 100),
+                "discard": pygame.Rect(1000, 486, 82, 25),
+                "tempo": pygame.Rect(770, 711, 205, 30),
+            }
+        return {
+            "hand": pygame.Rect(430, self.board_rect.top, 250, 45),
+            "deck": pygame.Rect(942, 270, 52, 95),
+            "discard": pygame.Rect(1000, 300, 82, 25),
+            "tempo": pygame.Rect(770, 155, 205, 30),
+        }
+
+    def draw_zone_labels(self, owner: int) -> None:
+        zones = self.zone_rects(owner)
+        for zone, label in (("discard", "Descarte"), ("hand", "Mao")):
+            if owner == 1 and zone == "hand":
+                continue
+            rect = zones[zone]
+            pygame.draw.rect(self.screen, PANEL, rect, border_radius=4)
+            self.text(label, (rect.x + 5, rect.y + 3), MUTED, self.small)
+
+    def draw_tempo(self, owner: int) -> None:
+        if not self.game:
+            return
+        player = self.game.players[owner]
+        rect = self.zone_rects(owner)["tempo"]
+        for index in range(max(10, player.max_mana + player.temporary_mana)):
+            center = (rect.x + 8 + index * 18, rect.centery)
+            acquired = index < player.max_mana + player.temporary_mana
+            available = index < player.mana
+            color = (72, 179, 250) if available else (34, 69, 96) if acquired else (44, 49, 56)
+            pygame.draw.circle(self.screen, color, center, 7)
+            border = (184, 231, 255) if available else (108, 143, 165) if acquired else (90, 92, 96)
+            if index == player.max_mana and player.temporary_mana:
+                border = GOLD
+            pygame.draw.circle(self.screen, border, center, 7, 1)
 
     def entity_rects(self) -> list[tuple[Entity, pygame.Rect]]:
         if not self.game:
@@ -437,6 +479,8 @@ class App:
     def begin_card_drag(self, point: tuple[int, int]) -> bool:
         game = self.game
         if self.state != State.MATCH or not game or game.current != 0 or game.over:
+            return False
+        if any(rect.collidepoint(point) for owner in (0, 1) for rect in self.zone_rects(owner).values()):
             return False
         card = self.hand_view.card_at(self.hand_rects(), point, self.selected_card)
         if not card:
@@ -540,6 +584,8 @@ class App:
         if self.menu_button.collidepoint(point):
             self.state = State.MENU
             self.clear_selection()
+            return
+        if any(rect.collidepoint(point) for owner in (0, 1) for rect in self.zone_rects(owner).values()):
             return
         if game.current != 0 or game.over:
             return
@@ -709,8 +755,8 @@ class App:
             return
         self.screen.blit(self.board_image, self.board_rect)
         for rect in (
-            pygame.Rect(15, 85, 360, 65), pygame.Rect(15, 230, 430, 67),
-            pygame.Rect(15, 555, 420, 22), pygame.Rect(15, 595, 360, 65),
+            pygame.Rect(15, 230, 460, 67),
+            pygame.Rect(15, 555, 460, 22),
             pygame.Rect(15, 669, 780, 48),
         ):
             pygame.draw.rect(self.screen, PANEL, rect, border_radius=4)
@@ -735,6 +781,7 @@ class App:
             self.text(
                 "Cantos: 1 e 6 | Bordas: 2 e 5 | Centro: 3 e 4"
                 f" | Controle: {game.center_control(owner)}"
+                f" | Tabuleiro: {len(player.board)}/{BOARD_LIMIT}"
                 + (" | +1 tempo no proximo turno" if player.center_bonus_pending else ""),
                 (24, 560 if owner == 0 else 275), BLUE, self.small,
             )
@@ -742,16 +789,6 @@ class App:
             if not player.king and player in targets:
                 pygame.draw.rect(self.screen, GREEN, hero, 3, border_radius=6)
             y = 90 if owner == 1 else 603
-            self.text(
-                f"Tempo: {player.mana}/{player.max_mana}"
-                + (f" (+{player.temporary_mana} temporario)" if player.temporary_mana else ""),
-                (24, y), BLUE,
-            )
-            self.text(
-                f"Deck: {len(player.deck)} | Mao: {len(player.hand)}/10 | Tabuleiro: {len(player.board)}/{BOARD_LIMIT}"
-                f" | Descarte: {len(player.discard)}",
-                (24, y + 28), MUTED, self.small,
-            )
             if player.armor:
                 pygame.draw.rect(self.screen, PANEL, (742, y + 6, 210, 26), border_radius=4)
                 self.text(f"Armadura do Rei: {player.armor}", (750, y + 10), BLUE)
@@ -791,6 +828,8 @@ class App:
             self.draw_hand_card(card, motion)
         for owner, player in enumerate(game.players):
             self.draw_hero_health(owner, player.health)
+            self.draw_zone_labels(owner)
+            self.draw_tempo(owner)
         self.draw_sidebar()
         if self.card_dragging and self.drag_card and self.card_drag_start and self.card_drag_point and self.card_drag_center:
             motion = self.hand_view.motions[self.drag_card.uid]
@@ -981,13 +1020,46 @@ class App:
             self.button(self.start_button, "Jogar novamente")
             self.button(self.quit_button, "Voltar ao Menu")
         self.card_tooltip.draw(self)
+        self.info_tooltip.draw(self)
         pygame.display.flip()
+
+    def update_info_tooltip(self, point: tuple[int, int], now: int) -> None:
+        key = anchor = None
+        title = text = ""
+        if (
+            self.pointer_in_window and self.state == State.MATCH and self.game
+            and not self.drag_card and not self.drag_unit and self.card_tooltip.key is None
+        ):
+            for owner, player in enumerate(self.game.players):
+                for zone, rect in self.zone_rects(owner).items():
+                    if not rect.collidepoint(point):
+                        continue
+                    side = "Jogador" if owner == 0 else "Adversario"
+                    title = f"{side} - " + {
+                        "hand": "Mao", "deck": "Deck", "discard": "Descarte", "tempo": "Tempo",
+                    }[zone]
+                    text = {
+                        "hand": f"{len(player.hand)} de 10 cartas na mao.",
+                        "deck": f"{len(player.deck)} cartas restantes no deck.",
+                        "discard": f"{len(player.discard)} cartas no descarte.",
+                        "tempo": f"{player.mana} disponivel de {player.max_mana} permanente"
+                        + (f" + {player.temporary_mana} temporario" if player.temporary_mana else "") + ".",
+                    }[zone]
+                    key, anchor = (owner, zone), rect
+                    break
+                if key is not None:
+                    break
+        self.info_tooltip.update(key, title, text, anchor, now)
 
     def update_card_tooltip(self, point: tuple[int, int], now: int) -> None:
         key = card = anchor = None
         if self.pointer_in_window and not self.drag_card and not self.drag_unit:
             if self.state == State.MATCH and self.game:
-                hovered = self.hand_view.hovered
+                over_zone = any(
+                    rect.collidepoint(point) for owner in (0, 1)
+                    for rect in self.zone_rects(owner).values()
+                )
+                hovered = None if over_zone else self.hand_view.hovered
                 if hovered:
                     motion = self.hand_view.motions[hovered.uid]
                     image = pygame.transform.rotozoom(
@@ -995,7 +1067,7 @@ class App:
                     )
                     anchor = image.get_rect(center=(round(motion.x), round(motion.y)))
                     key, card = (self.state, "hand", hovered.uid), hovered.definition
-                else:
+                elif not over_zone:
                     for entity, rect in self.entity_rects():
                         if isinstance(entity, Unit) and not entity.is_king and rect.collidepoint(point):
                             card = self.game.catalog[entity.definition_id or entity.card_id]
@@ -1018,11 +1090,13 @@ class App:
         self.music.update(self.state == State.MATCH)
         if self.state == State.PUZZLE:
             self.card_tooltip.reset()
+            self.info_tooltip.reset()
             self.puzzle_view.update()
             return
         game = self.game
         if self.state != State.MATCH or game is None:
             self.update_card_tooltip(pygame.mouse.get_pos(), pygame.time.get_ticks())
+            self.info_tooltip.reset()
             return
         if game.over:
             self.finish_match()
@@ -1042,12 +1116,14 @@ class App:
             if game.over:
                 self.finish_match()
         self.update_card_tooltip(point, now)
+        self.update_info_tooltip(point, now)
 
     def finish_match(self) -> None:
         if self.game and self.game.winner == 0:
             self.audio.play_event("victory")
         self.state = State.GAME_OVER
         self.card_tooltip.reset()
+        self.info_tooltip.reset()
         self.music.update(False)
         self.clear_selection()
 
@@ -1055,10 +1131,12 @@ class App:
         if event.type in (pygame.WINDOWFOCUSLOST, pygame.WINDOWLEAVE):
             self.pointer_in_window = False
             self.card_tooltip.reset()
+            self.info_tooltip.reset()
         elif event.type in (pygame.WINDOWFOCUSGAINED, pygame.WINDOWENTER):
             self.pointer_in_window = True
         elif event.type == pygame.MOUSEBUTTONDOWN:
             self.card_tooltip.reset()
+            self.info_tooltip.reset()
         elif event.type == pygame.MOUSEWHEEL and self.card_tooltip.wheel(event.y):
             return
         if event.type == pygame.QUIT:
