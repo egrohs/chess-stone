@@ -15,11 +15,11 @@ COLUMNS = {
     "id", "name", "category", "card_type", "cost", "attack", "health",
     "keywords", "trigger", "effect_code", "description",
 }
-KEYWORDS = {"taunt", "charge", "rush", "divine_shield", "windfury", "elusive"}
+KEYWORDS = {"charge", "rush", "divine_shield", "windfury", "elusive"}
 CATEGORIES = {"Peça", "Tática", "Estratégia"}
 KEYWORD_ALIASES = {
-    "provocar": "taunt", "investida": "charge", "rapidez": "rush",
-    "escudo_divino": "divine_shield", "furia_dos_ventos": "windfury",
+    "iniciativa": "charge", "desenvolvimento_rapido": "rush",
+    "protecao": "divine_shield", "ataque_duplo": "windfury",
     "elusivo": "elusive",
 }
 TRIGGERS = {"on_play", "on_death", "on_turn_start", "on_turn_end"}
@@ -28,13 +28,13 @@ ACTIONS = {
     "grant_keyword", "activate_king", "destroy", "win_pattern",
 }
 TARGETS = {
-    "self", "own_hero", "enemy_hero", "target_enemy", "target_enemy_minion",
-    "target_ally", "target_ally_minion", "all_enemies", "all_enemy_minions",
-    "all_allies", "all_allied_minions", "adjacent_allies", "lowest_health_enemy",
-    "lowest_health_enemy_minion",
+    "self", "own_hero", "enemy_hero", "target_enemy", "target_enemy_piece",
+    "target_ally", "target_ally_piece", "all_enemies", "all_enemy_pieces",
+    "all_allies", "all_allied_pieces", "adjacent_allies", "lowest_health_enemy",
+    "lowest_health_enemy_piece",
 }
 TARGET_ALIASES = {
-    "target_2_enemies": ("lowest_health_enemy_minion", 2),
+    "target_2_enemies": ("lowest_health_enemy_piece", 2),
 }
 
 
@@ -142,12 +142,12 @@ def validate_cards(cards: object) -> list[dict]:
         if card["id"] in ids:
             raise ValueError(f"ID duplicado: {card['id']}")
         ids.add(card["id"])
-        if not isinstance(card.get("type"), str) or card["type"] not in {"minion", "spell"}:
-            raise ValueError(f"{label}: type deve ser minion ou spell")
+        if not isinstance(card.get("type"), str) or card["type"] not in {"peça", "manobra"}:
+            raise ValueError(f"{label}: type deve ser peça ou manobra")
         integer(card.get("cost"), f"{label}.cost")
         if card["cost"] > 10:
             raise ValueError(f"{label}: custo maximo e 10")
-        if card["type"] == "minion":
+        if card["type"] == "peça":
             integer(card.get("attack"), f"{label}.attack")
             integer(card.get("health"), f"{label}.health", 1)
         keywords = card.get("keywords")
@@ -162,11 +162,11 @@ def validate_cards(cards: object) -> list[dict]:
         for effect in card["effects"]:
             validate_effect(effect, label)
             if effect["action"] == "win_pattern" and (
-                card["type"] != "spell" or card.get("rarity") != "legendary"
+                card["type"] != "manobra" or card.get("rarity") != "legendary"
             ):
-                raise ValueError(f"{label}: mate exige feitico lendario")
-            if card["type"] == "spell" and effect["trigger"] != "on_play":
-                raise ValueError(f"{label}: feiticos nao persistem para gatilhos futuros")
+                raise ValueError(f"{label}: mate exige manobra lendaria")
+            if card["type"] == "manobra" and effect["trigger"] != "on_play":
+                raise ValueError(f"{label}: manobras nao persistem para gatilhos futuros")
     for card in cards:
         pending = list(card["effects"])
         while pending:
@@ -176,8 +176,8 @@ def validate_cards(cards: object) -> list[dict]:
                 raise ValueError(f"{card['id']}: carta referenciada inexistente {reference}")
             if effect["action"] == "summon":
                 referenced = next(c for c in cards if c["id"] == reference)
-                if referenced["type"] != "minion":
-                    raise ValueError(f"{card['id']}: summon exige um lacaio")
+                if referenced["type"] != "peça":
+                    raise ValueError(f"{card['id']}: summon exige uma peça")
             condition = effect.get("condition")
             if condition and condition["card_id"] not in ids:
                 raise ValueError(f"{card['id']}: condicao referencia carta inexistente")
@@ -245,12 +245,12 @@ def convert_csv(source: Path, destination: Path) -> list[dict]:
                 card = {
                     "id": row["id"].strip(), "name": row["name"].strip(),
                     "category": row["category"].strip(),
-                    "type": normalize(row["card_type"]), "cost": int(row["cost"]),
+                    "type": row["card_type"].strip().casefold(), "cost": int(row["cost"]),
                     "keywords": keywords,
                     "effects": parse_effect_code(row["effect_code"], row["trigger"].strip()),
                     "description": row["description"].strip(),
                 }
-                if card["type"] == "minion":
+                if card["type"] == "peça":
                     card.update(attack=int(row["attack"]), health=int(row["health"]))
                 if any(effect["action"] == "win_pattern" for effect in card["effects"]):
                     card["rarity"] = "legendary"

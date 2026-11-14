@@ -19,8 +19,8 @@ from board_rules import BOARD_LIMIT, CENTER_SLOTS
 MOVE_COST = 1
 HAND_LIMIT = 10
 KEYWORD_LABELS = {
-    "taunt": "Provocar", "charge": "Investida", "rush": "Rapidez",
-    "divine_shield": "Escudo Divino", "windfury": "Furia dos Ventos", "elusive": "Elusivo",
+    "charge": "Iniciativa", "rush": "Desenvolvimento",
+    "divine_shield": "Proteção", "windfury": "Ataque duplo", "elusive": "Elusivo",
 }
 
 
@@ -74,7 +74,7 @@ class Player:
     turns_started: int = 0
     endgame_ready: bool = False
     king: Unit | None = None
-    spells_played: int = 0
+    maneuvers_played: int = 0
     armor: int = 0
     center_bonus_pending: bool = False
     temporary_mana: int = 0
@@ -168,6 +168,10 @@ class Game:
     def hero_target(self, owner: int) -> Entity:
         return self.players[owner].king or self.players[owner]
 
+    @staticmethod
+    def entity_name(entity: Entity) -> str:
+        return f"Rei ({entity.name})" if isinstance(entity, Player) else entity.name
+
     def require_turn(self, owner: int) -> None:
         if self.over:
             raise RuleError("A partida terminou.")
@@ -197,16 +201,16 @@ class Game:
     def start_turn(self) -> None:
         player = self.players[self.current]
         player.turns_started += 1
-        player.spells_played = 0
+        player.maneuvers_played = 0
         player.max_mana = min(10, player.max_mana + 1)
         player.temporary_mana = int(player.center_bonus_pending)
         player.center_bonus_pending = False
         player.mana = player.max_mana + player.temporary_mana
         if player.temporary_mana:
-            self.log(f"{player.name}: dominio do Centro concede +1 mana temporaria.")
+            self.log(f"{player.name}: dominio do Centro concede +1 tempo temporario.")
         for unit in player.board:
             unit.attacks_used = 0
-        self.log(f"Turno {self.turn_number} - {player.name} ({player.mana} mana).")
+        self.log(f"Turno {self.turn_number} - {player.name} ({player.mana} tempo).")
         self.draw_card(self.current)
         for unit in list(player.board):
             if not self.over and unit in player.board:
@@ -228,12 +232,12 @@ class Game:
         player = self.players[owner]
         player.center_bonus_pending = self.center_control(owner) > self.center_control(1 - owner)
         if player.center_bonus_pending:
-            self.log(f"{player.name} domina o Centro: +1 mana no proximo turno.")
+            self.log(f"{player.name} domina o Centro: +1 tempo no proximo turno.")
         # Eight complete rounds = sixteen individual player turns.
         if self.turn_number >= 16 and sum(len(p.board) for p in self.players) <= 3:
             for player in self.players:
                 if not player.endgame_ready:
-                    self.log(f"{player.name}: Endgame disponivel por mesa reduzida.")
+                    self.log(f"{player.name}: Final de jogo disponivel por tabuleiro reduzido.")
                 player.endgame_ready = True
         self.current = 1 - owner
         self.turn_number += 1
@@ -250,7 +254,7 @@ class Game:
         if manual:
             self.require_turn(owner)
             if not self.can_activate_king(owner):
-                raise RuleError("Rei indisponivel: exige Endgame e um espaco livre.")
+                raise RuleError("Rei indisponivel: exige Final de jogo e um espaco livre.")
         if not self.can_activate_king(owner):
             if not self.over and self.players[owner].endgame_ready and not self.players[owner].king:
                 self.log(f"{self.players[owner].name}: Rei aguarda um espaco livre.")
@@ -271,7 +275,7 @@ class Game:
     def summon(self, owner: int, card_id: str, position: int | None = None) -> Unit | None:
         player = self.players[owner]
         if len(player.board) >= BOARD_LIMIT:
-            self.log(f"{player.name}: invocacao de {self.catalog[card_id]['name']} falhou, mesa cheia.")
+            self.log(f"{player.name}: desenvolvimento de {self.catalog[card_id]['name']} falhou, tabuleiro cheio.")
             return None
         position = player.free_slots()[0] if position is None else position
         self.require_free_slot(owner, position)
@@ -284,34 +288,34 @@ class Game:
         player.board.append(unit)
         player.board.sort(key=lambda unit: unit.slot)
         self.mates.invalidate()
-        self.log(f"{player.name} invoca {unit.name} no slot {position + 1}.")
+        self.log(f"{player.name} desenvolve {unit.name} na casa {position + 1}.")
         return unit
 
     def move_unit(self, owner: int, unit: Unit, position: int) -> None:
         self.require_turn(owner)
         player = self.players[owner]
         if unit.owner != owner or unit not in player.board:
-            raise RuleError("Escolha uma unidade sua na mesa.")
+            raise RuleError("Escolha uma peça sua no tabuleiro.")
         if unit.is_king:
             raise RuleError("O Rei nao pode ser reposicionado.")
         self.require_free_slot(owner, position)
         if player.mana < MOVE_COST:
-            raise RuleError(f"Mana insuficiente para reposicionar ({MOVE_COST}).")
+            raise RuleError(f"Tempo insuficiente para reposicionar ({MOVE_COST}).")
         origin = unit.slot
         player.mana -= MOVE_COST
         unit.slot = position
         player.board.sort(key=lambda item: item.slot)
         self.mates.invalidate()
-        self.log(f"{player.name} move {unit.name}: slot {origin + 1} -> {position + 1} ({MOVE_COST} mana).")
+        self.log(f"{player.name} move {unit.name}: casa {origin + 1} -> {position + 1} ({MOVE_COST} tempo).")
 
     def require_free_slot(self, owner: int, position: int) -> None:
         if (
             isinstance(position, bool) or not isinstance(position, int)
             or not 0 <= position < BOARD_LIMIT
         ):
-            raise RuleError(f"Posicao de invocacao invalida: escolha um slot de 1 a {BOARD_LIMIT}.")
+            raise RuleError(f"Posicao de desenvolvimento invalida: escolha uma casa de 1 a {BOARD_LIMIT}.")
         if self.players[owner].unit_at(position) is not None:
-            raise RuleError("Slot ocupado. Escolha um espaco livre.")
+            raise RuleError("Casa ocupada. Escolha um espaco livre.")
 
     def center_control(self, owner: int) -> int:
         return sum(unit.health > 0 and unit.slot in CENTER_SLOTS for unit in self.players[owner].board)
@@ -343,11 +347,11 @@ class Game:
         effects = self.manual_effects(card)
         if not effects:
             return []
-        # A minion's battlecry is not a spell and can select Elusive units.
+        # A piece's battlecry is not a maneuver and can select Elusive units.
         groups = [
             self.parser.resolve_targets(
                 effect, owner, preview=True,
-                allow_elusive=card.definition["type"] == "minion",
+                allow_elusive=card.definition["type"] == "peça",
             )
             for effect in effects
         ]
@@ -358,7 +362,7 @@ class Game:
         return (
             not self.over and self.current == owner and card in player.hand
             and card.definition["cost"] <= player.mana
-            and (card.definition["type"] != "minion" or len(player.board) < BOARD_LIMIT)
+            and (card.definition["type"] != "peça" or len(player.board) < BOARD_LIMIT)
             and (not self.manual_effects(card) or bool(self.valid_card_targets(owner, card)))
             and not self.mate_unavailable_reason(owner, card)
         )
@@ -381,10 +385,10 @@ class Game:
             raise RuleError("Carta nao esta na mao.")
         definition = card.definition
         if definition["cost"] > player.mana:
-            raise RuleError("Mana insuficiente.")
-        if definition["type"] == "minion":
+            raise RuleError("Tempo insuficiente.")
+        if definition["type"] == "peça":
             if len(player.board) >= BOARD_LIMIT:
-                raise RuleError(f"Sua mesa ja tem {BOARD_LIMIT} unidades.")
+                raise RuleError(f"Seu tabuleiro ja tem {BOARD_LIMIT} peças.")
             if position is not None:
                 self.require_free_slot(owner, position)
         if self.manual_effects(card) and target not in self.valid_card_targets(owner, card):
@@ -398,11 +402,11 @@ class Game:
         player.hand.remove(card)
         self.log(f"{player.name} joga {card.name}.")
         source = None
-        if definition["type"] == "minion":
+        if definition["type"] == "peça":
             source = self.summon(owner, definition["id"], position)
         self.parser.execute(definition["effects"], "on_play", owner, source, target)
-        if definition["type"] == "spell":
-            player.spells_played += 1
+        if definition["type"] == "manobra":
+            player.maneuvers_played += 1
         self.cleanup()
 
     def attack_targets(self, unit: Unit) -> list[Entity]:
@@ -430,7 +434,7 @@ class Game:
                 front = lambda slot: slot >= unit.slot if unit.owner == 0 else slot <= unit.slot
                 targets = [entity for entity in enemy.board if front(entity.slot) and abs(entity.slot - unit.slot) <= 3]
             if not targets:
-                targets = [enemy]
+                targets = [self.hero_target(enemy.owner)]
             if just_summoned and "charge" not in unit.keywords:
                 targets = [entity for entity in targets if entity is not self.hero_target(enemy.owner)]
             return targets
@@ -438,9 +442,6 @@ class Game:
         targets = list(enemy.board)
         if not enemy.king:
             targets.append(enemy)
-        taunts = [entity for entity in targets if "taunt" in getattr(entity, "keywords", set())]
-        if taunts:
-            targets = taunts
         if just_summoned and "charge" not in unit.keywords:
             targets = [entity for entity in targets if entity is not self.hero_target(enemy.owner)]
         return targets
@@ -448,11 +449,11 @@ class Game:
     def attack(self, owner: int, unit: Unit, target: Entity) -> None:
         self.require_turn(owner)
         if unit.owner != owner or target not in self.attack_targets(unit):
-            raise RuleError("Ataque invalido: verifique prontidao, congelamento e Provocar.")
+            raise RuleError("Ataque invalido: verifique prontidao, congelamento e alcance.")
         unit.attacks_used += 1
         unit.has_attacked = True
         retaliation = target.attack if isinstance(target, Unit) else 0
-        self.log(f"{unit.name} ataca {target.name}.")
+        self.log(f"{unit.name} ataca {self.entity_name(target)}.")
         dealt = self.combat_damage(target, unit.attack)
         received = self.combat_damage(unit, retaliation)
         self.damage(target, dealt)
@@ -465,22 +466,22 @@ class Game:
             return
         if isinstance(target, Unit) and "divine_shield" in target.keywords:
             target.keywords.remove("divine_shield")
-            self.log(f"{target.name}: Escudo Divino absorve o dano.")
+            self.log(f"{target.name}: Proteção absorve o dano.")
             return
         hero = target if isinstance(target, Player) else self.players[target.owner] if target.is_king else None
         absorbed = min(hero.armor, amount) if hero is not None else 0
         if hero is not None and absorbed:
             hero.armor -= absorbed
-            self.log(f"{hero.name}: Armadura absorve {absorbed} de dano.")
+            self.log(f"{self.entity_name(self.hero_target(hero.owner))}: Armadura absorve {absorbed} de dano.")
         target.health -= amount - absorbed
         if self.on_damage is not None:
             self.on_damage(amount)
-        self.log(f"{target.name} sofre {amount} de dano.")
+        self.log(f"{self.entity_name(target)} sofre {amount} de dano.")
 
     def heal(self, target: Entity, amount: int) -> None:
         healed = min(amount, max(0, target.max_health - target.health))
         target.health += healed
-        self.log(f"{target.name} recupera {healed} de vida.")
+        self.log(f"{self.entity_name(target)} recupera {healed} de vida.")
 
     def cleanup(self) -> None:
         self.mates.invalidate()
@@ -493,7 +494,7 @@ class Game:
                 dead = [unit for p in self.players for unit in p.board if unit.health <= 0]
                 for unit in dead:
                     self.players[unit.owner].board.remove(unit)
-                    self.log(f"{unit.name} saiu da mesa.")
+                    self.log(f"{unit.name} saiu do tabuleiro.")
                 self.mates.invalidate()
                 self.check_winner()
                 if self.over or not dead:
@@ -531,7 +532,7 @@ class Game:
             targets = self.valid_card_targets(1, card)
             target = self.rng.choice(targets) if targets else None
             position = None
-            if card.definition["type"] == "minion":
+            if card.definition["type"] == "peça":
                 position = min(player.free_slots(), key=lambda slot: (slot not in CENTER_SLOTS, slot))
             self.play_card(1, card, target, position)
             return

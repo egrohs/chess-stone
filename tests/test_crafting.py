@@ -92,13 +92,13 @@ class CraftingTests(unittest.TestCase):
         self.assertEqual(queen.card_id, "dama")
         self.assertEqual(queen.definition_id, "dama__perfect")
         self.assertEqual(game.parser.resolve_targets(
-            {"target": "target_ally_minion", "card_id": "dama"}, 0, preview=True,
+            {"target": "target_ally_piece", "card_id": "dama"}, 0, preview=True,
         ), [queen])
         before = bishop.attack
         game.parser.execute(game.catalog["par_de_bispos"]["effects"], "on_play", 0)
         self.assertEqual(bishop.attack, before + 1)
 
-    def test_improved_spell_extra_healing_and_perfect_draw(self):
+    def test_improved_maneuver_extra_healing_and_perfect_draw(self):
         base = next(c for c in self.cards if c["id"] == "roque")
         self.assertEqual(make_variant(base, "improved")["effects"][-1]["amount"], 1)
         perfect = make_variant(base, "perfect")

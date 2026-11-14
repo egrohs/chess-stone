@@ -273,7 +273,7 @@ class App:
         if not self.game or self.game.current != 0 or self.game.over:
             return []
         if self.selected_card and self.game.playable(0, self.selected_card):
-            if self.selected_card.definition["type"] == "minion" and self.position is None:
+            if self.selected_card.definition["type"] == "peça" and self.position is None:
                 return []
             return self.game.valid_card_targets(0, self.selected_card)
         if self.selected_unit:
@@ -283,7 +283,7 @@ class App:
     def choosing_position(self) -> bool:
         return bool(
             self.game and self.selected_card
-            and self.selected_card.definition["type"] == "minion"
+            and self.selected_card.definition["type"] == "peça"
             and self.position is None and self.game.playable(0, self.selected_card)
         )
 
@@ -382,8 +382,8 @@ class App:
                 self.clear_selection()
                 return
             if self.play_button.collidepoint(point) and self.selected_card:
-                if self.selected_card.definition["type"] == "minion" and self.position is None:
-                    raise RuleError("Escolha um espaco verde na sua mesa.")
+                if self.selected_card.definition["type"] == "peça" and self.position is None:
+                    raise RuleError("Escolha uma casa verde no seu tabuleiro.")
                 self.commit_card()
                 return
             for card, rect in self.hand_rects():
@@ -395,7 +395,7 @@ class App:
                         self.selected_card = card
                         if not game.playable(0, card):
                             game.log(game.mate_unavailable_reason(0, card) or
-                                     "Carta indisponivel: verifique mana, espacos e alvos.")
+                                     "Carta indisponivel: verifique tempo, espacos e alvos.")
                     return
             for position, rect in self.placement_rects():
                 if rect.collidepoint(point):
@@ -418,7 +418,7 @@ class App:
                 if isinstance(entity, Unit) and entity.owner == 0:
                     self.clear_selection()
                     if not game.attack_targets(entity):
-                        raise RuleError("Unidade nao pode atacar agora.")
+                        raise RuleError("Peça nao pode atacar agora.")
                     self.selected_unit = entity
                     return
             self.clear_selection()
@@ -476,8 +476,6 @@ class App:
         border = MUTED
         if game and game.attack_targets(unit):
             border = BLUE
-        if "taunt" in unit.keywords:
-            border = RED
         if unit in targets:
             border = GREEN
         if unit is self.selected_unit:
@@ -527,13 +525,13 @@ class App:
             self.text(
                 "Cantos: 1 e 6 | Bordas: 2 e 5 | Centro: 3 e 4"
                 f" | Controle: {game.center_control(owner)}"
-                + (" | +1 mana no proximo turno" if player.center_bonus_pending else ""),
+                + (" | +1 tempo no proximo turno" if player.center_bonus_pending else ""),
                 (24, 568 if owner == 0 else 330), BLUE, self.small,
             )
             hero = self.hero_rect(owner)
             if player.king:
                 self.text(
-                    f"Rei na mesa | Vida compartilhada: {player.health}",
+                    f"Rei no tabuleiro | Vida compartilhada: {player.health}",
                     (hero.x, hero.y + 10), GOLD,
                 )
             else:
@@ -543,12 +541,12 @@ class App:
                 self.text(f"Vida: {player.health} / 30", (hero.x + 12, hero.y + 35), GOLD)
             y = 90 if owner == 1 else 603
             self.text(
-                f"Mana: {player.mana}/{player.max_mana}"
-                + (f" (+{player.temporary_mana} temporaria)" if player.temporary_mana else ""),
+                f"Tempo: {player.mana}/{player.max_mana}"
+                + (f" (+{player.temporary_mana} temporario)" if player.temporary_mana else ""),
                 (24, y), BLUE,
             )
             self.text(
-                f"Deck: {len(player.deck)} | Mao: {len(player.hand)}/10 | Mesa: {len(player.board)}/{BOARD_LIMIT}",
+                f"Deck: {len(player.deck)} | Mao: {len(player.hand)}/10 | Tabuleiro: {len(player.board)}/{BOARD_LIMIT}",
                 (24, y + 28), MUTED, self.small,
             )
             if player.armor:
@@ -568,10 +566,10 @@ class App:
             ghost.center = pygame.mouse.get_pos()
             pygame.draw.rect(self.screen, GOLD, ghost, 2, border_radius=5)
             self.text(self.drag_unit.name, (ghost.x + 8, ghost.y + 8), GOLD, self.small)
-        hint = "Selecione carta ou unidade. Verde = alvo/espaco valido; azul = pronto; vermelho = Provocar."
+        hint = "Selecione carta ou peça. Verde = alvo/espaco valido; azul = pronto."
         if self.selected_card:
             hint = (
-                "Escolha um slot verde livre. Pecas nao mudam de slot quando outras morrem."
+                "Escolha uma casa verde livre. Pecas nao mudam de casa quando outras morrem."
                 if self.choosing_position()
                 else "Escolha um alvo verde ou use Jogar carta para efeitos sem alvo."
             )
@@ -583,7 +581,7 @@ class App:
             definition = card.definition
             playable = game.playable(0, card)
             pygame.draw.rect(
-                self.screen, (43, 61, 77) if definition["type"] == "minion" else (66, 49, 80),
+                self.screen, (43, 61, 77) if definition["type"] == "peça" else (66, 49, 80),
                 rect, border_radius=5,
             )
             border = GOLD if card is self.selected_card else GREEN if playable else MUTED
@@ -596,7 +594,7 @@ class App:
             )
             footer = (
                 f"{definition['attack']} / {definition['health']}"
-                if definition["type"] == "minion" else "FEITICO"
+                if definition["type"] == "peça" else "MANOBRA"
             )
             self.text(footer, (rect.x + 8, rect.bottom - 28), WHITE, self.small)
         self.draw_sidebar()
@@ -608,21 +606,21 @@ class App:
         pygame.draw.rect(self.screen, PANEL, (SIDEBAR, 0, WIDTH - SIDEBAR, HEIGHT))
         self.text("COMANDOS", (1120, 28), GOLD, self.large)
         if not self.audio.error:
-            self.text(f"Feiticos neste turno: {game.players[game.current].spells_played}", (1120, 70), MUTED, self.small)
+            self.text(f"Manobras neste turno: {game.players[game.current].maneuvers_played}", (1120, 70), MUTED, self.small)
         if self.audio.error:
             self.text("Audio indisponivel (veja o console)", (1120, 70), RED, self.small)
         human_turn = game.current == 0 and not game.over
         self.button(self.end_button, "Passar Turno", human_turn)
-        self.button(self.king_button, "Ativar Rei (Endgame)", human_turn and game.can_activate_king(0))
+        self.button(self.king_button, "Ativar Rei (Final de jogo)", human_turn and game.can_activate_king(0))
         can_play = bool(
             human_turn and self.selected_card and game.playable(0, self.selected_card)
             and not game.manual_effects(self.selected_card)
-            and (self.selected_card.definition["type"] == "spell" or self.position is not None)
+            and (self.selected_card.definition["type"] == "manobra" or self.position is not None)
         )
         self.button(self.play_button, "Jogar carta", can_play)
         if self.selected_card:
             automatic_targets = [
-                entity.name + (f" (slot {entity.slot + 1})" if isinstance(entity, Unit) else "")
+                game.entity_name(entity) + (f" (casa {entity.slot + 1})" if isinstance(entity, Unit) else "")
                 for effect in self.selected_card.definition["effects"]
                 if effect.get("target", "").startswith("lowest_health_")
                 for entity in game.parser.resolve_targets(effect, 0, preview=True)
@@ -635,13 +633,13 @@ class App:
         elif self.selected_unit:
             unit = self.selected_unit
             description = self.game.catalog.get(unit.definition_id or unit.card_id, {}).get(
-                "description", "A vida do Rei e a vida do heroi.",
+                "description", "O Rei no tabuleiro compartilha a vida indicada no retrato.",
             )
             self.paragraph(f"{unit.name}: {description}", pygame.Rect(1120, 298, 296, 128))
         else:
             self.paragraph(
-                "Endgame: deck esgotado ativa automaticamente. Apos 8 rodadas, mesa total com ate 3"
-                " unidades libera o botao. O Rei precisa de um espaco livre.",
+                "Final de jogo: deck esgotado ativa automaticamente. Apos 8 rodadas, tabuleiro total com ate 3"
+                " peças libera o botao. O Rei precisa de um espaco livre.",
                 pygame.Rect(1120, 298, 296, 128), MUTED,
             )
         self.text("ULTIMAS JOGADAS", (1120, 443), GOLD)
@@ -666,10 +664,10 @@ class App:
         self.button(self.new_deck_button, "Novo (descartar rascunho)")
         self.button(self.back_deck_button, "Voltar (descartar)")
         total = sum(self.draft.values())
-        minions = sum(self.draft[c["id"]] for c in self.cards if c["type"] == "minion")
-        self.text(f"{total} cartas | {minions} lacaios | {total - minions} feiticos", (910, 235), GOLD)
+        pieces = sum(self.draft[c["id"]] for c in self.cards if c["type"] == "peça")
+        self.text(f"{total} cartas | {pieces} peças | {total - pieces} manobras", (910, 235), GOLD)
         average = sum(c["cost"] * self.draft[c["id"]] for c in self.cards) / total if total else 0
-        self.text(f"Custo medio: {average:.1f} mana", (910, 270), BLUE)
+        self.text(f"Custo medio: {average:.1f} tempo", (910, 270), BLUE)
         self.paragraph(
             "Clique em um deck salvo para carregar e selecionar."
             " Alteracoes so entram na partida depois de salvar.",
@@ -679,7 +677,7 @@ class App:
         for card, minus, plus in self.catalog_rows():
             y = minus.y
             pygame.draw.rect(self.screen, PANEL, (30, y, 820, 55), border_radius=5)
-            stats = f" {card['attack']}/{card['health']}" if card["type"] == "minion" else " Feitico"
+            stats = f" {card['attack']}/{card['health']}" if card["type"] == "peça" else " Manobra"
             self.text(f"{card['cost']} - {card['name']}{stats}", (40, y + 3), WHITE)
             self.paragraph(card["description"], pygame.Rect(40, y + 29, 605, 22), MUTED)
             self.button(minus, "-", self.draft[card["id"]] > 0)
@@ -720,7 +718,7 @@ class App:
         elif self.state == State.MENU:
             self.text("CHESS STONE", (600, 220), GOLD, self.large)
             self.text("Card game de xadrez | Jogador x IA", (548, 292))
-            self.text(f"IA: {self.deck_size} cartas | {BOARD_LIMIT} unidades por lado | 30 de vida", (493, 336), MUTED)
+            self.text(f"IA: {self.deck_size} cartas | {BOARD_LIMIT} peças por lado | 30 de vida", (493, 336), MUTED)
             self.button(self.start_button, "Iniciar partida")
             self.button(self.builder_button, "Montar / editar decks")
             self.button(self.collection_button, "Colecao de cartas")

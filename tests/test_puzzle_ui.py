@@ -204,7 +204,7 @@ class PuzzleInterfaceTests(unittest.TestCase):
         self.app.active_deck = None
         self.app.start_game()
         self.assertEqual(self.app.state, State.MATCH)
-        self.assertTrue(all(c.definition["type"] == "minion" for c in self.app.game.players[0].hand))
+        self.assertTrue(all(c.definition["type"] == "peça" for c in self.app.game.players[0].hand))
         self.assertFalse(self.app.inventory.path.exists())
 
 

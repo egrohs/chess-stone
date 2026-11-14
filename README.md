@@ -25,7 +25,7 @@ Para um deck menor e resultados reproduziveis:
 ## Manual do jogador
 
 Consulte o **[MANUAL.md](MANUAL.md)** para controles, regras de combate,
-palavras-chave, Endgame, condicoes dos seis mates, colecao, crafting e
+palavras-chave, Final de jogo, condicoes dos seis mates, colecao, crafting e
 montagem de decks. Este README concentra instalacao e documentacao tecnica.
 
 ## Persistencia e integracao
@@ -65,7 +65,7 @@ Os puzzles usam a [API oficial Lichess](https://lichess.org/api#tag/Puzzles/oper
 | `audio.py` | Impactos genericos pre-carregados e reproducao imediata ao aplicar dano |
 | `tools\generate_impacts.py` | Geracao reproduzivel dos sons originais de impacto |
 | `deck_store.py` | Validacao de decks e persistencia local em JSON |
-| `game_engine.py` | Estado, jogadas legais, combate, turnos, compras, Endgame e IA |
+| `game_engine.py` | Estado, jogadas legais, combate, turnos, compras, Final de jogo e IA |
 | `mate_rules.py` | Formacoes anunciadas, cancelamento e vitorias alternativas |
 | `effect_parser.py` | Resolucao de alvos, condicoes e execucao ordenada dos efeitos |
 | `csv_to_json.py` | Conversao e validacao do catalogo; utilizavel sem pygame |
@@ -114,7 +114,7 @@ padrao e o formato existente da colecao.
 ## Imagens e sons das cartas
 
 A pasta `assets\cards\` possui uma subpasta para cada ID de carta do catalogo,
-alem de `rei` para o heroi. Coloque a imagem e os sons juntos na pasta da carta:
+alem de `rei` para o Rei. Coloque a imagem e os sons juntos na pasta da carta:
 
 ```text
 assets\
@@ -176,10 +176,10 @@ python tools\generate_impacts.py
 Os WAVs sao carregados uma vez ao iniciar. O motor notifica o cliente
 sincronamente logo apos descontar a vida; o som e iniciado nesse mesmo ponto,
 sem esperar o proximo frame, percorrer o log ou usar temporizadores. Isso cobre
-ataques do jogador/IA, contra-ataques, feiticos, efeitos em area, dano letal e
+ataques do jogador/IA, contra-ataques, manobras, efeitos em area, dano letal e
 fadiga, inclusive contra o Rei. Cada alvo atingido dispara um impacto;
 impactos simultaneos podem se sobrepor. Cura, destruir sem dano, dano zero e
-dano absorvido por Escudo Divino nao disparam o som.
+dano absorvido por Proteção nao disparam o som.
 
 O mixer usa buffer de 256 amostras a 44,1 kHz (aproximadamente 5,8 ms por buffer),
 volume de 45% e pelo menos 16 canais. A latencia audivel final tambem depende do
@@ -196,9 +196,13 @@ Exporte uma planilha como CSV UTF-8 com o cabecalho exato:
 id,name,category,card_type,cost,attack,health,keywords,trigger,effect_code,description
 ```
 
-`card_type` aceita `minion` ou `spell`; ataque e vida sao obrigatorios para
-lacaios. `keywords` aceita identificadores ingleses ou os nomes portugueses
+`card_type` aceita `peça` ou `manobra`; ataque e vida sao obrigatorios para
+peças. `keywords` aceita identificadores ingleses ou os nomes portugueses
 separados por `|`. Os IDs devem ser unicos e estaveis.
+O campo `type` do JSON usa os mesmos valores, incluindo o acento em `peça`.
+Alvos de efeitos usam `piece`/`pieces`, como `target_ally_piece` e
+`all_enemy_pieces`. O contador de manobras do jogador e `maneuvers_played`.
+Decks e colecoes salvos continuam validos, pois os IDs das cartas nao mudaram.
 `category` aceita somente `Peça`, `Tática` ou `Estratégia`.
 Raridade e categoria sao independentes: efeitos `win_pattern` geram
 `"rarity": "legendary"` no JSON, preservando a restricao dos mates no deck.
@@ -211,14 +215,14 @@ python csv_to_json.py data\cards.csv data\cards.json
 O conversor rejeita custos/atributos invalidos, IDs duplicados, palavras-chave,
 acoes, alvos e gatilhos desconhecidos, alem de referencias a cartas inexistentes.
 O jogo revalida o JSON ao carregar. Apenas `on_play` solicita alvo manual;
-feiticos nao podem usar gatilhos futuros, pois nao permanecem na mesa.
+manobras nao podem usar gatilhos futuros, pois nao permanecem no tabuleiro.
 Uma conversao invalida nao substitui o catalogo existente.
 
 ### Efeitos
 
 Vitoria alternativa usa `{"trigger":"on_play","action":"win_pattern","pattern":"anastasia"}`.
 Os padroes aceitos sao `anastasia`, `boden`, `smothered`, `back_rank`, `opera` e
-`opposition`, apenas em feiticos lendarios. O parser encaminha a
+`opposition`, apenas em manobras lendarias. O parser encaminha a
 acao para o modulo de regras de mate; padroes desconhecidos sao rejeitados.
 
 O formato curto aceita `DAMAGE`, `HEAL`, `DRAW` e `FREEZE`, separados por `|`:
@@ -227,9 +231,9 @@ O formato curto aceita `DAMAGE`, `HEAL`, `DRAW` e `FREEZE`, separados por `|`:
 DAMAGE:2:TARGET_2_ENEMIES|DRAW:1:IF_KILLED
 ```
 
-Isso gera dano a ate duas unidades inimigas **distintas com menor Vida**,
-desempatando pelo menor slot, com compra de uma carta **por unidade abatida**.
-Escudo Divino nao conta como abate. Os efeitos nao usam RNG; decks continuam
+Isso gera dano a ate duas peças inimigas **distintas com menor Vida**,
+desempatando pelo menor casa, com compra de uma carta **por peça abatida**.
+Proteção nao conta como abate. Os efeitos nao usam RNG; decks continuam
 embaralhados e a IA pode escolher alvos manuais aleatoriamente.
 `DRAW:1:SELF` compra para o dono da carta. Para efeitos complexos, use um objeto
 ou uma lista JSON na celula; planilhas normalmente escapam as aspas na exportacao.
@@ -241,20 +245,20 @@ ou uma lista JSON na celula; planilhas normalmente escapam as aspas na exportaca
     "action": "buff",
     "attack": 2,
     "duration": "until_end_of_turn",
-    "target": "target_ally_minion"
+    "target": "target_ally_piece"
   },
   {
     "trigger": "on_play",
     "action": "grant_keyword",
     "keyword": "rush",
-    "target": "target_ally_minion"
+    "target": "target_ally_piece"
   }
 ]
 ```
 
 As acoes sao executadas na ordem. Cada acao de area aplica suas alteracoes antes
 de resolver mortes. Todos os efeitos manuais de uma mesma jogada compartilham um
-unico alvo, valido para todos eles. Um lacaio com alvo manual primeiro exige
+unico alvo, valido para todos eles. Uma peça com alvo manual primeiro exige
 posicionamento e depois selecao de alvo. `on_kill` e um objeto de acao adicional,
 executado por abate e sem solicitar novos alvos.
 
@@ -267,22 +271,22 @@ Acoes: `damage`, `heal`, `buff`, `draw`, `summon`, `freeze`, `grant_keyword`,
 apenas ataque aceita duracao `until_end_of_turn`. `grant_keyword` usa `keyword`.
 Congelamento tem duracao fixa; `amount` no formato curto de FREEZE nao altera isso.
 
-Alvos: `self`, `own_hero`, `enemy_hero`, `target_enemy`, `target_enemy_minion`,
-`target_ally`, `target_ally_minion`, `all_enemies`, `all_enemy_minions`,
-`all_allies`, `all_allied_minions`, `adjacent_allies`, `lowest_health_enemy`,
-`lowest_health_enemy_minion`. `self` e o lacaio de origem ou o heroi para feiticos.
-`adjacent_allies` usa slots fixos imediatamente vizinhos; lacunas interrompem
+Alvos: `self`, `own_hero`, `enemy_hero`, `target_enemy`, `target_enemy_piece`,
+`target_ally`, `target_ally_piece`, `all_enemies`, `all_enemy_pieces`,
+`all_allies`, `all_allied_pieces`, `adjacent_allies`, `lowest_health_enemy`,
+`lowest_health_enemy_piece`. `self` e a peça de origem ou o Rei para manobras.
+`adjacent_allies` usa casas fixas imediatamente vizinhas; lacunas interrompem
 a adjacencia. Seletores `lowest_health_*` aceitam `count`, ordenam por Vida e
-desempatam pelo slot (heroi fora da mesa vem depois dos slots em empates).
+desempatam pela casa (Rei fora do tabuleiro vem depois das casas em empates).
 Os alvos sao definidos antes da resolucao da acao.
 Seletores antigos `random_*` sao rejeitados pela validacao.
 O filtro opcional `card_id` restringe os alvos a uma carta.
 
 Cada `Unit.slot` identifica uma posicao fixa de 0 a 5; `Player.board` contem
-apenas unidades ocupantes, ordenadas por slot. `unit_at` e `free_slots` consultam
-ocupacao sem compactar a mesa. Apoio modifica somente dano de combate, antes de
-Escudo Divino/Armadura; o bonus de Centro adiciona 1 mana por um unico turno,
-sem elevar o limite de 10 cristais permanentes. Veja o manual para as regras.
+apenas peças ocupantes, ordenadas por casa. `unit_at` e `free_slots` consultam
+ocupacao sem compactar o tabuleiro. Apoio modifica somente dano de combate, antes de
+Proteção/Armadura; o bonus de Centro adiciona 1 tempo por um unico turno,
+sem elevar o limite permanente de 10 de tempo. Veja o manual para as regras.
 
 A condicao suportada e `{"type":"friendly_count","card_id":"bispo","at_least":2}`,
 utilizada em Par de Bispos. Se nao atendida, a acao e ignorada com registro no

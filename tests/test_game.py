@@ -5,11 +5,41 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from csv_to_json import CATEGORIES, ROOT, convert_csv, parse_effect_code, validate_cards
-from game_engine import BOARD_LIMIT, Card, Game, RuleError, load_cards
+from csv_to_json import CATEGORIES, KEYWORD_ALIASES, ROOT, convert_csv, normalize, parse_effect_code, validate_cards
+from game_engine import BOARD_LIMIT, KEYWORD_LABELS, Card, Game, RuleError, load_cards
 
 
 class CatalogTests(unittest.TestCase):
+    def test_chess_keyword_labels_round_trip_and_taunt_is_rejected(self):
+        for keyword, label in KEYWORD_LABELS.items():
+            self.assertEqual(KEYWORD_ALIASES[normalize(label)], keyword)
+        cards = load_cards()
+        catalog = {card["id"]: card for card in cards}
+        self.assertEqual(catalog["ataque_duplo"]["name"], "Garfo")
+        self.assertEqual(catalog["torre"]["keywords"], ["divine_shield"])
+        self.assertEqual(catalog["dama"]["keywords"], ["charge", "windfury"])
+        cards[0]["keywords"] = ["taunt"]
+        with self.assertRaisesRegex(ValueError, "keywords"):
+            validate_cards(cards)
+
+    def test_card_types_are_piece_and_maneuver(self):
+        cards = load_cards()
+        self.assertEqual({card["type"] for card in cards}, {"peça", "manobra"})
+        for card in cards:
+            if card["type"] == "peça":
+                self.assertIn("attack", card)
+                self.assertIn("health", card)
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "cards.csv"
+            source.write_text(
+                (ROOT / "data" / "cards.csv").read_text(encoding="utf-8").replace(
+                    ",peça,", ", PEÇA ,"
+                ).replace(",manobra,", ", MANOBRA ,"),
+                encoding="utf-8",
+            )
+            converted = convert_csv(source, Path(directory) / "cards.json")
+        self.assertEqual(converted, cards)
+
     def test_csv_and_json_are_equivalent(self):
         with tempfile.TemporaryDirectory() as directory:
             cards = convert_csv(ROOT / "data" / "cards.csv", Path(directory) / "cards.json")
@@ -21,7 +51,7 @@ class CatalogTests(unittest.TestCase):
             parse_effect_code("DAMAGE:2:TARGET_2_ENEMIES|DRAW:1:IF_KILLED"),
             [{
                 "trigger": "on_play", "action": "damage", "amount": 2,
-                "target": "lowest_health_enemy_minion", "count": 2,
+                "target": "lowest_health_enemy_piece", "count": 2,
                 "on_kill": {"action": "draw", "amount": 1},
             }],
         )
@@ -82,7 +112,7 @@ class CatalogTests(unittest.TestCase):
                 "trigger": "on_play", "action": "damage", "amount": 1, "target": "random_enemy",
             }]),
             lambda c: c[0].update(effects=[{
-                "trigger": "on_play", "action": "damage", "amount": 1, "target": "random_enemy_minion",
+                "trigger": "on_play", "action": "damage", "amount": 1, "target": "random_enemy_piece",
             }]),
             lambda c: c[0].update(keywords=["flight"]),
             lambda c: c[0].update(keywords=[{}]),
@@ -228,7 +258,7 @@ class RulesTests(unittest.TestCase):
         with self.assertRaises(RuleError):
             self.game.attack(0, queen, self.p1)
 
-    def test_taunt_and_divine_shield(self):
+    def test_in_range_target_and_protection(self):
         queen = self.unit("dama")
         rook = self.unit("torre", 1)
         with self.assertRaises(RuleError):
@@ -240,6 +270,23 @@ class RulesTests(unittest.TestCase):
         self.game.attack(0, queen, rook)
         self.assertNotIn(rook, self.p1.board)
         self.assertNotIn(queen, self.p0.board)
+
+    def test_rook_does_not_force_pawn_to_target_it(self):
+        pawn = self.unit(ready=True)
+        rook = self.unit("torre", owner=1)
+        self.assertIn(self.p1, self.game.attack_targets(pawn))
+        self.assertIn(rook, self.game.attack_targets(pawn))
+        self.game.attack(0, pawn, self.p1)
+        self.assertEqual(self.p1.health, 29)
+        self.assertIn("Rei (Adversario) sofre 1 de dano.", self.game.messages)
+
+    def test_out_of_range_piece_targets_activated_king_not_hidden_portrait(self):
+        rook = self.game.summon(0, "torre", 5)
+        rook.summoned_turn -= 1
+        self.p1.endgame_ready = True
+        self.game.activate_king(1)
+        self.assertEqual(self.game.attack_targets(rook), [self.p1.king])
+        self.assertNotIn(self.p1, self.game.attack_targets(rook))
 
     def test_deathrattle_draws(self):
         pawn = self.unit()
@@ -262,7 +309,7 @@ class RulesTests(unittest.TestCase):
         self.assertEqual(self.game.winner, 1)
         self.assertEqual(self.p1.health, 30)
 
-    def test_manual_spell_targets_and_elusive(self):
+    def test_manual_maneuver_targets_and_elusive(self):
         bishop = self.unit("bispo", 1)
         pawn = self.unit(owner=1)
         card = self.card("cravada_absoluta")
@@ -304,7 +351,7 @@ class RulesTests(unittest.TestCase):
         self.assertEqual(len(self.p0.hand), 2)
         self.assertEqual(sum(u.health <= 0 for u in victims), 2)
 
-    def test_area_effect_ignores_elusive_and_taunt(self):
+    def test_area_effect_ignores_elusive(self):
         bishop = self.unit("bispo", 1)
         rook = self.unit("torre", 1)
         self.game.play_card(0, self.card("zugzwang"))

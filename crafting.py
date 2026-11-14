@@ -52,7 +52,7 @@ def make_variant(base: dict, quality: str) -> dict:
     card["base_id"] = base["id"]
     card["quality"] = quality
     card["name"] += f" ({QUALITY_LABELS[quality]})"
-    if card["type"] == "minion":
+    if card["type"] == "peça":
         card["attack"] += bonus
         card["health"] += bonus
         extra = f"+{bonus}/+{bonus}."

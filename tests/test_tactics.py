@@ -82,13 +82,13 @@ class TacticalRulesTests(unittest.TestCase):
         occupant = self.unit(slot=5)
         card = self.card("cavalo")
         next_uid = self.game._next_uid
-        with self.assertRaisesRegex(RuleError, "ocupado"):
+        with self.assertRaisesRegex(RuleError, "ocupada"):
             self.game.play_card(0, card, position=5)
         self.assertIn(card, self.p0.hand)
         self.assertEqual(self.p0.mana, 10)
         self.assertEqual(self.p0.board, [occupant])
         self.assertEqual(self.game._next_uid, next_uid)
-        with self.assertRaisesRegex(RuleError, "ocupado"):
+        with self.assertRaisesRegex(RuleError, "ocupada"):
             self.game.summon(0, "peao", 5)
 
     def test_empty_slot_is_not_restricted_by_occupied_count(self):
@@ -113,8 +113,8 @@ class TacticalRulesTests(unittest.TestCase):
     def test_supported_combat_reduces_damage_for_both_participants(self):
         attacker = self.unit(slot=0, card_id="dama")
         self.unit(slot=1)
-        defender = self.unit(1, 4)
-        self.unit(1, 5)
+        defender = self.unit(1, 3)
+        self.unit(1, 4)
         attacker.attack = 4
         defender.attack = 3
         attacker.health = defender.health = 10
@@ -124,7 +124,7 @@ class TacticalRulesTests(unittest.TestCase):
 
     def test_hanging_combat_increases_damage_for_both_participants(self):
         attacker = self.unit(slot=0, card_id="dama")
-        defender = self.unit(1, 4)
+        defender = self.unit(1, 3)
         attacker.attack = 4
         defender.attack = 3
         attacker.health = defender.health = 10
@@ -134,10 +134,10 @@ class TacticalRulesTests(unittest.TestCase):
     def test_removing_support_changes_next_attack_not_printed_stats(self):
         attacker = self.unit(card_id="dama")
         attacker.attack = 2
-        defender = self.unit(1, 4)
+        defender = self.unit(1, 3)
         defender.health = 10
         defender.attack = 0
-        support = self.unit(1, 5)
+        support = self.unit(1, 4)
         self.game.attack(0, attacker, defender)
         self.assertEqual(defender.health, 9)
         support.health = 0
@@ -170,13 +170,13 @@ class TacticalRulesTests(unittest.TestCase):
         self.assertEqual(attacker.health, 2)
         self.assertNotIn(defender, self.p1.board)
 
-    def test_spells_ignore_support_and_hanging_modifiers(self):
+    def test_maneuvers_ignore_support_and_hanging_modifiers(self):
         supported = self.unit(1, 0, "bispo")
         self.unit(1, 1)
         hanging = self.unit(1, 5, "bispo")
         self.game.parser.execute([{
             "trigger": "on_play", "action": "damage", "amount": 2,
-            "target": "all_enemy_minions",
+            "target": "all_enemy_pieces",
         }], "on_play", 0)
         self.assertEqual((supported.health, hanging.health), (2, 2))
 
@@ -296,7 +296,7 @@ class TacticalRulesTests(unittest.TestCase):
         bishop = self.unit(1, 4, "bispo")
         bishop.health = 1
         self.unit(1, 0)
-        effect = {"target": "lowest_health_enemy_minion", "card_id": "bispo", "count": 2}
+        effect = {"target": "lowest_health_enemy_piece", "card_id": "bispo", "count": 2}
         self.assertEqual(self.game.parser.resolve_targets(effect, 0), [bishop])
 
     def test_lowest_health_with_zero_or_one_target(self):
@@ -305,7 +305,7 @@ class TacticalRulesTests(unittest.TestCase):
         only = self.unit(1, 5)
         self.assertEqual(self.game.parser.resolve_targets(effect, 0), [only])
 
-    def test_ai_places_minions_in_available_center_slots(self):
+    def test_ai_places_pieces_in_available_center_slots(self):
         self.game.end_turn(0)
         self.p1.hand = [Card(self.game.uid(), self.game.catalog["peao"])]
         self.game.ai_step()

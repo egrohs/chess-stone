@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 
 
 PAGE_SIZE = 8
-TYPES = (None, "minion", "spell")
-TYPE_LABELS = {None: "Todos os tipos", "minion": "Lacaios", "spell": "Feiticos"}
+TYPES = (None, "peça", "manobra")
+TYPE_LABELS = {None: "Todos os tipos", "peça": "Peças", "manobra": "Manobras"}
 TRIGGER_LABELS = {
     "on_play": "Ao jogar", "on_death": "Ao morrer",
     "on_turn_start": "Inicio do turno", "on_turn_end": "Fim do turno",
@@ -131,21 +131,21 @@ class CollectionView:
             self.search_rect.inflate(-16, -12), font=app.font,
         )
         app.button(self.type_button, TYPE_LABELS[self.card_type])
-        app.button(self.sort_button, "Ordem: nome" if self.sort_by_name else "Ordem: custo de mana")
+        app.button(self.sort_button, "Ordem: nome" if self.sort_by_name else "Ordem: custo de tempo")
         app.button(self.back_button, "Voltar ao Menu")
         matches = self.filtered_cards()
         app.text(f"{len(matches)} de {len(self.cards)} cartas | Clique para ver detalhes", (30, 167), MUTED)
         for card, rect in self.rows():
             pygame.draw.rect(
-                app.screen, (43, 61, 77) if card["type"] == "minion" else (66, 49, 80),
+                app.screen, (43, 61, 77) if card["type"] == "peça" else (66, 49, 80),
                 rect, border_radius=6,
             )
             pygame.draw.rect(app.screen, GOLD if card is self.selected else MUTED, rect, 3, border_radius=6)
-            app.text(f"{card['cost']} mana", (rect.x + 12, rect.y + 10), BLUE, app.large)
+            app.text(f"{card['cost']} tempo", (rect.x + 12, rect.y + 10), BLUE, app.large)
             app.paragraph(card["name"], pygame.Rect(rect.x + 12, rect.y + 60, 186, 55), font=app.font)
             app.text(TYPE_LABELS[card["type"]], (rect.x + 12, rect.y + 120), MUTED, app.small)
             app.paragraph(card["description"], pygame.Rect(rect.x + 12, rect.y + 148, 186, 92))
-            if card["type"] == "minion":
+            if card["type"] == "peça":
                 app.text(f"ATQ {card['attack']} / VIDA {card['health']}", (rect.x + 12, rect.bottom - 34), GOLD)
         if not matches:
             app.text("Nenhuma carta encontrada. Altere a busca ou o filtro.", (30, 250), MUTED)
@@ -162,10 +162,10 @@ class CollectionView:
                 f"Categoria: {card['category']}",
                 "Lendaria: uma copia por deck entre todas as qualidades."
                 if card.get("rarity") == "legendary" else "",
-                f"Tipo: {TYPE_LABELS[card['type']]} | Custo: {card['cost']} mana",
+                f"Tipo: {TYPE_LABELS[card['type']]} | Custo: {card['cost']} tempo",
                 "Puzzle: " + THEMES.get(base_id, ("", "Tema nao configurado"))[1],
             ]
-            if card["type"] == "minion":
+            if card["type"] == "peça":
                 sections.append(f"Ataque: {card['attack']} | Vida: {card['health']}")
             sections.extend([
                 "Palavras-chave: " + (", ".join(KEYWORD_LABELS[k] for k in card["keywords"]) or "Nenhuma"),

@@ -15,7 +15,7 @@ PATTERNS = {"anastasia", "boden", "smothered", "back_rank", "opera", "opposition
 LABELS = {
     "anastasia": "Mate de Anastasia", "boden": "Mate de Boden",
     "smothered": "Mate Abafado", "back_rank": "Mate de Gaveta",
-    "opera": "Mate da Opera", "opposition": "Endgame Puro",
+    "opera": "Mate da Opera", "opposition": "Final de jogo Puro",
 }
 
 
@@ -123,23 +123,19 @@ class MateRules:
             if enemy.health > 15:
                 return "Anastasia exige inimigo com ate 15 de vida."
             if sum(not u.is_king for u in enemy.board) < 2:
-                return "Anastasia exige ao menos dois lacaios inimigos."
-            if any("taunt" in u.keywords for u in enemy.board):
-                return "Anastasia e bloqueado por qualquer Provocar inimigo."
-        elif pattern == "boden" and self.game.players[owner].spells_played < 2:
-            return "Boden exige dois outros feiticos jogados neste turno."
+                return "Anastasia exige ao menos duas peças inimigas (Rei nao conta)."
+        elif pattern == "boden" and self.game.players[owner].maneuvers_played < 2:
+            return "Boden exige duas outras manobras jogadas neste turno."
         elif pattern == "smothered":
             if len(enemy.board) != BOARD_LIMIT or any(unit.is_king for unit in enemy.board):
-                return f"Mate Abafado exige {BOARD_LIMIT} lacaios inimigos (Rei nao conta)."
-            if any("taunt" in unit.keywords for unit in enemy.board):
-                return "Mate Abafado e bloqueado por qualquer Provocar inimigo."
+                return f"Mate Abafado exige {BOARD_LIMIT} peças inimigas (Rei nao conta)."
         elif pattern == "back_rank":
             blockers = sum(
-                not unit.is_king and (unit.card_id in {"peao", "peao_passado"} or "taunt" in unit.keywords)
+                not unit.is_king and unit.card_id in {"peao", "peao_passado"}
                 for unit in enemy.board
             )
             if blockers < 3:
-                return "Mate de Gaveta exige tres lacaios inimigos que sejam Peoes ou tenham Provocar."
+                return "Mate de Gaveta exige tres Peoes inimigos (Rei nao conta)."
             if enemy.armor != 0:
                 return "Mate de Gaveta exige zero de Armadura inimiga."
         elif pattern == "opera":
@@ -147,15 +143,15 @@ class MateRules:
             if pair is None or not all(unit.has_attacked for unit in pair):
                 return "Mate da Opera exige que a Torre e o Bispo tenham atacado nesta partida."
             if enemy.health > 15 or sum(not unit.is_king for unit in enemy.board) != 1:
-                return "Mate da Opera exige inimigo com ate 15 de vida e exatamente um lacaio."
+                return "Mate da Opera exige inimigo com ate 15 de vida e exatamente uma peça (Rei nao conta)."
         elif pattern == "opposition":
             if not any(
                 card.definition.get("base_id", card.definition["id"]) == "peao_passado"
                 for card in player.hand
             ):
-                return "Endgame Puro exige um Peao Passado na mao."
+                return "Final de jogo Puro exige um Peao Passado na mao."
             if player.health <= enemy.health:
-                return "Endgame Puro exige mais vida no seu Rei que no Rei inimigo."
+                return "Final de jogo Puro exige mais vida no seu Rei que no Rei inimigo."
         return ""
 
     def execute(self, owner: int, pattern: str) -> None:

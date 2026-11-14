@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from game_engine import Entity, Game, Unit
 
 
-MANUAL_TARGETS = {"target_enemy", "target_enemy_minion", "target_ally", "target_ally_minion"}
+MANUAL_TARGETS = {"target_enemy", "target_enemy_piece", "target_ally", "target_ally_piece"}
 
 
 class EffectParser:
@@ -35,11 +35,11 @@ class EffectParser:
         groups = {
             "self": [source or own_hero],
             "own_hero": [own_hero], "enemy_hero": [enemy_hero],
-            "target_enemy": all_enemies, "target_enemy_minion": enemy_units,
-            "target_ally": all_allies, "target_ally_minion": ally_units,
-            "all_enemies": all_enemies, "all_enemy_minions": enemy_units,
-            "all_allies": all_allies, "all_allied_minions": ally_units,
-            "lowest_health_enemy": all_enemies, "lowest_health_enemy_minion": enemy_units,
+            "target_enemy": all_enemies, "target_enemy_piece": enemy_units,
+            "target_ally": all_allies, "target_ally_piece": ally_units,
+            "all_enemies": all_enemies, "all_enemy_pieces": enemy_units,
+            "all_allies": all_allies, "all_allied_pieces": ally_units,
+            "lowest_health_enemy": all_enemies, "lowest_health_enemy_piece": enemy_units,
         }
         if code == "adjacent_allies":
             if source not in allies.board:
@@ -53,7 +53,7 @@ class EffectParser:
             and (not effect.get("card_id") or getattr(entity, "card_id", None) == effect["card_id"])
         ]
         if code in MANUAL_TARGETS:
-            # Elusive prevents manual spell targeting, not battlecries or area effects.
+            # Elusive prevents manual maneuver targeting, not battlecries or area effects.
             if source is None and not allow_elusive:
                 candidates = [e for e in candidates if "elusive" not in getattr(e, "keywords", set())]
             return candidates if preview else [e for e in candidates if e is target]
@@ -113,7 +113,7 @@ class EffectParser:
                 game.log(f"{entity.name} foi sacrificado.")
             elif action == "buff":
                 if not hasattr(entity, "attack"):
-                    game.log(f"{entity.name}: bonus de atributos exige unidade no tabuleiro.")
+                    game.log(f"{entity.name}: bonus de atributos exige peça no tabuleiro.")
                     continue
                 attack = effect.get("attack", 0)
                 health = effect.get("health", 0)
@@ -128,13 +128,13 @@ class EffectParser:
                     entity.frozen_through = game.players[entity.owner].turns_started + 1
                     game.log(f"{entity.name} congelado ate o fim do proximo turno dele.")
                 else:
-                    game.log(f"{entity.name}: congelamento exige unidade no tabuleiro.")
+                    game.log(f"{entity.name}: congelamento exige peça no tabuleiro.")
             elif action == "grant_keyword":
                 if hasattr(entity, "keywords"):
                     entity.keywords.add(effect["keyword"])
                     game.log(f"{entity.name} ganha {effect['keyword']}.")
                 else:
-                    game.log(f"{entity.name}: palavra-chave exige unidade no tabuleiro.")
+                    game.log(f"{entity.name}: palavra-chave exige peça no tabuleiro.")
             if entity.health <= 0:
                 killed.append(entity)
         # Resolve the entire area action before removing casualties (simultaneous damage).

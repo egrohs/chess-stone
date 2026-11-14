@@ -61,6 +61,40 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual((unit.slot, self.player.mana), (2, 9))
         self.assertEqual(self.game.center_control(0), 1)
 
+    def test_resource_labels_and_messages_use_tempo(self):
+        self.player.temporary_mana = 1
+        self.player.center_bonus_pending = True
+        with patch.object(self.app, "text", wraps=self.app.text) as text:
+            self.app.draw()
+        rendered = [call.args[0] for call in text.call_args_list]
+        self.assertIn("Tempo: 10/10 (+1 temporario)", rendered)
+        self.assertTrue(any("+1 tempo no proximo turno" in label for label in rendered))
+        unit = self.game.summon(0, "peao", 0)
+        self.game.move_unit(0, unit, 2)
+        self.assertIn("(1 tempo)", self.game.messages[-1])
+
+    def test_chess_terminology_renders_in_match(self):
+        self.game.summon(0, "torre")
+        self.game.summon(0, "dama")
+        self.game.summon(0, "cavalo")
+        with (
+            patch.object(self.app, "text", wraps=self.app.text) as text,
+            patch.object(self.app, "paragraph", wraps=self.app.paragraph) as paragraph,
+            patch.object(self.app, "button", wraps=self.app.button) as button,
+        ):
+            self.app.draw()
+        labels = [call.args[0] for call in text.call_args_list + paragraph.call_args_list]
+        self.assertIn("Proteção", labels)
+        self.assertIn("Iniciativa / Ataque duplo", labels)
+        self.assertIn("Desenvolvimento", labels)
+        self.assertTrue(any("Tabuleiro: 3/6" in label for label in labels))
+        self.assertTrue(any(call.args[1] == "Ativar Rei (Final de jogo)" for call in button.call_args_list))
+        for label in labels:
+            self.assertNotRegex(
+                label.casefold(),
+                r"\b(?:provocar|investida|rapidez|heroi|herói|unidades?|slots?|mesa|endgame)\b",
+            )
+
     def test_drag_unit_to_empty_slot(self):
         unit = self.game.summon(0, "peao", 0)
         before = self.player.mana
@@ -83,7 +117,7 @@ class InterfaceTests(unittest.TestCase):
         self.app.handle_event(event(pygame.MOUSEBUTTONUP, button=1, pos=slots[1].center))
         self.assertEqual((unit.slot, self.player.mana), (0, before))
 
-    def test_select_and_place_minion(self):
+    def test_select_and_place_piece(self):
         card = self.add_card("peao")
         self.select_first_card()
         self.assertIs(self.app.selected_card, card)
@@ -105,7 +139,7 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(self.player.board[1].card_id, "cavalo")
         self.assertEqual((left.attack, right.attack), (2, 2))
 
-    def test_targeted_spell_click(self):
+    def test_targeted_maneuver_click(self):
         enemy = self.game.summon(1, "peao")
         self.add_card("cravada_absoluta")
         self.select_first_card()
@@ -140,7 +174,7 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(self.player.unit_at(4).card_id, "dama")
         self.app.draw()
 
-    def test_deterministic_spell_preview_and_center_bonus_render(self):
+    def test_deterministic_maneuver_preview_and_center_bonus_render(self):
         self.game.summon(0, "peao", 3)
         self.game.summon(1, "bispo", 4)
         self.game.summon(1, "peao", 5)
@@ -156,7 +190,7 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(self.game.players[1].unit_at(4).health, 2)
         self.assertIsNone(self.game.players[1].unit_at(5))
 
-    def test_minion_with_target_uses_two_click_stages(self):
+    def test_piece_with_target_uses_two_click_stages(self):
         enemy = self.game.summon(1, "peao")
         card = self.add_card("peao")
         card.definition = dict(card.definition, effects=[{
@@ -171,7 +205,7 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(enemy.health, 1)
         self.assertEqual(len(self.player.board), 1)
 
-    def test_no_target_spell_uses_button(self):
+    def test_no_target_maneuver_uses_button(self):
         card = self.add_card("roque")
         self.select_first_card()
         self.assertIn(card, self.player.hand)
@@ -191,7 +225,7 @@ class InterfaceTests(unittest.TestCase):
         self.add_card("roque")
         self.select_first_card()
         self.app.click(self.app.play_button.center)
-        self.assertIn("Mana insuficiente", self.game.messages[-1])
+        self.assertIn("Tempo insuficiente", self.game.messages[-1])
 
     def test_cancel_selection_and_king_button(self):
         self.add_card("peao")
@@ -232,7 +266,7 @@ class InterfaceTests(unittest.TestCase):
         self.game.end_turn(0)
         self.game.end_turn(1)
         self.player.mana = 10
-        self.player.spells_played = 2
+        self.player.maneuvers_played = 2
         self.player.hand.clear()
         self.add_card("mate_boden")
         self.app.draw()
@@ -246,7 +280,7 @@ class InterfaceTests(unittest.TestCase):
         self.app.draw()
 
     def test_single_piece_threats_render_and_back_rank_wins_by_click(self):
-        rook = self.game.summon(0, "torre")
+        rook = self.game.summon(0, "torre", 5)
         for _ in range(3):
             self.game.summon(1, "peao")
         self.game.end_turn(0)
@@ -280,6 +314,13 @@ class DeckBuilderTests(unittest.TestCase):
         self.app.click(self.app.name_rect.center)
         self.app.handle_event(pygame.event.Event(pygame.TEXTINPUT, text=name))
         self.app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_RETURN))
+
+    def test_builder_uses_new_piece_and_resource_labels(self):
+        with patch.object(self.app, "text", wraps=self.app.text) as text:
+            self.app.draw()
+        rendered = [call.args[0] for call in text.call_args_list]
+        self.assertIn("0 cartas | 0 peças | 0 manobras", rendered)
+        self.assertIn("Custo medio: 0.0 tempo", rendered)
 
     def test_build_save_reload_select_and_play(self):
         self.assertEqual(self.app.state, State.DECK_BUILDER)
@@ -441,6 +482,33 @@ class CollectionTests(unittest.TestCase):
         self.assertEqual(self.collection.page, 0)
         self.assertFalse(self.path.exists())
 
+    def test_collection_uses_new_piece_and_resource_labels(self):
+        self.collection.card_type = "peça"
+        self.collection.refresh()
+        with (
+            patch.object(self.app, "text", wraps=self.app.text) as text,
+            patch.object(self.app, "button", wraps=self.app.button) as button,
+        ):
+            self.app.draw()
+        self.assertTrue(any(call.args[1] == "Peças" for call in button.call_args_list))
+        self.assertTrue(any(call.args[1] == "Ordem: custo de tempo" for call in button.call_args_list))
+        self.assertTrue(any(call.args[0].endswith(" tempo") for call in text.call_args_list))
+        self.assertTrue(any("Tipo: Peças | Custo:" in call.args[0] for call in text.call_args_list))
+        for card in self.app.cards:
+            self.assertNotRegex(card["description"].casefold(), r"\b(?:mana|lacaios?)\b")
+
+    def test_collection_uses_maneuver_labels(self):
+        self.collection.card_type = "manobra"
+        self.collection.refresh()
+        with (
+            patch.object(self.app, "text", wraps=self.app.text) as text,
+            patch.object(self.app, "button", wraps=self.app.button) as button,
+        ):
+            self.app.draw()
+        self.assertTrue(any(call.args[1] == "Manobras" for call in button.call_args_list))
+        self.assertTrue(any("Tipo: Manobras | Custo:" in call.args[0] for call in text.call_args_list))
+        self.assertTrue(all(card["type"] == "manobra" for card in self.collection.filtered_cards()))
+
     def test_accent_insensitive_search_and_empty_results(self):
         self.search("peao")
         self.assertIn("peao", [c["id"] for c in self.collection.filtered_cards()])
@@ -456,7 +524,7 @@ class CollectionTests(unittest.TestCase):
         self.assertEqual(self.collection.page, 0)
 
     def test_keywords_type_filter_sort_and_reset_page(self):
-        self.search("provocar")
+        self.search("protecao")
         self.assertIn("torre", [c["id"] for c in self.collection.filtered_cards()])
         self.click(self.collection.type_button)
         self.assertEqual([c["id"] for c in self.collection.filtered_cards()], ["torre"])
@@ -466,14 +534,14 @@ class CollectionTests(unittest.TestCase):
         self.click(self.collection.next)
         self.click(self.collection.type_button)
         self.assertEqual(self.collection.page, 0)
-        self.assertTrue(all(c["type"] == "minion" for c in self.collection.filtered_cards()))
+        self.assertTrue(all(c["type"] == "peça" for c in self.collection.filtered_cards()))
         self.click(self.collection.type_button)
-        self.assertTrue(all(c["type"] == "spell" for c in self.collection.filtered_cards()))
+        self.assertTrue(all(c["type"] == "manobra" for c in self.collection.filtered_cards()))
         self.click(self.collection.type_button)
         self.assertEqual(len(self.collection.filtered_cards()), len(self.app.cards))
         self.click(self.collection.sort_button)
         self.assertTrue(self.collection.sort_by_name)
-        self.assertEqual(self.collection.filtered_cards()[0]["id"], "ataque_duplo")
+        self.assertEqual(self.collection.filtered_cards()[0]["id"], "bispo")
         self.app.draw()
 
     def test_back_escape_and_unmodified_game_and_deck(self):

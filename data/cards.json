@@ -3,7 +3,7 @@
     "id": "peao",
     "name": "Peão",
     "category": "Peça",
-    "type": "minion",
+    "type": "peça",
     "cost": 1,
     "keywords": [],
     "effects": [
@@ -21,7 +21,7 @@
     "id": "cavalo",
     "name": "Cavalo",
     "category": "Peça",
-    "type": "minion",
+    "type": "peça",
     "cost": 3,
     "keywords": [
       "rush"
@@ -34,7 +34,7 @@
         "trigger": "on_play"
       }
     ],
-    "description": "Rapidez. Ao entrar: aliados adjacentes ganham +1 de ataque.",
+    "description": "Desenvolvimento. Ao entrar: aliados adjacentes ganham +1 de ataque.",
     "attack": 3,
     "health": 2
   },
@@ -42,7 +42,7 @@
     "id": "bispo",
     "name": "Bispo",
     "category": "Peça",
-    "type": "minion",
+    "type": "peça",
     "cost": 3,
     "keywords": [
       "elusive"
@@ -63,14 +63,13 @@
     "id": "torre",
     "name": "Torre",
     "category": "Peça",
-    "type": "minion",
+    "type": "peça",
     "cost": 4,
     "keywords": [
-      "taunt",
       "divine_shield"
     ],
     "effects": [],
-    "description": "Provocar. Escudo Divino.",
+    "description": "Proteção.",
     "attack": 3,
     "health": 5
   },
@@ -78,14 +77,14 @@
     "id": "dama",
     "name": "Dama",
     "category": "Peça",
-    "type": "minion",
+    "type": "peça",
     "cost": 7,
     "keywords": [
       "charge",
       "windfury"
     ],
     "effects": [],
-    "description": "Investida. Fúria dos Ventos.",
+    "description": "Iniciativa. Ataque duplo.",
     "attack": 5,
     "health": 5
   },
@@ -93,31 +92,31 @@
     "id": "cravada_absoluta",
     "name": "Cravada Absoluta",
     "category": "Tática",
-    "type": "spell",
+    "type": "manobra",
     "cost": 2,
     "keywords": [],
     "effects": [
       {
         "action": "freeze",
         "amount": 1,
-        "target": "target_enemy_minion",
+        "target": "target_enemy_piece",
         "trigger": "on_play"
       }
     ],
-    "description": "Congele uma unidade inimiga até o fim do próximo turno dela."
+    "description": "Congele uma peça inimiga até o fim do próximo turno dela."
   },
   {
     "id": "ataque_duplo",
-    "name": "Ataque Duplo (Garfo)",
+    "name": "Garfo",
     "category": "Tática",
-    "type": "spell",
+    "type": "manobra",
     "cost": 3,
     "keywords": [],
     "effects": [
       {
         "action": "damage",
         "amount": 2,
-        "target": "lowest_health_enemy_minion",
+        "target": "lowest_health_enemy_piece",
         "count": 2,
         "trigger": "on_play",
         "on_kill": {
@@ -126,13 +125,13 @@
         }
       }
     ],
-    "description": "Cause 2 às duas unidades inimigas com menor Vida. Empates: menor slot primeiro. Compre 1 por abate."
+    "description": "Cause 2 às duas peças inimigas com menor Vida. Empates: menor numero de casa primeiro. Compre 1 por abate."
   },
   {
     "id": "par_de_bispos",
     "name": "Par de Bispos",
     "category": "Estratégia",
-    "type": "spell",
+    "type": "manobra",
     "cost": 3,
     "keywords": [],
     "effects": [
@@ -140,7 +139,7 @@
         "action": "buff",
         "attack": 1,
         "health": 1,
-        "target": "all_allied_minions",
+        "target": "all_allied_pieces",
         "condition": {
           "type": "friendly_count",
           "card_id": "bispo",
@@ -149,13 +148,13 @@
         "trigger": "on_play"
       }
     ],
-    "description": "Se controlar pelo menos dois Bispos: suas unidades ganham +1/+1."
+    "description": "Se controlar pelo menos dois Bispos: suas peças ganham +1/+1."
   },
   {
     "id": "coluna_aberta",
     "name": "Coluna Aberta",
     "category": "Estratégia",
-    "type": "spell",
+    "type": "manobra",
     "cost": 2,
     "keywords": [],
     "effects": [
@@ -163,40 +162,40 @@
         "action": "buff",
         "attack": 2,
         "duration": "until_end_of_turn",
-        "target": "target_ally_minion",
+        "target": "target_ally_piece",
         "trigger": "on_play"
       },
       {
         "action": "grant_keyword",
         "keyword": "rush",
-        "target": "target_ally_minion",
+        "target": "target_ally_piece",
         "trigger": "on_play"
       }
     ],
-    "description": "Uma unidade aliada ganha +2 de ataque neste turno e Rapidez permanente."
+    "description": "Uma peça aliada ganha +2 de ataque neste turno e Desenvolvimento permanente."
   },
   {
     "id": "zugzwang",
     "name": "Zugzwang",
     "category": "Estratégia",
-    "type": "spell",
+    "type": "manobra",
     "cost": 5,
     "keywords": [],
     "effects": [
       {
         "action": "freeze",
         "amount": 1,
-        "target": "all_enemy_minions",
+        "target": "all_enemy_pieces",
         "trigger": "on_play"
       }
     ],
-    "description": "Congele todas as unidades inimigas até o fim do próximo turno delas."
+    "description": "Congele todas as peças inimigas até o fim do próximo turno delas."
   },
   {
     "id": "roque",
     "name": "Roque",
     "category": "Estratégia",
-    "type": "spell",
+    "type": "manobra",
     "cost": 4,
     "keywords": [],
     "effects": [
@@ -213,19 +212,19 @@
         "trigger": "on_play"
       }
     ],
-    "description": "Cure seu Rei em 4 e invoque uma Torre se houver espaço."
+    "description": "Cure seu Rei em 4 e desenvolva uma Torre se houver espaço."
   },
   {
     "id": "sacrificio_da_dama",
     "name": "Sacrifício da Dama",
     "category": "Tática",
-    "type": "spell",
+    "type": "manobra",
     "cost": 6,
     "keywords": [],
     "effects": [
       {
         "action": "destroy",
-        "target": "target_ally_minion",
+        "target": "target_ally_piece",
         "card_id": "dama",
         "trigger": "on_play"
       },
@@ -247,7 +246,7 @@
     "id": "mate_anastasia",
     "name": "Mate de Anastasia",
     "category": "Tática",
-    "type": "spell",
+    "type": "manobra",
     "cost": 9,
     "keywords": [],
     "effects": [
@@ -257,14 +256,14 @@
         "trigger": "on_play"
       }
     ],
-    "description": "Anuncie Torre no slot 1 ou 8 junto a Cavalo adjacente com pelo menos 3 unidades aliadas. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: venca se o inimigo tem ate 15 de vida e pelo menos 2 lacaios sem nenhum Provocar.",
+    "description": "Anuncie Torre na casa 1 ou 6 junto a Cavalo adjacente com pelo menos 3 peças aliadas. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: venca se o inimigo tem ate 15 de vida e pelo menos 2 peças. Rei nao conta na quantidade de peças inimigas.",
     "rarity": "legendary"
   },
   {
     "id": "mate_boden",
     "name": "Mate de Boden",
     "category": "Tática",
-    "type": "spell",
+    "type": "manobra",
     "cost": 5,
     "keywords": [],
     "effects": [
@@ -274,14 +273,14 @@
         "trigger": "on_play"
       }
     ],
-    "description": "Anuncie Bispos nos slots 1 e 8 com pelo menos 2 lacaios entre eles. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: apos jogar 2 outros feiticos neste turno venca a partida.",
+    "description": "Anuncie Bispos nas casas 1 e 6 com pelo menos 2 peças entre eles. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: apos jogar 2 outras manobras neste turno venca a partida. Rei nao conta na quantidade de peças intermediarias.",
     "rarity": "legendary"
   },
   {
     "id": "mate_abafado",
     "name": "Mate Abafado",
     "category": "Tática",
-    "type": "spell",
+    "type": "manobra",
     "cost": 6,
     "keywords": [],
     "effects": [
@@ -291,14 +290,14 @@
         "trigger": "on_play"
       }
     ],
-    "description": "Anuncie um Cavalo e preserve-o por um turno inimigo. Sem atacar nem estar congelado: venca se o inimigo controla oito lacaios sem nenhum Provocar. Rei nao conta como lacaio.",
+    "description": "Anuncie um Cavalo e preserve-o por um turno inimigo. Sem atacar nem estar congelado: venca se o inimigo controla seis peças. Rei nao conta na quantidade de peças.",
     "rarity": "legendary"
   },
   {
     "id": "mate_gaveta",
     "name": "Mate de Gaveta",
     "category": "Tática",
-    "type": "spell",
+    "type": "manobra",
     "cost": 8,
     "keywords": [],
     "effects": [
@@ -308,14 +307,14 @@
         "trigger": "on_play"
       }
     ],
-    "description": "Anuncie uma Torre e preserve-a por um turno inimigo. Ela deve atacar e sobreviver neste turno sem estar congelada. Venca se o inimigo tem zero de Armadura e pelo menos tres lacaios que sejam Peoes ou tenham Provocar.",
+    "description": "Anuncie uma Torre e preserve-a por um turno inimigo. Ela deve atacar e sobreviver neste turno sem estar congelada. Venca se o inimigo tem zero de Armadura e pelo menos tres Peoes. Peao Passado tambem conta. Rei nao conta na quantidade de peças.",
     "rarity": "legendary"
   },
   {
     "id": "mate_opera",
     "name": "Mate da Ópera",
     "category": "Tática",
-    "type": "spell",
+    "type": "manobra",
     "cost": 7,
     "keywords": [],
     "effects": [
@@ -325,14 +324,14 @@
         "trigger": "on_play"
       }
     ],
-    "description": "Anuncie exatamente uma Torre e um Bispo adjacentes e preserve-os por um turno inimigo. Ambos devem ter atacado nesta partida mas nao neste turno nem estar congelados. Venca se o inimigo tem ate 15 de vida e exatamente um lacaio.",
+    "description": "Anuncie exatamente uma Torre e um Bispo adjacentes e preserve-os por um turno inimigo. Ambos devem ter atacado nesta partida mas nao neste turno nem estar congelados. Venca se o inimigo tem ate 15 de vida e exatamente uma peça. Rei nao conta na quantidade de peças inimigas.",
     "rarity": "legendary"
   },
   {
     "id": "endgame_puro",
-    "name": "Endgame Puro (Rei e Peão)",
+    "name": "Final de jogo Puro (Rei e Peão)",
     "category": "Tática",
-    "type": "spell",
+    "type": "manobra",
     "cost": 10,
     "keywords": [],
     "effects": [
@@ -342,18 +341,18 @@
         "trigger": "on_play"
       }
     ],
-    "description": "Anuncie seu Rei quando so restarem os dois Reis no tabuleiro e preserve essa mesa por um turno inimigo. Sem atacar nem estar congelado: venca se possui Peao Passado na mao e seu Rei tem mais vida que o inimigo.",
+    "description": "Anuncie seu Rei quando so restarem os dois Reis no tabuleiro e preserve esse tabuleiro por um turno inimigo. Sem atacar nem estar congelado: venca se possui Peao Passado na mao e seu Rei tem mais vida que o inimigo.",
     "rarity": "legendary"
   },
   {
     "id": "peao_passado",
     "name": "Peão Passado",
     "category": "Peça",
-    "type": "minion",
+    "type": "peça",
     "cost": 2,
     "keywords": [],
     "effects": [],
-    "description": "Peca de apoio: mantenha na mao para executar Endgame Puro. Nao e uma das cinco pecas basicas liberadas.",
+    "description": "Peca de apoio: mantenha na mao para executar Final de jogo Puro. Nao e uma das cinco pecas basicas liberadas.",
     "attack": 2,
     "health": 3
   }

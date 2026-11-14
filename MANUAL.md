@@ -6,9 +6,9 @@
 
 - [Inicio da partida](#inicio-da-partida)
 - [Controles](#controles)
-- [Turnos, mesa e combate](#turnos-mesa-e-combate)
+- [Turnos, tabuleiro e combate](#turnos-tabuleiro-e-combate)
 - [Palavras-chave e efeitos](#palavras-chave-e-efeitos)
-- [Ativacao do Rei e Endgame](#ativacao-do-rei-e-endgame)
+- [Ativacao do Rei e Final de jogo](#ativacao-do-rei-e-final-de-jogo)
 - [Vitorias alternativas: seis padroes de mate](#vitorias-alternativas-seis-padroes-de-mate)
 - [Colecao de cartas](#colecao-de-cartas)
 - [Crafting por puzzles Lichess](#crafting-por-puzzles-lichess)
@@ -40,89 +40,90 @@ primeiro turno. Nao ha mulligan, moeda, armas ou poder heroico.
 | Acao | Como executar |
 |---|---|
 | Selecionar carta | Clique na carta da mao; a borda fica dourada |
-| Posicionar lacaio | Clique no slot verde vazio desejado; unidades existentes nao sao deslocadas |
-| Jogar feitico com alvo | Selecione a carta e clique em um alvo verde |
+| Posicionar peça | Clique na casa verde vazia desejada; peças existentes nao sao deslocadas |
+| Jogar manobra com alvo | Selecione a carta e clique em um alvo verde |
 | Jogar carta sem alvo | Use **Jogar carta** depois de selecionar |
-| Atacar | Clique em uma unidade aliada pronta e depois em um inimigo verde |
-| Reposicionar | Arraste uma unidade sua (exceto o Rei) para um slot vazio (borda azul); custa 1 mana |
+| Atacar | Clique em uma peça aliada pronta e depois em um inimigo verde |
+| Reposicionar | Arraste uma peça sua (exceto o Rei) para uma casa vazia (borda azul); custa 1 tempo |
 | Cancelar selecao | Clique direito ou Esc |
 | Encerrar turno | Clique em **Passar Turno** |
-| Ativar o Rei manualmente | Use **Ativar Rei (Endgame)** quando estiver disponivel |
+| Ativar o Rei manualmente | Use **Ativar Rei (Final de jogo)** quando estiver disponivel |
 | Sair da partida | Use **Voltar ao Menu** |
 
-Verde indica alvos/espacos validos; azul indica unidade pronta para atacar;
-vermelho destaca Provocar. O painel lateral mostra a descricao da carta
+Verde indica alvos/espacos validos; azul indica peça pronta para atacar.
+O painel lateral mostra a descricao da carta
 selecionada e as ultimas jogadas. Pecas envolvidas em ameacas de mate
 anunciadas recebem uma borda interna dourada.
 
-Um lacaio com efeito de entrada que exige alvo primeiro pede posicionamento
+Uma peça com efeito de entrada que exige alvo primeiro pede posicionamento
 e depois selecao de alvo.
 
-## Turnos, mesa e combate
+## Turnos, tabuleiro e combate
 
-A mana maxima aumenta em um no inicio de cada turno proprio, ate **10**, e e
-totalmente restaurada. Cada jogador compra uma carta por turno.
+O tempo maximo aumenta em um no inicio de cada turno proprio, ate **10**, e e
+totalmente restaurado. Cada jogador compra uma carta por turno.
 
 A mao comporta **10 cartas**. Compras excedentes sao descartadas, mas consomem
-a carta do deck. Cada lado comporta **seis unidades, incluindo o Rei ativado**.
+a carta do deck. Cada lado comporta **seis peças, incluindo o Rei ativado**.
 
-A mesa tem **seis slots fixos**. Mortes deixam lacunas e nao deslocam as demais
-pecas. Adjacencia significa slots imediatamente vizinhos; uma lacuna interrompe
-o apoio. Invocacoes por efeitos e o Rei ocupam o primeiro slot livre, da esquerda
-para a direita. O jogador escolhe o slot ao jogar lacaios da mao.
+O tabuleiro tem **seis casas fixas**. Mortes deixam lacunas e nao deslocam as demais
+pecas. Adjacencia significa casas imediatamente vizinhas; uma lacuna interrompe
+o apoio. Desenvolvimentos por efeitos e o Rei ocupam a primeira casa livre, da esquerda
+para a direita. O jogador escolhe a casa ao jogar peças da mao.
 
-**Apoio:** uma unidade com aliado vivo imediatamente ao lado recebe **-1 de dano
+**Apoio:** uma peça com aliado vivo imediatamente ao lado recebe **-1 de dano
 de combate**, ate o minimo de zero. Sem esse aliado, fica **Pendurada** e recebe
-**+1 de dano de combate**. Isso vale para atacante, defensor e Reis na mesa;
+**+1 de dano de combate**. Isso vale para atacante, defensor e Reis no tabuleiro;
 o apoio e calculado antes dos dois danos simultaneos. Nao modifica dano de
-feiticos, efeitos ou fadiga. Dano reduzido a zero nao consome Escudo Divino.
+manobras, efeitos ou fadiga. Dano reduzido a zero nao consome Proteção.
 Remover o defensor pode, portanto, aumentar o dano dos ataques seguintes.
 
-**Pressao territorial:** slots **1 e 6** sao os Cantos; **2 e 5** sao as Bordas;
+**Pressao territorial:** casas **1 e 6** sao os Cantos; **2 e 5** sao as Bordas;
 **3 e 4** sao o Centro.
 Ao terminar seu proprio turno, depois dos efeitos de fim de turno, controlar
-mais slots centrais que o adversario concede **+1 de mana temporaria no proximo
-turno proprio**. Empates nao concedem bonus. Reis na mesa tambem contam.
-O bonus nao acumula nem aumenta cristais permanentes: pode haver 11 de mana
-disponivel com 10 cristais, e a mana nao usada nao passa ao turno seguinte.
+mais casas centrais que o adversario concede **+1 de tempo temporario no proximo
+turno proprio**. Empates nao concedem bonus. Reis no tabuleiro tambem contam.
+O bonus nao acumula nem aumenta o limite permanente: pode haver 11 de tempo
+disponivel com limite de 10, e o tempo nao usado nao passa ao turno seguinte.
 Uma vez conquistado, o bonus permanece mesmo se o adversario remover pecas.
-Ataques diretos ao heroi/Rei continuam permitidos, respeitando Provocar e Rapidez.
+Ataques diretos ao Rei respeitam o alcance da peça e Desenvolvimento.
 
-Uma unidade normalmente precisa esperar ate seu proximo turno para atacar,
+Uma peça normalmente precisa esperar ate seu proximo turno para atacar,
 e pode atacar uma vez por turno. O combate causa dano simultaneo entre
-atacante e defensor; o heroi fora da mesa nao contra-ataca.
+atacante e defensor; o Rei fora do tabuleiro nao contra-ataca.
 
-Os lacaios respeitam o alcance do padrao da peca: torre em linha direta,
+As peças respeitam o alcance do padrao da peca: torre em linha direta,
 bispo em diagonais, cavalo em L e dama em alcance curto. Quando nao ha
-alvo na fileira/padrao, a unidade pode atacar o oponente diretamente; nao
-existe obrigatoriedade de Provocar para decidir o alvo.
+alvo na fileira/padrao, a peça pode atacar o Rei diretamente.
 
 O dano permanece entre turnos. Morte dos dois Reis na mesma acao resulta em
 empate.
 
-A Armadura dos herois comeca em zero. Se houver Armadura, ela absorve dano
-antes da vida, inclusive depois da Ativacao do Rei, e e exibida na mesa.
+A Armadura dos Reis comeca em zero. Se houver Armadura, ela absorve dano
+antes da vida, inclusive depois da Ativacao do Rei, e e exibida no tabuleiro.
 O catalogo atual ainda nao tem cartas que concedem Armadura; a condicao de
 Mate de Gaveta ja a verifica explicitamente.
 
 ## Palavras-chave e efeitos
 
+Provocar foi removido: nao restringe ataques nem bloqueia mates.
+Mate de Gaveta agora exige tres Peoes (incluindo Peao Passado).
+
 | Palavra-chave | Comportamento |
 |---|---|
-| Provocar | Ataques devem escolher uma unidade inimiga com Provocar. Nao restringe feiticos. |
-| Investida | Permite atacar imediatamente, inclusive o heroi/Rei. |
-| Rapidez | No turno de invocacao permite atacar unidades, mas nao o heroi nem o Rei ativado. |
-| Escudo Divino | Absorve a primeira instancia de dano positivo; nao impede destruir. |
-| Furia dos Ventos | Permite dois ataques por turno, sem remover a espera de invocacao. |
-| Elusivo | Impede selecao manual por feiticos de ambos os lados. Nao bloqueia ataques, efeitos de area/menor Vida nem efeitos de entrada de lacaios. |
+| Iniciativa | Permite atacar imediatamente, inclusive o Rei. |
+| Desenvolvimento | No turno de desenvolvimento permite atacar peças, mas nao o Rei nem o Rei ativado. |
+| Proteção | Absorve a primeira instancia de dano positivo; nao impede destruir. |
+| Ataque duplo | Permite dois ataques por turno, sem remover a espera de desenvolvimento. |
+| Elusivo | Impede selecao manual por manobras de ambos os lados. Nao bloqueia ataques, efeitos de area/menor Vida nem efeitos de entrada de peças. |
 
-Congelamento impede ataques ate o fim do proximo turno do dono da unidade,
+Congelamento impede ataques ate o fim do proximo turno do dono da peça,
 incluindo o restante do turno atual se aplicado durante ele. Bonus temporario
 de ataque termina no fim do turno em que foi aplicado.
 
-Invocacoes por efeitos nao executam efeitos de entrada (`on_play`);
+Desenvolvimentos por efeitos nao executam efeitos de entrada (`on_play`);
 palavras-chave impressas continuam funcionando. Efeitos de morte acontecem
-depois de remover as baixas simultaneas. A morte de um heroi encerra a partida
+depois de remover as baixas simultaneas. A morte de um Rei encerra a partida
 antes de novos efeitos de morte ou compras por abate.
 
 Efeitos de uma carta sao executados na ordem. Dano em area e aplicado aos alvos
@@ -130,49 +131,49 @@ antes de resolver as mortes. Os efeitos manuais de uma mesma jogada compartilham
 um unico alvo, valido para todos eles.
 
 Os efeitos nao usam RNG; embaralhamento dos decks e escolhas da IA continuam
-aleatorios. Ataque Duplo atinge ate duas unidades inimigas distintas com **menor
-Vida**, desempata pelo **menor numero de slot** e compra uma carta por unidade
-abatida. Os dois alvos sao definidos antes de aplicar dano; Escudo Divino nao
-conta como abate. O Rei ativado e uma unidade elegivel, mas o heroi fora da mesa
-nao e alvo de Ataque Duplo.
+aleatorios. Garfo atinge ate duas peças inimigas distintas com **menor
+Vida**, desempata pelo **menor numero de casa** e compra uma carta por peça
+abatida. Os dois alvos sao definidos antes de aplicar dano; Proteção nao
+conta como abate. O Rei ativado e uma peça elegivel, mas o Rei fora do tabuleiro
+nao e alvo de Garfo.
 Par de Bispos exige pelo menos dois Bispos aliados; se a condicao nao estiver
 atendida, o efeito nao acontece, mas o custo da jogada continua sendo pago.
 Sacrificio da Dama exige uma Dama aliada selecionavel, a destroi e executa
 dano em area seguido de compras.
 
-## Ativacao do Rei e Endgame
+## Ativacao do Rei e Final de jogo
 
-O Rei entra na mesa com **2 de ataque e a vida atual do heroi**, nao com 8 de
+O Rei entra no tabuleiro com **2 de ataque e a vida atual do Rei**, nao com 8 de
 vida fixa. A vida e compartilhada: causar dano ou curar o Rei afeta diretamente
 a condicao de vitoria. O retrato deixa de ser um alvo separado. O Rei entra
-no primeiro slot livre e precisa esperar para atacar, como uma unidade sem Investida.
+na primeira casa livre e precisa esperar para atacar, como uma peça sem Iniciativa.
 
-- Ao comprar a ultima carta, o Rei e ativado automaticamente. Mesa cheia adia
-  sua entrada ate surgir uma vaga; o heroi continua vulneravel enquanto espera.
+- Ao comprar a ultima carta, o Rei e ativado automaticamente. Tabuleiro cheio adia
+  sua entrada ate surgir uma vaga; o Rei continua vulneravel enquanto espera.
 - Comprar de um deck vazio causa fadiga crescente: 1, 2, 3... de dano.
 - Ao terminar a oitava rodada completa (16 turnos individuais), ou qualquer turno
-  posterior, **ate tres unidades somadas entre os dois lados** liberam a ativacao
+  posterior, **ate tres peças somadas entre os dois lados** liberam a ativacao
   manual para ambos. A elegibilidade, uma vez obtida, nao e perdida.
 - Um efeito de ativacao tambem libera e tenta ativar o Rei imediatamente.
 - Ativacao manual e gratuita, apenas no turno do dono. Nunca cria um segundo Rei
-  nem excede seis unidades. O Rei conta como unidade para alvos e efeitos de area.
+  nem excede seis peças. O Rei conta como peça para alvos e efeitos de area.
 
 ## Vitorias alternativas: seis padroes de mate
 
-As seis cartas de mate sao feiticos **lendarios**, adquiridos por crafting.
+As seis cartas de mate sao manobras **lendarias**, adquiridas por crafting.
 Cada deck aceita no maximo uma copia de cada mate, somando todas as qualidades.
 Os decks automaticos nao incluem lendarias.
 
-O Rei ocupa um slot fixo, mas nao conta como lacaio nos requisitos abaixo.
+O Rei ocupa uma casa fixa, mas nao conta na quantidade de peças exigida pelos mates abaixo.
 
-| Carta | Mana | Formacao a anunciar | Condicoes adicionais para executar |
+| Carta | Tempo | Formacao a anunciar | Condicoes adicionais para executar |
 |---|---|---|---|
-| Mate de Anastasia | 9 | Torre no slot 1 ou 6, com Cavalo no slot 2 ou 5 respectivamente; pelo menos tres unidades aliadas | Inimigo com ate 15 de vida, ao menos dois lacaios e nenhuma unidade com Provocar |
-| Mate de Boden | 5 | Bispos nos slots 1 e 6; pelo menos dois lacaios nos slots intermediarios | Jogar dois outros feiticos no mesmo turno antes do mate |
-| Mate Abafado | 6 | Um Cavalo | Inimigo com seis lacaios e nenhum Provocar; Rei nao conta para os seis |
-| Mate de Gaveta | 8 | Uma Torre | Essa mesma Torre deve ter atacado e sobrevivido no turno atual; inimigo com zero de Armadura e pelo menos tres lacaios que sejam Peoes ou tenham Provocar |
-| Mate da Opera | 7 | Exatamente uma Torre e um Bispo aliados, adjacentes; outras pecas sao permitidas | Ambos devem ter atacado nesta partida; inimigo com ate 15 de vida e exatamente um lacaio |
-| Endgame Puro (Rei e Peao) | 10 | Ambos os Reis ativados, sem nenhuma outra unidade em qualquer lado | Peao Passado na mao e seu Rei com estritamente mais vida que o Rei inimigo |
+| Mate de Anastasia | 9 | Torre na casa 1 ou 6, com Cavalo na casa 2 ou 5 respectivamente; pelo menos tres peças aliadas | Inimigo com ate 15 de vida e ao menos duas peças |
+| Mate de Boden | 5 | Bispos nas casas 1 e 6; pelo menos duas peças nas casas intermediarias | Jogar duas outras manobras no mesmo turno antes do mate |
+| Mate Abafado | 6 | Um Cavalo | Inimigo com seis peças; Rei nao conta para as seis |
+| Mate de Gaveta | 8 | Uma Torre | Essa mesma Torre deve ter atacado e sobrevivido no turno atual; inimigo com zero de Armadura e pelo menos tres Peoes |
+| Mate da Opera | 7 | Exatamente uma Torre e um Bispo aliados, adjacentes; outras pecas sao permitidas | Ambos devem ter atacado nesta partida; inimigo com ate 15 de vida e exatamente uma peça |
+| Final de jogo Puro (Rei e Peao) | 10 | Ambos os Reis ativados, sem nenhuma outra peça em qualquer lado | Peao Passado na mao e seu Rei com estritamente mais vida que o Rei inimigo |
 
 ### Preparacao e resposta adversaria
 
@@ -195,36 +196,35 @@ valida nao cancelam a preparacao.
 
 No turno da execucao, as pecas nao podem ter atacado, **exceto em Gaveta**,
 que exige um ataque real da Torre nesse turno. A carta revalida todos os
-requisitos antes de gastar mana ou sair da mao; uma tentativa invalida exibe o
+requisitos antes de gastar tempo ou sair da mao; uma tentativa invalida exibe o
 motivo e nao consome recursos. O mate bem-sucedido compromete os ataques
 restantes das pecas e encerra a partida **sem reduzir a vida inimiga a zero**.
 
-Somente Endgame Puro exige os Reis ativados. Provocar bloqueia Anastasia e
-Abafado mesmo congelado; os outros mates podem vencer atraves de Provocar.
-Em Gaveta, um Peao com Provocar conta uma unica vez entre os tres bloqueadores;
-Peao Passado tambem conta como Peao. O Rei nao conta como bloqueador.
+Somente Final de jogo Puro exige os Reis ativados.
+Em Gaveta, Peao Passado tambem conta como Peao.
+O Rei nao conta como bloqueador.
 
-O historico de ataque da Opera pertence a cada unidade individual: invocar
+O historico de ataque da Opera pertence a cada peça individual: desenvolver
 outra Torre/Bispo nao herda ataques da anterior. Os ataques precisam ter ocorrido
 antes do turno da execucao, pois a dupla nao pode atacar nesse turno.
-Os requisitos inimigos de vida/quantidade/Provocar/Armadura sao revalidados
+Os requisitos inimigos de vida/quantidade/Armadura sao revalidados
 na execucao; a formacao aliada e que precisa permanecer intacta durante a
-preparacao. No Endgame Puro, qualquer outra unidade em qualquer mesa cancela
+preparacao. No Final de jogo Puro, qualquer outra peça em qualquer tabuleiro cancela
 a preparacao, mesmo se for removida logo depois.
 
 O **Peao Passado** e uma carta de apoio 2/3 de custo 2, criada por puzzles
-de peao avancado. Para Endgame Puro, ele precisa permanecer **na mao**,
-pois a mesa deve conter somente os Reis. Variantes aprimoradas/perfeitas
+de peao avancado. Para Final de jogo Puro, ele precisa permanecer **na mao**,
+pois o tabuleiro deve conter somente os Reis. Variantes aprimoradas/perfeitas
 tambem atendem ao requisito e a carta nao e consumida.
 
 ### Observacoes de balanceamento
 
-Anastasia exige pressao sobre o inimigo e uma terceira unidade aliada para nao
+Anastasia exige pressao sobre o inimigo e uma terceira peça aliada para nao
 virar apenas uma dupla facil na ponta. Em Boden, dois Bispos sozinhos nao bastam:
-os dois lacaios intermediarios criam compromisso de mesa.
-O proprio Boden e o terceiro feitico, permitindo uma sequencia real com a mana
+as duas peças intermediarias criam compromisso de tabuleiro.
+O proprio Boden e a terceira manobra, permitindo uma sequencia real com o tempo
 atual (por exemplo, duas Colunas Abertas de custo 2 e Boden de custo 5 = 9).
-O contador de feiticos e reiniciado no inicio do turno do dono e exibido no
+O contador de manobras e reiniciado no inicio do turno do dono e exibido no
 painel de comandos.
 
 Qualidades aprimoradas/perfeitas **nao reduzem custo nem requisitos de mate**.
@@ -241,7 +241,7 @@ O painel tambem indica copias disponiveis, qualidade e tema do puzzle.
 
 A busca aceita nome, ID, categoria, descricao e palavras-chave, ignorando
 acentos e maiusculas. Clique no filtro para alternar entre todos os tipos,
-lacaios e feiticos, e no botao de ordem para alternar entre custo e nome.
+peças e manobras, e no botao de ordem para alternar entre custo e nome.
 Use os botoes de pagina para percorrer a colecao. Descricoes longas podem ser
 roladas com o mouse sobre o painel de detalhes. **Voltar ao Menu** ou Esc sai.
 
@@ -269,11 +269,11 @@ Nao ha prazo para terminar.
 
 | Qualidade | Desempenho | Bonus em relacao a carta base |
 |---|---|---|
-| Perfeita | 0 erros, ate 60 segundos por lance do jogador na solucao | Lacaio: +2/+2 e compra 1 ao jogar. Feitico: cura extra de 2 no Rei e compra extra de 1. |
-| Aprimorada | Ate 1 erro, ate 120 segundos por lance do jogador na solucao | Lacaio: +1/+1. Feitico: cura extra de 1 no Rei. |
+| Perfeita | 0 erros, ate 60 segundos por lance do jogador na solucao | Peça: +2/+2 e compra 1 ao jogar. Manobra: cura extra de 2 no Rei e compra extra de 1. |
+| Aprimorada | Ate 1 erro, ate 120 segundos por lance do jogador na solucao | Peça: +1/+1. Manobra: cura extra de 1 no Rei. |
 | Basica | Demais resultados, desde que conclua | Atributos e efeitos originais. |
 
-O custo de mana nao muda; efeitos originais sao preservados. Os limites de tempo
+O custo de tempo nao muda; efeitos originais sao preservados. Os limites de tempo
 sao para o puzzle inteiro, multiplicados pela quantidade total de lances do
 jogador na solucao (nao incluem as respostas adversarias). Por exemplo, uma
 solucao com tres lances seus permite ate 180 segundos para qualidade Perfeita.
@@ -294,7 +294,7 @@ Par de Bispos, Sacrificio da Dama e formacoes de mate.
 |---|---|
 | Peao / Cavalo / Bispo / Torre / Dama | `pawnEndgame` / `knightEndgame` / `bishopEndgame` / `rookEndgame` / `queenEndgame` |
 | Cravada Absoluta | `pin` (inclui cravadas relativas) |
-| Ataque Duplo | `fork` |
+| Garfo | `fork` |
 | Par de Bispos | `doubleBishopMate` |
 | Coluna Aberta | `clearance` (aproximacao: desobstrucao, nao necessariamente de coluna) |
 | Zugzwang | `zugzwang` |
@@ -305,7 +305,7 @@ Par de Bispos, Sacrificio da Dama e formacoes de mate.
 | Mate Abafado | `smotheredMate` |
 | Mate de Gaveta | `backRankMate` |
 | Mate da Opera | `operaMate` |
-| Endgame Puro | `pawnEndgame` (aproximacao de oposicao) |
+| Final de jogo Puro | `pawnEndgame` (aproximacao de oposicao) |
 | Peao Passado | `advancedPawn` (aproximacao: peao avancado) |
 
 Os temas oficiais estao em [lichess.org/training/themes](https://lichess.org/training/themes).

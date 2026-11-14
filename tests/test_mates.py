@@ -84,31 +84,31 @@ class MateTests(unittest.TestCase):
         self.game.end_turn(0)
         self.assertNotIn("anastasia", {t.pattern for t in self.game.mates.threats[0]})
 
-    def test_unrelated_mana_spell_does_not_count_as_prior_boden_spell(self):
+    def test_unrelated_mana_maneuver_does_not_count_as_prior_boden_maneuver(self):
         self.boden()
         self.cycle()
-        self.p0.spells_played = 1
+        self.p0.maneuvers_played = 1
         card = self.card("mate_boden")
-        with self.assertRaisesRegex(RuleError, "dois outros"):
+        with self.assertRaisesRegex(RuleError, "duas outras"):
             self.game.play_card(0, card)
-        self.assertEqual(self.p0.spells_played, 1)
+        self.assertEqual(self.p0.maneuvers_played, 1)
         self.assertEqual(self.p0.mana, 10)
 
-    def test_boden_real_two_spell_sequence_and_counter_reset(self):
+    def test_boden_real_two_maneuver_sequence_and_counter_reset(self):
         self.boden()
         self.cycle()
         # Two copies of Coluna Aberta on interior pawns cost 4; mate costs 5.
         pawn = self.p0.board[1]
         for _ in range(2):
             self.game.play_card(0, self.card("coluna_aberta"), pawn)
-        self.assertEqual(self.p0.spells_played, 2)
+        self.assertEqual(self.p0.maneuvers_played, 2)
         self.game.play_card(0, self.card("mate_boden"))
-        self.assertEqual(self.p0.spells_played, 3)
+        self.assertEqual(self.p0.maneuvers_played, 3)
         self.assertEqual(self.p0.mana, 1)
         self.assertTrue(self.game.over)
         self.assertEqual(self.p1.health, 30)
 
-    def test_boden_needs_two_interior_minions_not_only_kings(self):
+    def test_boden_needs_two_interior_pieces_not_only_kings(self):
         self.unit("bispo")
         self.p0.endgame_ready = True
         self.game.activate_king(0)
@@ -143,14 +143,14 @@ class MateTests(unittest.TestCase):
         self.assertEqual(self.game.mates.threats[0], [])
         self.unit("peao", position=1)
         self.game.end_turn(1)
-        self.p0.spells_played = 2
+        self.p0.maneuvers_played = 2
         self.assertFalse(self.game.playable(0, self.card("mate_boden")))
 
     def test_frozen_then_thawed_formation_stays_cancelled(self):
         rook, knight = self.anastasia()
         self.game.end_turn(0)
         self.game.parser.execute(
-            [{"trigger": "on_play", "action": "freeze", "target": "all_enemy_minions"}],
+            [{"trigger": "on_play", "action": "freeze", "target": "all_enemy_pieces"}],
             "on_play", 1,
         )
         self.assertEqual(self.game.mates.threats[0], [])
@@ -170,32 +170,30 @@ class MateTests(unittest.TestCase):
     def test_attack_uses_up_execution_opportunity(self):
         rook, _ = self.anastasia()
         self.cycle()
-        self.game.attack(0, rook, self.p1)
+        self.game.attack(0, rook, self.p1.board[0])
         self.assertFalse(self.game.playable(0, self.card("mate_anastasia")))
 
-    def test_enemy_can_counter_with_health_taunt_or_board_clearance(self):
+    def test_enemy_can_counter_with_health_or_board_clearance(self):
         self.anastasia()
         self.cycle()
         card = self.card("mate_anastasia")
         self.p1.health = 16
         self.assertIn("15", self.game.mate_unavailable_reason(0, card))
         self.p1.health = 15
-        self.p1.board[0].keywords.add("taunt")
-        self.assertIn("Provocar", self.game.mate_unavailable_reason(0, card))
-        self.p1.board[0].keywords.clear()
+        self.assertEqual(self.game.mate_unavailable_reason(0, card), "")
         pawn = self.p1.board[0]
         pawn.effects = []
         pawn.health = 0
         self.game.cleanup()
-        self.assertIn("dois lacaios", self.game.mate_unavailable_reason(0, card))
+        self.assertIn("duas peças", self.game.mate_unavailable_reason(0, card))
 
-    def test_activated_enemy_king_is_not_second_minion(self):
+    def test_activated_enemy_king_is_not_second_piece(self):
         self.anastasia()
         self.p1.board.pop()
         self.p1.endgame_ready = True
         self.game.activate_king(1)
         self.cycle()
-        self.assertIn("dois lacaios", self.game.mate_unavailable_reason(0, self.card("mate_anastasia")))
+        self.assertIn("duas peças", self.game.mate_unavailable_reason(0, self.card("mate_anastasia")))
 
     def test_new_unit_in_free_slot_preserves_fixed_edge_preparation(self):
         self.anastasia(right=True)
@@ -219,7 +217,7 @@ class MateTests(unittest.TestCase):
         self.assertEqual(len(self.game.mates.threats[0]), 1)
         self.game.end_turn(1)
         self.p0.mana = 10
-        self.p0.spells_played = 2
+        self.p0.maneuvers_played = 2
         self.game.play_card(0, self.card("mate_boden"))
         self.assertTrue(self.game.over)
 
@@ -260,16 +258,16 @@ class MateTests(unittest.TestCase):
             elif mutation == "trigger":
                 mate["effects"][0]["trigger"] = "on_turn_end"
             else:
-                mate.update(type="minion", attack=1, health=1)
+                mate.update(type="peça", attack=1, health=1)
             with self.subTest(mutation=mutation), self.assertRaises(ValueError):
                 validate_cards(cards)
 
-    def test_spell_counter_resets_on_own_next_turn(self):
+    def test_maneuver_counter_resets_on_own_next_turn(self):
         self.game.play_card(0, self.card("roque"))
-        self.assertEqual(self.p0.spells_played, 1)
+        self.assertEqual(self.p0.maneuvers_played, 1)
         self.game.end_turn(0)
         self.game.end_turn(1)
-        self.assertEqual(self.p0.spells_played, 0)
+        self.assertEqual(self.p0.maneuvers_played, 0)
 
     def test_ai_executes_legal_alternate_victory(self):
         self.game.end_turn(0)
@@ -279,7 +277,7 @@ class MateTests(unittest.TestCase):
         self.game.end_turn(0)
         self.p1.hand = [Card(self.game.uid(), self.game.catalog["mate_boden"])]
         self.p1.mana = 10
-        self.p1.spells_played = 2
+        self.p1.maneuvers_played = 2
         self.game.ai_step()
         self.assertTrue(self.game.over)
         self.assertEqual(self.game.winner, 1)
@@ -292,7 +290,7 @@ class MateTests(unittest.TestCase):
         return knight
 
     def back_rank(self):
-        rook = self.unit("torre")
+        rook = self.unit("torre", position=5)
         for _ in range(3):
             unit = self.unit("peao", 1)
             unit.effects = []
@@ -320,7 +318,7 @@ class MateTests(unittest.TestCase):
         self.card("peao_passado")
         return self.p0.king
 
-    def test_smothered_wins_with_six_minions_and_surviving_knight(self):
+    def test_smothered_wins_with_six_pieces_and_surviving_knight(self):
         self.smothered()
         self.cycle()
         self.game.play_card(0, self.card("mate_abafado"))
@@ -329,13 +327,12 @@ class MateTests(unittest.TestCase):
         self.assertEqual(self.p1.health, 30)
         self.assertEqual(self.p0.mana, 4)
 
-    def test_smothered_is_stopped_by_taunt_even_when_frozen(self):
+    def test_smothered_allows_frozen_enemy_pieces(self):
         self.smothered()
         self.cycle()
-        self.p1.board[0].keywords.add("taunt")
         self.p1.board[0].frozen_through = 100
-        self.assertIn("Provocar", self.game.mate_unavailable_reason(0, self.card("mate_abafado")))
-        self.assertFalse(self.game.over)
+        self.game.play_card(0, self.card("mate_abafado"))
+        self.assertTrue(self.game.over)
 
     def test_smothered_fails_if_enemy_opens_a_slot_or_has_a_king(self):
         self.smothered()
@@ -352,7 +349,7 @@ class MateTests(unittest.TestCase):
     def test_smothered_knight_must_not_attack_in_execution_turn(self):
         knight = self.smothered()
         self.cycle()
-        self.game.attack(0, knight, self.p1)
+        self.game.attack(0, knight, self.p1.board[0])
         self.assertFalse(self.game.playable(0, self.card("mate_abafado")))
 
     def test_back_rank_requires_actual_attack_this_turn_and_survival(self):
@@ -366,12 +363,11 @@ class MateTests(unittest.TestCase):
         self.assertEqual(self.p1.health, 27)
         self.assertEqual(self.p0.mana, 2)
 
-    def test_back_rank_counts_pawns_or_taunts_once_and_excludes_king(self):
+    def test_back_rank_counts_only_pawns_and_excludes_king(self):
         rook = self.back_rank()
         self.cycle()
         self.game.attack(0, rook, self.p1)
         card = self.card("mate_gaveta")
-        self.p1.board[0].keywords.add("taunt")
         removed = self.p1.board[-1]
         removed.health = 0
         self.game.cleanup()
@@ -380,6 +376,8 @@ class MateTests(unittest.TestCase):
         self.game.activate_king(1)
         self.assertFalse(self.game.playable(0, card))
         self.unit("torre", 1)
+        self.assertFalse(self.game.playable(0, card))
+        self.unit("peao_passado", 1)
         self.assertTrue(self.game.playable(0, card))
 
     def test_back_rank_zero_armor_requirement(self):
@@ -402,6 +400,7 @@ class MateTests(unittest.TestCase):
         rook = self.back_rank()
         self.cycle()
         self.p1.board[0].attack = 10
+        self.game.move_unit(0, rook, 0)
         self.game.attack(0, rook, self.p1.board[0])  # Shield absorbs retaliation.
         self.game.damage(rook, 99)
         self.game.cleanup()
@@ -423,10 +422,10 @@ class MateTests(unittest.TestCase):
         card = self.card("mate_opera")
         self.assertIn("nesta partida", self.game.mate_unavailable_reason(0, card))
         bishop.has_attacked = True
-        self.game.attack(0, rook, self.p1)
+        self.game.attack(0, rook, self.p1.board[0])
         self.assertFalse(self.game.playable(0, card))
 
-    def test_opera_enemy_health_and_exactly_one_minion(self):
+    def test_opera_enemy_health_and_exactly_one_piece(self):
         self.opera()
         self.cycle()
         card = self.card("mate_opera")
@@ -472,7 +471,7 @@ class MateTests(unittest.TestCase):
         self.p0.health = self.p1.health - 1
         self.assertFalse(self.game.playable(0, card))
 
-    def test_opposition_any_other_minion_cancels_preparation_permanently(self):
+    def test_opposition_any_other_piece_cancels_preparation_permanently(self):
         self.opposition()
         self.game.end_turn(0)
         pawn = self.unit("peao", 1)

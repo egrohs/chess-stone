@@ -35,7 +35,7 @@ class DamageEventTests(unittest.TestCase):
         self.game.damage(rook, 0)
         self.game.heal(rook, 1)
         self.game.parser.execute(
-            [{"trigger": "on_play", "action": "destroy", "target": "all_enemy_minions"}],
+            [{"trigger": "on_play", "action": "destroy", "target": "all_enemy_pieces"}],
             "on_play", 0,
         )
         self.assertEqual(self.events, [])
@@ -63,7 +63,7 @@ class DamageEventTests(unittest.TestCase):
         self.assertEqual(self.events, [1, 99])
         self.assertTrue(self.game.over)
 
-    def test_spell_play_uses_same_damage_event(self):
+    def test_maneuver_play_uses_same_damage_event(self):
         player = self.game.players[0]
         player.mana = 10
         self.game.summon(1, "bispo")
