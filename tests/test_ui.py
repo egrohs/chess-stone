@@ -11,7 +11,7 @@ os.environ["SDL_AUDIODRIVER"] = "dummy"
 import pygame
 
 from game_engine import Card
-from main import App, SIDEBAR, State
+from main import App, State
 
 
 class InterfaceTests(unittest.TestCase):
@@ -265,18 +265,44 @@ class InterfaceTests(unittest.TestCase):
         self.assertIn(card, self.player.hand)
         self.assertEqual(self.player.mana, 10)
 
-    def test_six_slots_are_centered_and_labeled_for_both_players(self):
+    def test_slots_match_board_image_and_are_labeled_for_both_players(self):
         labels = ["1 Canto", "2 Borda", "3 Centro", "4 Centro", "5 Borda", "6 Canto"]
         with patch.object(self.app, "text", wraps=self.app.text) as text:
             self.app.draw()
         rendered = [call.args[0] for call in text.call_args_list]
         for label in labels:
             self.assertEqual(rendered.count(label), 2)
-        for owner in (0, 1):
+        x_edges = (187, 302, 428, 553, 679, 805, 930)
+        for owner, top, bottom in ((1, 298, 416), (0, 416, 545)):
             slots = self.app.slots(owner)
             self.assertEqual(len(slots), 6)
-            self.assertEqual(slots[0].left, SIDEBAR - slots[-1].right)
-            self.assertTrue(all(left.right < right.left for left, right in zip(slots, slots[1:])))
+            for index, rect in enumerate(slots):
+                self.assertEqual((rect.left, rect.right, rect.top, rect.bottom),
+                                 (x_edges[index], x_edges[index + 1], top, bottom))
+                self.assertTrue(self.app.board_rect.contains(rect))
+            self.assertTrue(all(left.right == right.left for left, right in zip(slots, slots[1:])))
+
+    def test_board_cells_are_interactive_for_placement_and_targeting(self):
+        for index in range(6):
+            with self.subTest(slot=index):
+                self.setUp()
+                enemy = self.game.summon(1, "peao", index)
+                self.add_card("cravada_absoluta")
+                self.select_first_card()
+                self.app.click(self.app.slots(1)[index].center)
+                self.assertGreater(enemy.frozen_through, 0)
+                self.add_card("peao")
+                self.card_mouse_down(self.player.hand[0])
+                self.card_mouse_up(self.app.slots(0)[index].center)
+                self.assertEqual(self.player.unit_at(index).card_id, "peao")
+
+    def test_unit_name_and_stats_render_in_board_cell(self):
+        unit = self.game.summon(0, "torre", 0)
+        with patch.object(self.app, "text", wraps=self.app.text) as text:
+            self.app.draw()
+        rendered = [call.args[0] for call in text.call_args_list]
+        self.assertIn(unit.name, rendered)
+        self.assertIn("3 / 5", rendered)
 
     def test_maneuver_button_switches_from_pending_piece_target(self):
         ally = self.game.summon(0, "peao", 0)

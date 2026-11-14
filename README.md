@@ -118,6 +118,9 @@ padrao e o formato existente da colecao.
 A pasta `assets\cards\` possui uma subpasta para cada ID de carta do catalogo,
 alem de `rei` para o Rei. Coloque a imagem e os sons juntos na pasta da carta:
 
+O fundo da partida usa `assets\board.jpg` (2626 x 1600); a geometria das casas
+corresponde aos quadrados dessa imagem.
+
 ```text
 assets\
   cards\

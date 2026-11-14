@@ -24,9 +24,13 @@ from hand_view import CARD_SIZE, CardMotion, HandView
 
 
 WIDTH, HEIGHT = 1440, 940
-SLOT_WIDTH, SLOT_HEIGHT, SLOT_STEP = 118, 150, 130
 SIDEBAR = 1100
 DRAG_THRESHOLD = 6
+BOARD_PATH = Path(__file__).resolve().parent / "assets" / "board.jpg"
+BOARD_SOURCE_SIZE = (2626, 1600)
+BOARD_X_EDGES = (446, 722, 1022, 1320, 1622, 1922, 2219)
+BOARD_Y_EDGES = (460, 742, 1050)
+BOARD_TOP = 105
 
 
 class State(Enum):
@@ -50,6 +54,12 @@ class App:
             print(self.audio.error, file=sys.stderr)
         pygame.display.set_caption("Chess Stone - prototipo")
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        board = pygame.image.load(str(BOARD_PATH)).convert()
+        if board.get_size() != BOARD_SOURCE_SIZE:
+            raise ValueError(f"Imagem do tabuleiro deve ter dimensoes {BOARD_SOURCE_SIZE}.")
+        board_height = round(BOARD_SOURCE_SIZE[1] * SIDEBAR / BOARD_SOURCE_SIZE[0])
+        self.board_image = pygame.transform.smoothscale(board, (SIDEBAR, board_height))
+        self.board_rect = self.board_image.get_rect(topleft=(0, BOARD_TOP))
         self.clock = pygame.time.Clock()
         self.hand_view = HandView()
         self.font = pygame.font.SysFont("segoeui", 18)
@@ -265,14 +275,19 @@ class App:
         self.card_dragging = False
 
     def slots(self, owner: int) -> list[pygame.Rect]:
-        left = (SIDEBAR - ((BOARD_LIMIT - 1) * SLOT_STEP + SLOT_WIDTH)) // 2
+        x_edges = [round(x * self.board_rect.width / BOARD_SOURCE_SIZE[0]) for x in BOARD_X_EDGES]
+        y_edges = [
+            self.board_rect.top + round(y * self.board_rect.height / BOARD_SOURCE_SIZE[1])
+            for y in BOARD_Y_EDGES
+        ]
+        top, bottom = (y_edges[1], y_edges[2]) if owner == 0 else (y_edges[0], y_edges[1])
         return [
-            pygame.Rect(left + i * SLOT_STEP, 405 if owner == 0 else 178, SLOT_WIDTH, SLOT_HEIGHT)
+            pygame.Rect(x_edges[i], top, x_edges[i + 1] - x_edges[i], bottom - top)
             for i in range(BOARD_LIMIT)
         ]
 
     def hero_rect(self, owner: int) -> pygame.Rect:
-        return pygame.Rect(402, 590 if owner == 0 else 70, 300, 70)
+        return pygame.Rect(402, 595, 300, 70) if owner == 0 else pygame.Rect(460, 150, 180, 70)
 
     def hand_rects(self) -> list[tuple[Card, pygame.Rect]]:
         if not self.game:
@@ -608,47 +623,53 @@ class App:
         pygame.draw.rect(self.screen, border, rect, 3, border_radius=5)
         if prepared:
             pygame.draw.rect(self.screen, GOLD, rect.inflate(-8, -8), 1, border_radius=4)
-        self.paragraph(unit.name, pygame.Rect(rect.x + 7, rect.y + 7, rect.width - 14, 43), font=self.font)
+        self.paragraph(unit.name, pygame.Rect(rect.x + 7, rect.y + 7, rect.width - 14, self.font.get_linesize()), font=self.font)
         labels = [unit.piece_type.capitalize(), *[KEYWORD_LABELS[k] for k in sorted(unit.keywords)]]
         if game and game.players[unit.owner].turns_started <= unit.frozen_through:
             labels.append("Congelado")
-        self.paragraph(" / ".join(labels), pygame.Rect(rect.x + 7, rect.y + 54, rect.width - 14, 42), GOLD, font=self.small)
+        self.paragraph(" / ".join(labels), pygame.Rect(rect.x + 7, rect.y + 33, rect.width - 14, 38), GOLD, font=self.small)
         if game:
             self.text(
                 "Apoiada -1" if game.supported(unit) else "Pendurada +1",
-                (rect.x + 7, rect.bottom - 53),
+                (rect.x + 7, rect.bottom - 43),
                 GREEN if game.supported(unit) else RED, self.small,
             )
-        self.text(f"{unit.attack} / {unit.health}", (rect.x + 9, rect.bottom - 34), WHITE, self.large)
+        self.text(f"{unit.attack} / {unit.health}", (rect.x + 9, rect.bottom - 23), WHITE, self.font)
 
     def draw_match(self) -> None:
         game = self.game
         if game is None:
             return
+        self.screen.blit(self.board_image, self.board_rect)
+        for rect in (
+            pygame.Rect(15, 85, 360, 65), pygame.Rect(15, 230, 430, 67),
+            pygame.Rect(15, 555, 420, 22), pygame.Rect(15, 595, 360, 65),
+            pygame.Rect(15, 669, 780, 48),
+        ):
+            pygame.draw.rect(self.screen, PANEL, rect, border_radius=4)
         targets = self.valid_targets()
         self.text("CHESS STONE", (24, 18), GOLD, self.large)
         self.text(
             f"Rodada {(game.turn_number + 1) // 2} | Turno {game.turn_number}"
             f" | {'Sua vez' if game.current == 0 else 'IA jogando...'}",
-            (24, 349), WHITE, self.large,
+            (24, 235), WHITE, self.large,
         )
         for owner, player in enumerate(game.players):
             for index, rect in enumerate(self.slots(owner)):
-                pygame.draw.rect(self.screen, PANEL, rect, border_radius=5)
-                pygame.draw.rect(self.screen, BLUE if index in CENTER_SLOTS else MUTED, rect, 1, border_radius=5)
-                self.text(
-                    f"{index + 1} {'Centro' if index in CENTER_SLOTS else 'Canto' if index in CORNER_SLOTS else 'Borda'}",
-                    (rect.x + 8, rect.y + 7), MUTED, self.small,
-                )
                 unit = player.unit_at(index)
                 if unit:
-                    self.draw_unit(unit, rect, targets)
+                    self.draw_unit(unit, rect.inflate(-4, -4), targets)
                     self.text(str(index + 1), (rect.right - 15, rect.y + 3), MUTED, self.small)
+                else:
+                    label = f"{index + 1} {'Centro' if index in CENTER_SLOTS else 'Canto' if index in CORNER_SLOTS else 'Borda'}"
+                    label_rect = pygame.Rect(rect.x + 4, rect.y + 4, self.small.size(label)[0] + 8, self.small.get_linesize())
+                    pygame.draw.rect(self.screen, PANEL, label_rect, border_radius=3)
+                    self.text(label, (label_rect.x + 4, label_rect.y), WHITE, self.small)
             self.text(
                 "Cantos: 1 e 6 | Bordas: 2 e 5 | Centro: 3 e 4"
                 f" | Controle: {game.center_control(owner)}"
                 + (" | +1 tempo no proximo turno" if player.center_bonus_pending else ""),
-                (24, 568 if owner == 0 else 330), BLUE, self.small,
+                (24, 560 if owner == 0 else 275), BLUE, self.small,
             )
             hero = self.hero_rect(owner)
             if player.king:
@@ -673,12 +694,15 @@ class App:
                 (24, y + 28), MUTED, self.small,
             )
             if player.armor:
+                pygame.draw.rect(self.screen, PANEL, (742, y + 6, 210, 26), border_radius=4)
                 self.text(f"Armadura do Rei: {player.armor}", (750, y + 10), BLUE)
             patterns = sorted({threat.pattern for threat in game.mates.threats[owner]})
             if patterns:
+                threat_y = 577 if owner == 0 else 63
+                pygame.draw.rect(self.screen, PANEL, (15, threat_y, 1040, 18), border_radius=4)
                 self.paragraph(
                     "AMEACAS: " + " | ".join(MATE_LABELS[pattern] for pattern in patterns),
-                    pygame.Rect(24, 647 if owner == 0 else 150, 1040, 23), GOLD,
+                    pygame.Rect(24, threat_y, 1020, 18), GOLD,
                 )
         for _, rect in self.placement_rects():
             pygame.draw.rect(self.screen, GREEN, rect, 2)
