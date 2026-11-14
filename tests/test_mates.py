@@ -25,8 +25,8 @@ class MateTests(unittest.TestCase):
     def anastasia(self, right=False):
         if right:
             self.unit("peao")
-            knight = self.unit("cavalo", position=6)
-            rook = self.unit("torre", position=7)
+            knight = self.unit("cavalo", position=4)
+            rook = self.unit("torre", position=5)
         else:
             rook = self.unit("torre")
             knight = self.unit("cavalo")
@@ -40,7 +40,7 @@ class MateTests(unittest.TestCase):
         left = self.unit("bispo")
         self.unit("peao")
         self.unit("peao")
-        right = self.unit("bispo", position=7)
+        right = self.unit("bispo", position=5)
         return left, right
 
     def cycle(self):
@@ -113,23 +113,23 @@ class MateTests(unittest.TestCase):
         self.p0.endgame_ready = True
         self.game.activate_king(0)
         self.unit("peao")
-        self.unit("bispo", position=7)
+        self.unit("bispo", position=5)
         self.game.end_turn(0)
         self.assertEqual(self.game.mates.threats[0], [])
 
     def test_bishops_alone_do_not_prepare(self):
         self.unit("bispo")
-        self.unit("bispo", position=7)
+        self.unit("bispo", position=5)
         self.game.end_turn(0)
         self.assertEqual(self.game.mates.threats[0], [])
 
     def test_queue_extremes_are_not_physical_edges(self):
         self.unit("peao", position=2)
-        self.unit("cavalo", position=4)
-        self.unit("torre", position=5)
+        self.unit("cavalo", position=3)
+        self.unit("torre", position=4)
         self.assertEqual(self.game.mates.formations(0, "anastasia"), [])
         self.p0.board.clear()
-        for card_id, slot in (("bispo", 1), ("peao", 2), ("peao", 3), ("bispo", 6)):
+        for card_id, slot in (("bispo", 1), ("peao", 2), ("peao", 3), ("bispo", 4)):
             self.unit(card_id, position=slot)
         self.assertEqual(self.game.mates.formations(0, "boden"), [])
 
@@ -210,7 +210,7 @@ class MateTests(unittest.TestCase):
         self.unit("bispo")
         for _ in range(3):
             self.unit("peao")
-        self.unit("bispo", position=7)
+        self.unit("bispo", position=5)
         self.game.end_turn(0)
         pawn = self.p0.board[2]
         pawn.effects = []
@@ -273,7 +273,7 @@ class MateTests(unittest.TestCase):
 
     def test_ai_executes_legal_alternate_victory(self):
         self.game.end_turn(0)
-        for card_id, slot in (("bispo", 0), ("peao", 1), ("peao", 2), ("bispo", 7)):
+        for card_id, slot in (("bispo", 0), ("peao", 1), ("peao", 2), ("bispo", 5)):
             self.unit(card_id, 1, slot)
         self.game.end_turn(1)
         self.game.end_turn(0)
@@ -286,7 +286,7 @@ class MateTests(unittest.TestCase):
 
     def smothered(self):
         knight = self.unit("cavalo")
-        for _ in range(8):
+        for _ in range(6):
             unit = self.unit("peao", 1)
             unit.effects = []
         return knight
@@ -320,7 +320,7 @@ class MateTests(unittest.TestCase):
         self.card("peao_passado")
         return self.p0.king
 
-    def test_smothered_wins_with_eight_minions_and_surviving_knight(self):
+    def test_smothered_wins_with_six_minions_and_surviving_knight(self):
         self.smothered()
         self.cycle()
         self.game.play_card(0, self.card("mate_abafado"))
@@ -346,7 +346,7 @@ class MateTests(unittest.TestCase):
         self.assertFalse(self.game.playable(0, card))
         self.p1.endgame_ready = True
         self.game.activate_king(1)
-        self.assertEqual(len(self.p1.board), 8)
+        self.assertEqual(len(self.p1.board), 6)
         self.assertFalse(self.game.playable(0, card))
 
     def test_smothered_knight_must_not_attack_in_execution_turn(self):

@@ -278,7 +278,7 @@ Os alvos sao definidos antes da resolucao da acao.
 Seletores antigos `random_*` sao rejeitados pela validacao.
 O filtro opcional `card_id` restringe os alvos a uma carta.
 
-Cada `Unit.slot` identifica uma posicao fixa de 0 a 7; `Player.board` contem
+Cada `Unit.slot` identifica uma posicao fixa de 0 a 5; `Player.board` contem
 apenas unidades ocupantes, ordenadas por slot. `unit_at` e `free_slots` consultam
 ocupacao sem compactar a mesa. Apoio modifica somente dano de combate, antes de
 Escudo Divino/Armadura; o bonus de Centro adiciona 1 mana por um unico turno,

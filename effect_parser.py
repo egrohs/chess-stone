@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from board_rules import BOARD_LIMIT
+
 if TYPE_CHECKING:
     from game_engine import Entity, Game, Unit
 
@@ -57,7 +59,7 @@ class EffectParser:
             return candidates if preview else [e for e in candidates if e is target]
         if code.startswith("lowest_health_"):
             return sorted(candidates, key=lambda entity: (
-                entity.health, getattr(entity, "slot", 8),
+                entity.health, getattr(entity, "slot", BOARD_LIMIT),
             ))[:effect.get("count", 1)]
         return candidates
 

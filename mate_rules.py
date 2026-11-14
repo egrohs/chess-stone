@@ -1,9 +1,11 @@
-"""Telegraphed alternate victories on eight fixed board slots."""
+"""Telegraphed alternate victories on fixed board slots."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
+
+from board_rules import BOARD_LIMIT
 
 if TYPE_CHECKING:
     from game_engine import Game, Unit
@@ -34,16 +36,16 @@ class MateRules:
         pairs = []
         if pattern == "anastasia" and len(board) >= 3:
             player = self.game.players[owner]
-            for rook_slot, knight_slot in ((0, 1), (7, 6)):
+            for rook_slot, knight_slot in ((0, 1), (BOARD_LIMIT - 1, BOARD_LIMIT - 2)):
                 rook, knight = player.unit_at(rook_slot), player.unit_at(knight_slot)
                 if rook and knight and rook.card_id == "torre" and knight.card_id == "cavalo":
                     pairs.append((rook, knight))
         elif pattern == "boden" and len(board) >= 4:
             player = self.game.players[owner]
-            left, right = player.unit_at(0), player.unit_at(7)
+            left, right = player.unit_at(0), player.unit_at(BOARD_LIMIT - 1)
             if (
                 left and right and left.card_id == right.card_id == "bispo"
-                and sum(not unit.is_king and 0 < unit.slot < 7 for unit in board) >= 2
+                and sum(not unit.is_king and 0 < unit.slot < BOARD_LIMIT - 1 for unit in board) >= 2
             ):
                 pairs.append((left, right))
         elif pattern == "smothered":
@@ -127,8 +129,8 @@ class MateRules:
         elif pattern == "boden" and self.game.players[owner].spells_played < 2:
             return "Boden exige dois outros feiticos jogados neste turno."
         elif pattern == "smothered":
-            if len(enemy.board) != 8 or any(unit.is_king for unit in enemy.board):
-                return "Mate Abafado exige oito lacaios inimigos (Rei nao conta)."
+            if len(enemy.board) != BOARD_LIMIT or any(unit.is_king for unit in enemy.board):
+                return f"Mate Abafado exige {BOARD_LIMIT} lacaios inimigos (Rei nao conta)."
             if any("taunt" in unit.keywords for unit in enemy.board):
                 return "Mate Abafado e bloqueado por qualquer Provocar inimigo."
         elif pattern == "back_rank":

@@ -64,9 +64,9 @@ A mana maxima aumenta em um no inicio de cada turno proprio, ate **10**, e e
 totalmente restaurada. Cada jogador compra uma carta por turno.
 
 A mao comporta **10 cartas**. Compras excedentes sao descartadas, mas consomem
-a carta do deck. Cada lado comporta **oito unidades, incluindo o Rei ativado**.
+a carta do deck. Cada lado comporta **seis unidades, incluindo o Rei ativado**.
 
-A mesa tem **oito slots fixos**. Mortes deixam lacunas e nao deslocam as demais
+A mesa tem **seis slots fixos**. Mortes deixam lacunas e nao deslocam as demais
 pecas. Adjacencia significa slots imediatamente vizinhos; uma lacuna interrompe
 o apoio. Invocacoes por efeitos e o Rei ocupam o primeiro slot livre, da esquerda
 para a direita. O jogador escolhe o slot ao jogar lacaios da mao.
@@ -78,7 +78,8 @@ o apoio e calculado antes dos dois danos simultaneos. Nao modifica dano de
 feiticos, efeitos ou fadiga. Dano reduzido a zero nao consome Escudo Divino.
 Remover o defensor pode, portanto, aumentar o dano dos ataques seguintes.
 
-**Pressao territorial:** slots **1-2 e 7-8** sao as Alas; **3-6** sao o Centro.
+**Pressao territorial:** slots **1 e 6** sao os Cantos; **2 e 5** sao as Bordas;
+**3 e 4** sao o Centro.
 Ao terminar seu proprio turno, depois dos efeitos de fim de turno, controlar
 mais slots centrais que o adversario concede **+1 de mana temporaria no proximo
 turno proprio**. Empates nao concedem bonus. Reis na mesa tambem contam.
@@ -154,7 +155,7 @@ no primeiro slot livre e precisa esperar para atacar, como uma unidade sem Inves
   manual para ambos. A elegibilidade, uma vez obtida, nao e perdida.
 - Um efeito de ativacao tambem libera e tenta ativar o Rei imediatamente.
 - Ativacao manual e gratuita, apenas no turno do dono. Nunca cria um segundo Rei
-  nem excede oito unidades. O Rei conta como unidade para alvos e efeitos de area.
+  nem excede seis unidades. O Rei conta como unidade para alvos e efeitos de area.
 
 ## Vitorias alternativas: seis padroes de mate
 
@@ -166,9 +167,9 @@ O Rei ocupa um slot fixo, mas nao conta como lacaio nos requisitos abaixo.
 
 | Carta | Mana | Formacao a anunciar | Condicoes adicionais para executar |
 |---|---|---|---|
-| Mate de Anastasia | 9 | Torre no slot 1 ou 8, com Cavalo no slot 2 ou 7 respectivamente; pelo menos tres unidades aliadas | Inimigo com ate 15 de vida, ao menos dois lacaios e nenhuma unidade com Provocar |
-| Mate de Boden | 5 | Bispos nos slots 1 e 8; pelo menos dois lacaios nos slots intermediarios | Jogar dois outros feiticos no mesmo turno antes do mate |
-| Mate Abafado | 6 | Um Cavalo | Inimigo com oito lacaios e nenhum Provocar; Rei nao conta para os oito |
+| Mate de Anastasia | 9 | Torre no slot 1 ou 6, com Cavalo no slot 2 ou 5 respectivamente; pelo menos tres unidades aliadas | Inimigo com ate 15 de vida, ao menos dois lacaios e nenhuma unidade com Provocar |
+| Mate de Boden | 5 | Bispos nos slots 1 e 6; pelo menos dois lacaios nos slots intermediarios | Jogar dois outros feiticos no mesmo turno antes do mate |
+| Mate Abafado | 6 | Um Cavalo | Inimigo com seis lacaios e nenhum Provocar; Rei nao conta para os seis |
 | Mate de Gaveta | 8 | Uma Torre | Essa mesma Torre deve ter atacado e sobrevivido no turno atual; inimigo com zero de Armadura e pelo menos tres lacaios que sejam Peoes ou tenham Provocar |
 | Mate da Opera | 7 | Exatamente uma Torre e um Bispo aliados, adjacentes; outras pecas sao permitidas | Ambos devem ter atacado nesta partida; inimigo com ate 15 de vida e exatamente um lacaio |
 | Endgame Puro (Rei e Peao) | 10 | Ambos os Reis ativados, sem nenhuma outra unidade em qualquer lado | Peao Passado na mao e seu Rei com estritamente mais vida que o Rei inimigo |

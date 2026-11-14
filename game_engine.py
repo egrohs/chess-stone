@@ -13,11 +13,10 @@ from csv_to_json import validate_cards
 from deck_store import validate_deck, validate_legendary
 from effect_parser import EffectParser, MANUAL_TARGETS
 from mate_rules import MateRules
+from board_rules import BOARD_LIMIT, CENTER_SLOTS
 
 
-BOARD_LIMIT = 8
 MOVE_COST = 1
-CENTER_SLOTS = range(2, 6)
 HAND_LIMIT = 10
 KEYWORD_LABELS = {
     "taunt": "Provocar", "charge": "Investida", "rush": "Rapidez",
@@ -310,7 +309,7 @@ class Game:
             isinstance(position, bool) or not isinstance(position, int)
             or not 0 <= position < BOARD_LIMIT
         ):
-            raise RuleError("Posicao de invocacao invalida: escolha um slot de 1 a 8.")
+            raise RuleError(f"Posicao de invocacao invalida: escolha um slot de 1 a {BOARD_LIMIT}.")
         if self.players[owner].unit_at(position) is not None:
             raise RuleError("Slot ocupado. Escolha um espaco livre.")
 
@@ -385,7 +384,7 @@ class Game:
             raise RuleError("Mana insuficiente.")
         if definition["type"] == "minion":
             if len(player.board) >= BOARD_LIMIT:
-                raise RuleError("Sua mesa ja tem 8 unidades.")
+                raise RuleError(f"Sua mesa ja tem {BOARD_LIMIT} unidades.")
             if position is not None:
                 self.require_free_slot(owner, position)
         if self.manual_effects(card) and target not in self.valid_card_targets(owner, card):

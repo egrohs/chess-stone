@@ -183,7 +183,7 @@ class RulesTests(unittest.TestCase):
             self.game.play_card(0, card)
         self.assertEqual(self.p0.mana, 10)
         self.assertIn(card, self.p0.hand)
-        self.assertEqual(len(self.p0.board), 8)
+        self.assertEqual(len(self.p0.board), 6)
 
     def test_fixed_slot_and_adjacent_battlecry(self):
         left = self.game.summon(0, "peao", 0)
@@ -196,7 +196,7 @@ class RulesTests(unittest.TestCase):
 
     def test_invalid_position_does_not_consume_card_or_mana(self):
         card = self.card("peao")
-        for position in (-1, 8, 0.5, True):
+        for position in (-1, 6, 7, 8, 0.5, True):
             with self.subTest(position=position), self.assertRaises(RuleError):
                 self.game.play_card(0, card, position=position)
             self.assertIn(card, self.p0.hand)
@@ -387,7 +387,7 @@ class RulesTests(unittest.TestCase):
         self.assertEqual(self.p1.health, 27)
 
     def test_full_board_defers_king_until_a_slot_is_free(self):
-        units = [self.unit() for _ in range(8)]
+        units = [self.unit() for _ in range(BOARD_LIMIT)]
         self.p0.deck = ["peao"]
         self.game.draw_card(0)
         self.assertIsNone(self.p0.king)
@@ -396,7 +396,7 @@ class RulesTests(unittest.TestCase):
         self.game.damage(units[0], 10)
         self.game.cleanup()
         self.assertIsNotNone(self.p0.king)
-        self.assertEqual(len(self.p0.board), 8)
+        self.assertEqual(len(self.p0.board), 6)
 
     def test_endgame_after_eight_complete_rounds(self):
         self.game.turn_number = 15
@@ -470,12 +470,12 @@ class RulesTests(unittest.TestCase):
                     else:
                         game.end_turn(owner)
                 for p in game.players:
-                    self.assertLessEqual(len(p.board), 8)
+                    self.assertLessEqual(len(p.board), 6)
                     self.assertLessEqual(len(p.hand), 10)
                     self.assertTrue(0 <= p.max_mana <= 10)
                     self.assertTrue(0 <= p.mana <= p.max_mana + p.temporary_mana <= 11)
                     self.assertEqual(len({u.slot for u in p.board}), len(p.board))
-                    self.assertTrue(all(0 <= u.slot < 8 for u in p.board))
+                    self.assertTrue(all(0 <= u.slot < 6 for u in p.board))
             self.assertTrue(game.over, f"Partida seed={seed} nao terminou em {step + 1} acoes")
 
 

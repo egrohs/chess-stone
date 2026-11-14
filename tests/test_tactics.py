@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from game_engine import Card, Game, RuleError, load_cards
+from board_rules import BOARD_LIMIT, CENTER_SLOTS, CORNER_SLOTS, EDGE_SLOTS
 
 
 class TacticalRulesTests(unittest.TestCase):
@@ -28,7 +29,7 @@ class TacticalRulesTests(unittest.TestCase):
         unit = self.unit(0, 0)
         other = self.unit(0, 1)
         before = self.p0.mana
-        for owner, mover, slot in ((0, unit, 1), (0, unit, 8), (1, unit, 3), (0, self.unit(1, 0), 3)):
+        for owner, mover, slot in ((0, unit, 1), (0, unit, 6), (0, unit, 7), (1, unit, 3), (0, self.unit(1, 0), 3)):
             with self.assertRaises(RuleError):
                 self.game.move_unit(owner, mover, slot)
         self.p0.mana = 0
@@ -41,7 +42,7 @@ class TacticalRulesTests(unittest.TestCase):
         self.p0.endgame_ready = True
         self.game.activate_king(0)
         with self.assertRaises(RuleError):
-            self.game.move_unit(0, self.p0.king, 7)
+            self.game.move_unit(0, self.p0.king, 5)
 
     def test_move_unit_changes_center_control(self):
         unit = self.unit(0, 0)
@@ -59,23 +60,23 @@ class TacticalRulesTests(unittest.TestCase):
         self.game.end_turn(1)
 
     def test_death_leaves_gap_and_default_summon_reuses_first_free_slot(self):
-        left, middle, right = self.unit(slot=0), self.unit(slot=1), self.unit(slot=7)
+        left, middle, right = self.unit(slot=0), self.unit(slot=1), self.unit(slot=5)
         middle.health = 0
         self.game.cleanup()
-        self.assertEqual([unit.slot for unit in self.p0.board], [0, 7])
+        self.assertEqual([unit.slot for unit in self.p0.board], [0, 5])
         self.assertIsNone(self.p0.unit_at(1))
-        self.assertEqual(self.p0.free_slots(), [1, 2, 3, 4, 5, 6])
+        self.assertEqual(self.p0.free_slots(), [1, 2, 3, 4])
         replacement = self.unit()
         self.assertEqual(replacement.slot, 1)
-        self.assertEqual((left.slot, right.slot), (0, 7))
+        self.assertEqual((left.slot, right.slot), (0, 5))
 
     def test_king_uses_first_free_slot_without_moving_survivors(self):
-        left, right = self.unit(slot=0), self.unit(slot=7)
+        left, right = self.unit(slot=0), self.unit(slot=5)
         self.p0.endgame_ready = True
         self.game.activate_king(0)
         self.assertEqual(self.p0.king.slot, 1)
-        self.assertEqual((left.slot, right.slot), (0, 7))
-        self.assertEqual([unit.slot for unit in self.p0.board], [0, 1, 7])
+        self.assertEqual((left.slot, right.slot), (0, 5))
+        self.assertEqual([unit.slot for unit in self.p0.board], [0, 1, 5])
 
     def test_occupied_slot_rejection_is_atomic(self):
         occupant = self.unit(slot=5)
@@ -91,9 +92,9 @@ class TacticalRulesTests(unittest.TestCase):
             self.game.summon(0, "peao", 5)
 
     def test_empty_slot_is_not_restricted_by_occupied_count(self):
-        self.game.play_card(0, self.card("peao"), position=7)
-        self.assertEqual(self.p0.board[0].slot, 7)
-        self.assertEqual(len(self.p0.free_slots()), 7)
+        self.game.play_card(0, self.card("peao"), position=5)
+        self.assertEqual(self.p0.board[0].slot, 5)
+        self.assertEqual(len(self.p0.free_slots()), 5)
 
     def test_gap_blocks_battlecry_adjacency_and_support(self):
         left, far = self.unit(slot=0), self.unit(slot=3)
@@ -103,7 +104,7 @@ class TacticalRulesTests(unittest.TestCase):
         self.assertFalse(self.game.supported(far))
 
     def test_opposite_edges_are_not_adjacent(self):
-        left, right = self.unit(slot=0), self.unit(slot=7)
+        left, right = self.unit(slot=0), self.unit(slot=5)
         self.assertFalse(self.game.supported(left))
         self.assertFalse(self.game.supported(right))
         left.health = 0
@@ -194,8 +195,15 @@ class TacticalRulesTests(unittest.TestCase):
         support.health = 0
         self.assertFalse(self.game.supported(self.p1.king))
 
-    def test_center_excludes_wings_and_dead_units(self):
-        for slot in (0, 1, 6, 7):
+    def test_six_slots_are_partitioned_into_corners_edges_and_center(self):
+        self.assertEqual(BOARD_LIMIT, 6)
+        self.assertEqual(tuple(CORNER_SLOTS), (0, 5))
+        self.assertEqual(tuple(EDGE_SLOTS), (1, 4))
+        self.assertEqual(tuple(CENTER_SLOTS), (2, 3))
+        self.assertEqual(sorted((*CORNER_SLOTS, *EDGE_SLOTS, *CENTER_SLOTS)), list(range(6)))
+
+    def test_center_excludes_corners_edges_and_dead_units(self):
+        for slot in (0, 1, 4, 5):
             self.unit(slot=slot)
         self.assertEqual(self.game.center_control(0), 0)
         center = self.unit(slot=2)
@@ -229,7 +237,7 @@ class TacticalRulesTests(unittest.TestCase):
         self.unit(1, 3)
         self.cycle()
         self.assertEqual((self.p0.temporary_mana, self.p1.temporary_mana), (0, 0))
-        self.unit(1, 4)
+        self.unit(1, 2)
         self.cycle()
         self.assertEqual(self.p0.temporary_mana, 0)
         self.assertTrue(self.p1.center_bonus_pending)
@@ -237,11 +245,11 @@ class TacticalRulesTests(unittest.TestCase):
         self.assertEqual(self.p1.temporary_mana, 1)
 
     def test_center_bonus_does_not_stack_or_increase_max_crystals(self):
-        self.unit(slot=5)
+        self.unit(slot=3)
         for _ in range(3):
             self.cycle()
             self.assertEqual((self.p0.max_mana, self.p0.mana), (10, 11))
-        self.game.play_card(0, self.card("dama"), position=7)
+        self.game.play_card(0, self.card("dama"), position=5)
         self.assertEqual(self.p0.mana, 4)
 
     def test_center_uses_state_after_end_turn_effects(self):
@@ -265,7 +273,7 @@ class TacticalRulesTests(unittest.TestCase):
 
     def test_lowest_health_targets_are_deterministic_with_slot_tiebreaks(self):
         high = self.unit(1, 0, "bispo")
-        later = self.unit(1, 7)
+        later = self.unit(1, 5)
         earlier = self.unit(1, 3)
         effect = self.game.catalog["ataque_duplo"]["effects"][0]
         with patch.object(self.game.rng, "sample", side_effect=AssertionError("RNG")):
@@ -276,7 +284,7 @@ class TacticalRulesTests(unittest.TestCase):
         self.assertEqual(self.p1.health, 30)
 
     def test_lowest_health_hero_tie_comes_after_slots_and_respects_count(self):
-        piece = self.unit(1, 7)
+        piece = self.unit(1, 5)
         self.p1.health = piece.health
         effect = {"target": "lowest_health_enemy", "count": 2}
         self.assertEqual(self.game.parser.resolve_targets(effect, 0), [piece, self.p1])
@@ -285,7 +293,7 @@ class TacticalRulesTests(unittest.TestCase):
         )
 
     def test_lowest_health_filters_before_ordering_and_ignores_elusive(self):
-        bishop = self.unit(1, 6, "bispo")
+        bishop = self.unit(1, 4, "bispo")
         bishop.health = 1
         self.unit(1, 0)
         effect = {"target": "lowest_health_enemy_minion", "card_id": "bispo", "count": 2}

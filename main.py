@@ -19,6 +19,7 @@ from crafting import CraftingInventory, STARTER_IDS
 from puzzle_view import PuzzleView
 from audio import ImpactAudio
 from mate_rules import LABELS as MATE_LABELS
+from board_rules import CORNER_SLOTS
 
 
 WIDTH, HEIGHT = 1440, 940
@@ -240,8 +241,9 @@ class App:
         self.position = None
 
     def slots(self, owner: int) -> list[pygame.Rect]:
+        left = (SIDEBAR - ((BOARD_LIMIT - 1) * SLOT_STEP + SLOT_WIDTH)) // 2
         return [
-            pygame.Rect(24 + i * SLOT_STEP, 405 if owner == 0 else 178, SLOT_WIDTH, SLOT_HEIGHT)
+            pygame.Rect(left + i * SLOT_STEP, 405 if owner == 0 else 178, SLOT_WIDTH, SLOT_HEIGHT)
             for i in range(BOARD_LIMIT)
         ]
 
@@ -515,7 +517,7 @@ class App:
                 pygame.draw.rect(self.screen, PANEL, rect, border_radius=5)
                 pygame.draw.rect(self.screen, BLUE if index in CENTER_SLOTS else MUTED, rect, 1, border_radius=5)
                 self.text(
-                    f"{index + 1} {'Centro' if index in CENTER_SLOTS else 'Ala'}",
+                    f"{index + 1} {'Centro' if index in CENTER_SLOTS else 'Canto' if index in CORNER_SLOTS else 'Borda'}",
                     (rect.x + 8, rect.y + 7), MUTED, self.small,
                 )
                 unit = player.unit_at(index)
@@ -523,7 +525,7 @@ class App:
                     self.draw_unit(unit, rect, targets)
                     self.text(str(index + 1), (rect.right - 15, rect.y + 3), MUTED, self.small)
             self.text(
-                "Alas: 1-2 / 7-8 | Centro: 3-6"
+                "Cantos: 1 e 6 | Bordas: 2 e 5 | Centro: 3 e 4"
                 f" | Controle: {game.center_control(owner)}"
                 + (" | +1 mana no proximo turno" if player.center_bonus_pending else ""),
                 (24, 568 if owner == 0 else 330), BLUE, self.small,
@@ -546,7 +548,7 @@ class App:
                 (24, y), BLUE,
             )
             self.text(
-                f"Deck: {len(player.deck)} | Mao: {len(player.hand)}/10 | Mesa: {len(player.board)}/8",
+                f"Deck: {len(player.deck)} | Mao: {len(player.hand)}/10 | Mesa: {len(player.board)}/{BOARD_LIMIT}",
                 (24, y + 28), MUTED, self.small,
             )
             if player.armor:
@@ -718,7 +720,7 @@ class App:
         elif self.state == State.MENU:
             self.text("CHESS STONE", (600, 220), GOLD, self.large)
             self.text("Card game de xadrez | Jogador x IA", (548, 292))
-            self.text(f"IA: {self.deck_size} cartas | 8 unidades por lado | 30 de vida", (493, 336), MUTED)
+            self.text(f"IA: {self.deck_size} cartas | {BOARD_LIMIT} unidades por lado | 30 de vida", (493, 336), MUTED)
             self.button(self.start_button, "Iniciar partida")
             self.button(self.builder_button, "Montar / editar decks")
             self.button(self.collection_button, "Colecao de cartas")

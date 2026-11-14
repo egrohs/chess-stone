@@ -10,7 +10,7 @@ os.environ["SDL_AUDIODRIVER"] = "dummy"
 import pygame
 
 from game_engine import Card
-from main import App, State
+from main import App, SIDEBAR, State
 
 
 class InterfaceTests(unittest.TestCase):
@@ -39,6 +39,28 @@ class InterfaceTests(unittest.TestCase):
     def select_first_card(self):
         self.app.click(self.app.hand_rects()[0][1].center)
 
+    def test_six_slots_are_centered_and_labeled_for_both_players(self):
+        labels = ["1 Canto", "2 Borda", "3 Centro", "4 Centro", "5 Borda", "6 Canto"]
+        with patch.object(self.app, "text", wraps=self.app.text) as text:
+            self.app.draw()
+        rendered = [call.args[0] for call in text.call_args_list]
+        for label in labels:
+            self.assertEqual(rendered.count(label), 2)
+        for owner in (0, 1):
+            slots = self.app.slots(owner)
+            self.assertEqual(len(slots), 6)
+            self.assertEqual(slots[0].left, SIDEBAR - slots[-1].right)
+            self.assertTrue(all(left.right < right.left for left, right in zip(slots, slots[1:])))
+
+    def test_drag_from_last_corner_to_center(self):
+        unit = self.game.summon(0, "peao", 5)
+        slots = self.app.slots(0)
+        event = pygame.event.Event
+        self.app.handle_event(event(pygame.MOUSEBUTTONDOWN, button=1, pos=slots[5].center))
+        self.app.handle_event(event(pygame.MOUSEBUTTONUP, button=1, pos=slots[2].center))
+        self.assertEqual((unit.slot, self.player.mana), (2, 9))
+        self.assertEqual(self.game.center_control(0), 1)
+
     def test_drag_unit_to_empty_slot(self):
         unit = self.game.summon(0, "peao", 0)
         before = self.player.mana
@@ -66,7 +88,7 @@ class InterfaceTests(unittest.TestCase):
         self.select_first_card()
         self.assertIs(self.app.selected_card, card)
         self.assertTrue(self.app.choosing_position())
-        self.assertEqual(len([r for _, r in self.app.placement_rects() if r.width > 8]), 8)
+        self.assertEqual(len([r for _, r in self.app.placement_rects() if r.width > 8]), 6)
         self.app.draw()
         self.app.click(self.app.slots(0)[0].center)
         self.assertEqual(self.player.board[0].card_id, "peao")
@@ -95,33 +117,33 @@ class InterfaceTests(unittest.TestCase):
 
     def test_fixed_slots_render_and_target_after_interior_death(self):
         removed = self.game.summon(1, "peao", 0)
-        enemy = self.game.summon(1, "peao", 7)
+        enemy = self.game.summon(1, "peao", 5)
         removed.effects = []
         removed.health = 0
         self.game.cleanup()
         self.add_card("cravada_absoluta")
         self.select_first_card()
         rectangles = dict(self.app.entity_rects())
-        self.assertEqual(rectangles[enemy], self.app.slots(1)[7])
+        self.assertEqual(rectangles[enemy], self.app.slots(1)[5])
         self.app.draw()
-        self.app.click(self.app.slots(1)[7].center)
+        self.app.click(self.app.slots(1)[5].center)
         self.assertGreater(enemy.frozen_through, 0)
-        self.assertEqual(enemy.slot, 7)
+        self.assertEqual(enemy.slot, 5)
 
     def test_placement_highlights_only_vacant_physical_slots(self):
         self.game.summon(0, "peao", 2)
-        self.game.summon(0, "peao", 7)
+        self.game.summon(0, "peao", 5)
         self.add_card("dama")
         self.select_first_card()
-        self.assertEqual([slot for slot, _ in self.app.placement_rects()], [0, 1, 3, 4, 5, 6])
-        self.app.click(self.app.slots(0)[5].center)
-        self.assertEqual(self.player.unit_at(5).card_id, "dama")
+        self.assertEqual([slot for slot, _ in self.app.placement_rects()], [0, 1, 3, 4])
+        self.app.click(self.app.slots(0)[4].center)
+        self.assertEqual(self.player.unit_at(4).card_id, "dama")
         self.app.draw()
 
     def test_deterministic_spell_preview_and_center_bonus_render(self):
         self.game.summon(0, "peao", 3)
-        self.game.summon(1, "bispo", 6)
-        self.game.summon(1, "peao", 7)
+        self.game.summon(1, "bispo", 4)
+        self.game.summon(1, "peao", 5)
         self.game.end_turn(0)
         self.app.draw()
         self.game.end_turn(1)
@@ -131,8 +153,8 @@ class InterfaceTests(unittest.TestCase):
         self.app.draw()
         self.assertEqual(self.player.temporary_mana, 1)
         self.app.click(self.app.play_button.center)
-        self.assertEqual(self.game.players[1].unit_at(6).health, 2)
-        self.assertIsNone(self.game.players[1].unit_at(7))
+        self.assertEqual(self.game.players[1].unit_at(4).health, 2)
+        self.assertIsNone(self.game.players[1].unit_at(5))
 
     def test_minion_with_target_uses_two_click_stages(self):
         enemy = self.game.summon(1, "peao")
@@ -205,7 +227,7 @@ class InterfaceTests(unittest.TestCase):
         self.assertFalse(self.app.game.over)
 
     def test_announced_mate_renders_and_wins_through_clicks(self):
-        for card_id, slot in (("bispo", 0), ("peao", 1), ("peao", 2), ("bispo", 7)):
+        for card_id, slot in (("bispo", 0), ("peao", 1), ("peao", 2), ("bispo", 5)):
             self.game.summon(0, card_id, slot)
         self.game.end_turn(0)
         self.game.end_turn(1)
