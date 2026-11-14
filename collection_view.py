@@ -146,7 +146,10 @@ class CollectionView:
             )
             pygame.draw.rect(app.screen, GOLD if card is self.selected else MUTED, rect, 3, border_radius=6)
             app.text(f"{piece['cost']} tempo", (rect.x + 12, rect.y + 10), BLUE, app.large)
-            app.paragraph(card["name"], pygame.Rect(rect.x + 12, rect.y + 60, 186, 55), font=app.font)
+            art = app.card_art(card, (65, 77))
+            if art:
+                app.screen.blit(art, (rect.right - 77, rect.y + 12))
+            app.paragraph(card["name"], pygame.Rect(rect.x + 12, rect.y + 60, 110 if art else 186, 55), font=app.font)
             app.text(f"{TYPE_LABELS[piece['piece_type']]} ou Manobra", (rect.x + 12, rect.y + 120), MUTED, app.small)
             app.paragraph(card["description"], pygame.Rect(rect.x + 12, rect.y + 148, 186, 92))
             app.text(f"ATQ {piece['attack']} / VIDA {piece['health']}", (rect.x + 12, rect.bottom - 34), GOLD)

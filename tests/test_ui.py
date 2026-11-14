@@ -304,6 +304,78 @@ class InterfaceTests(unittest.TestCase):
         self.assertIn(unit.name, rendered)
         self.assertIn("3 / 5", rendered)
 
+    def test_pawn_art_uses_catalog_identity_and_keeps_real_card_values(self):
+        from crafting import make_variant
+
+        pawn = self.add_card("peao")
+        art = self.app.card_art(pawn.definition, (51, 60))
+        self.assertIsNotNone(art)
+        self.assertIs(art, self.app.card_art(pawn.definition, (51, 60)))
+        self.assertIsNotNone(self.app.card_art(make_variant(pawn.definition, "perfect"), (51, 60)))
+        self.assertIsNone(self.app.card_art(self.game.catalog["peao_passado"], (51, 60)))
+        with patch.object(self.app, "text", wraps=self.app.text) as text:
+            self.app.hand_card_image(pawn)
+        rendered = [call.args[0] for call in text.call_args_list]
+        self.assertIn("1", rendered)
+        self.assertIn("1/2 ou M", rendered)
+
+    def test_basic_card_art_and_variants_use_distinct_images(self):
+        from crafting import make_variant
+
+        images = []
+        for card_id in ("peao", "cavalo", "bispo", "torre", "dama"):
+            with self.subTest(card=card_id):
+                definition = self.game.catalog[card_id]
+                art = self.app.card_art(definition, (51, 60))
+                self.assertIsNotNone(art)
+                self.assertIs(art, self.app.card_art(definition, (51, 60)))
+                self.assertIs(art, self.app.card_art(make_variant(definition, "improved"), (51, 60)))
+                images.append(pygame.image.tobytes(art, "RGBA"))
+        self.assertEqual(len(set(images)), 5)
+        self.assertIsNone(self.app.card_art(self.game.catalog["coluna_aberta"], (51, 60)))
+
+    def test_basic_card_art_renders_on_hand_both_boards_and_collection(self):
+        card_ids = ("peao", "cavalo", "bispo", "torre", "dama")
+        for index, card_id in enumerate(card_ids):
+            self.add_card(card_id)
+            self.game.summon(0, card_id, index)
+            self.game.summon(1, card_id, index)
+        with patch.object(self.app, "card_art", wraps=self.app.card_art) as art:
+            self.app.draw()
+        calls = [(call.args[0]["id"], call.args[1]) for call in art.call_args_list]
+        for card_id in card_ids:
+            self.assertIn((card_id, (51, 60)), calls)
+            self.assertEqual(calls.count((card_id, (38, 45))), 2)
+        self.app.state = State.COLLECTION
+        self.app.collection.query = ""
+        self.app.collection.refresh()
+        with patch.object(self.app, "card_art", wraps=self.app.card_art) as art:
+            while True:
+                self.app.draw()
+                if (self.app.collection.page + 1) * 8 >= len(self.app.collection.filtered_cards()):
+                    break
+                self.app.collection.page += 1
+        collection_calls = [(call.args[0]["id"], call.args[1]) for call in art.call_args_list]
+        for card_id in card_ids:
+            self.assertIn((card_id, (65, 77)), collection_calls)
+
+    def test_pawn_art_renders_in_hand_board_and_collection(self):
+        pawn = self.add_card("peao")
+        self.game.summon(0, "peao", 0)
+        self.game.summon(1, "peao", 0)
+        with patch.object(self.app, "card_art", wraps=self.app.card_art) as art:
+            self.app.draw()
+        calls = [(call.args[0]["id"], call.args[1]) for call in art.call_args_list]
+        self.assertIn(("peao", (51, 60)), calls)
+        self.assertEqual(calls.count(("peao", (38, 45))), 2)
+        self.app.state = State.COLLECTION
+        self.app.collection.query = "peao"
+        self.app.collection.refresh()
+        with patch.object(self.app, "card_art", wraps=self.app.card_art) as art:
+            self.app.draw()
+        self.assertTrue(any(call.args[0]["id"] == pawn.definition["id"] and call.args[1] == (65, 77)
+                            for call in art.call_args_list))
+
     def test_maneuver_button_switches_from_pending_piece_target(self):
         ally = self.game.summon(0, "peao", 0)
         card = self.add_card("torre")

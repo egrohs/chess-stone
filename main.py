@@ -27,6 +27,15 @@ WIDTH, HEIGHT = 1440, 940
 SIDEBAR = 1100
 DRAG_THRESHOLD = 6
 BOARD_PATH = Path(__file__).resolve().parent / "assets" / "board.jpg"
+CARD_ART_DIR = Path(__file__).resolve().parent / "assets" / "cards"
+CARD_ART_FILES = {
+    "peao": "white_pawn.png",
+    "cavalo": "white_knight.png",
+    "bispo": "white_bishop.png",
+    "torre": "white_rook.png",
+    "dama": "white_queen.png",
+}
+CARD_ART_RECT = pygame.Rect(180, 90, 225, 265)
 BOARD_SOURCE_SIZE = (2626, 1600)
 BOARD_X_EDGES = (446, 722, 1022, 1320, 1622, 1922, 2219)
 BOARD_Y_EDGES = (460, 742, 1050)
@@ -60,6 +69,14 @@ class App:
         board_height = round(BOARD_SOURCE_SIZE[1] * SIDEBAR / BOARD_SOURCE_SIZE[0])
         self.board_image = pygame.transform.smoothscale(board, (SIDEBAR, board_height))
         self.board_rect = self.board_image.get_rect(topleft=(0, BOARD_TOP))
+        self.card_art_images: dict[str, pygame.Surface] = {}
+        for card_id, filename in CARD_ART_FILES.items():
+            path = CARD_ART_DIR / filename
+            image = pygame.image.load(str(path)).convert_alpha()
+            if not image.get_rect().contains(CARD_ART_RECT):
+                raise ValueError(f"Imagem da carta muito pequena: {path}")
+            self.card_art_images[card_id] = image.subsurface(CARD_ART_RECT).copy()
+        self.card_art_sizes: dict[tuple[str, tuple[int, int]], pygame.Surface] = {}
         self.clock = pygame.time.Clock()
         self.hand_view = HandView()
         self.font = pygame.font.SysFont("segoeui", 18)
@@ -604,12 +621,25 @@ class App:
         image = self.font.render(label, True, WHITE if enabled else MUTED)
         self.screen.blit(image, image.get_rect(center=rect.center))
 
+    def card_art(self, card: dict, size: tuple[int, int]) -> pygame.Surface | None:
+        card_id = card.get("base_id", card["id"])
+        if card_id not in self.card_art_images:
+            return None
+        key = (card_id, size)
+        if key not in self.card_art_sizes:
+            self.card_art_sizes[key] = pygame.transform.smoothscale(self.card_art_images[card_id], size)
+        return self.card_art_sizes[key]
+
     def draw_unit(self, unit: Unit, rect: pygame.Rect, targets: list[Entity]) -> None:
         game = self.game
         color = (42, 67, 83) if unit.owner == 0 else (79, 48, 58)
         if unit.is_king:
             color = (88, 75, 38)
         pygame.draw.rect(self.screen, color, rect, border_radius=5)
+        definition = game.catalog.get(unit.definition_id or unit.card_id) if game else None
+        art = self.card_art(definition, (38, 45)) if definition else None
+        if art:
+            self.screen.blit(art, (rect.right - 43, rect.y + 5))
         border = MUTED
         if game and game.attack_targets(unit):
             border = BLUE
@@ -623,11 +653,16 @@ class App:
         pygame.draw.rect(self.screen, border, rect, 3, border_radius=5)
         if prepared:
             pygame.draw.rect(self.screen, GOLD, rect.inflate(-8, -8), 1, border_radius=4)
-        self.paragraph(unit.name, pygame.Rect(rect.x + 7, rect.y + 7, rect.width - 14, self.font.get_linesize()), font=self.font)
+        name_width = rect.width - (50 if art else 14)
+        self.paragraph(unit.name, pygame.Rect(rect.x + 7, rect.y + 7, name_width, self.font.get_linesize()), font=self.font)
         labels = [unit.piece_type.capitalize(), *[KEYWORD_LABELS[k] for k in sorted(unit.keywords)]]
         if game and game.players[unit.owner].turns_started <= unit.frozen_through:
             labels.append("Congelado")
-        self.paragraph(" / ".join(labels), pygame.Rect(rect.x + 7, rect.y + 33, rect.width - 14, 38), GOLD, font=self.small)
+        self.paragraph(
+            " / ".join(labels),
+            pygame.Rect(rect.x + 7, rect.y + (52 if art else 33), rect.width - 14, 24 if art else 38),
+            GOLD, font=self.small,
+        )
         if game:
             self.text(
                 "Apoiada -1" if game.supported(unit) else "Pendurada +1",
@@ -764,7 +799,10 @@ class App:
             focused = card is self.selected_card or card is self.hand_view.hovered
             pygame.draw.rect(image, border, rect, 3 if focused else 1, border_radius=5)
             self.text(str(definition["cost"]), (8, 5), BLUE, self.large, surface=image)
-            self.paragraph(card.name, pygame.Rect(7, 46, 85, 49), surface=image)
+            art = self.card_art(card.definition, (51, 60))
+            if art:
+                image.blit(art, (43, 7))
+            self.paragraph(card.name, pygame.Rect(7, 69 if art else 46, 85, 26 if art else 49), surface=image)
             self.paragraph(
                 card.definition["description"], pygame.Rect(7, 98, 85, 62),
                 WHITE if playable else MUTED, surface=image,

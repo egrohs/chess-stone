@@ -116,7 +116,7 @@ padrao e o formato existente da colecao.
 ## Imagens e sons das cartas
 
 A pasta `assets\cards\` possui uma subpasta para cada ID de carta do catalogo,
-alem de `rei` para o Rei. Coloque a imagem e os sons juntos na pasta da carta:
+alem de `rei` para o Rei. A estrutura prevista para imagens e sons e:
 
 O fundo da partida usa `assets\board.jpg` (2626 x 1600); a geometria das casas
 corresponde aos quadrados dessa imagem.
@@ -150,8 +150,14 @@ assets\
     rei\
 ```
 
-Os arquivos mostrados em `peao` sao exemplos de nomes; nenhuma imagem ou som
-foi incluido. Use essa mesma convencao em cada pasta: `art.png` para a arte,
+As cinco pecas basicas usam as ilustracoes em `assets\cards\white_pawn.png`,
+`white_knight.png`, `white_bishop.png`, `white_rook.png` e `white_queen.png`
+na mao, no tabuleiro e na colecao, inclusive nas variantes de qualidade. Apenas
+os retratos sao usados: os numeros e textos impressos nas imagens nao representam
+as regras atuais. O jogo desenha os atributos e efeitos reais separadamente.
+
+Os arquivos mostrados em `peao` sao exemplos de nomes para recursos futuros.
+Use essa mesma convencao em cada pasta: `art.png` para a arte,
 `on_play.ogg` ao jogar, `on_attack.ogg` ao atacar, `on_death.ogg` ao morrer e
 `on_effect.ogg` para o efeito. Prefira PNG com transparencia e audio OGG ou WAV
 (`on_play.wav`, por exemplo). Eventos que nao se aplicam a uma carta podem
@@ -164,7 +170,8 @@ mesmo `id` do CSV, sem acentos ou espacos.
 
 Os arquivos `.gitkeep` apenas preservam as pastas vazias no Git e podem ser
 removidos depois de adicionar seus recursos. **Esta estrutura ainda nao carrega
-nem reproduz os arquivos no jogo**; a interface continua minimalista.
+nem reproduz os arquivos no jogo**; a imagem do Peao acima e carregada
+separadamente.
 
 ### Sons genericos de impacto
 
