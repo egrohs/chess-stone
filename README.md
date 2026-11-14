@@ -197,6 +197,11 @@ compras para a mao, aumento, renovacao e gasto de Tempo, congelamento, inicio
 do turno do jogador, botao de passar turno e vitoria do jogador. A partida nao
 possui moeda nem mulligan, portanto o som de lancamento da moeda nao e usado.
 
+As faixas em `assets\sounds\music\` tocam em segundo plano, com volume reduzido
+e independente dos efeitos. A faixa cujo nome comeca por `01.` toca em loop
+fora da partida; as demais tocam em ordem e se repetem durante a partida.
+Ausencia ou erro de leitura das faixas e informado na interface e no console.
+
 ## Editar as cartas
 
 Exporte uma planilha como CSV UTF-8 com o cabecalho exato:
@@ -369,5 +374,5 @@ Os testes de crafting tambem usam arquivos temporarios e respostas de rede
 simuladas; nao dependem de internet nem modificam o inventario local.
 
 ### TODO
-
+- musicas de https://downloads.khinsider.com/game-soundtracks/album/hearthstone-music-from-the-tavern-anniversary-picks-2024
 - Vamos adicionar classes de heroes que seriam os campeões de chess. Seriam 4 classes dos perfis de jogadores, ativista, pragmático, reflector, teorista.

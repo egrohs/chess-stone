@@ -17,7 +17,7 @@ from collection_view import CollectionView
 from ui_theme import BG, PANEL, WHITE, MUTED, GREEN, GOLD, RED, BLUE
 from crafting import CraftingInventory, STARTER_IDS
 from puzzle_view import PuzzleView
-from audio import ImpactAudio
+from audio import BackgroundMusic, ImpactAudio
 from mate_rules import LABELS as MATE_LABELS
 from board_rules import CORNER_SLOTS
 from hand_view import CARD_SIZE, CardMotion, HandView
@@ -61,6 +61,7 @@ class App:
         pygame.mixer.pre_init(frequency=44100, size=-16, channels=2, buffer=256)
         pygame.init()
         self.audio = ImpactAudio()
+        self.music = BackgroundMusic()
         if self.audio.error:
             print(self.audio.error, file=sys.stderr)
         pygame.display.set_caption("Chess Stone - prototipo")
@@ -106,6 +107,7 @@ class App:
         self.saved_page = 0
         self.reload_decks()
         self.state = State.MENU
+        self.music.update(False)
         self.game: Game | None = None
         self.selected_card: Card | None = None
         self.selected_unit: Unit | None = None
@@ -157,6 +159,7 @@ class App:
             self.state = State.MENU
             return
         self.state = State.MATCH
+        self.music.update(True)
         self.hand_view = HandView()
         if self.audio.error:
             self.game.log(self.audio.error)
@@ -838,9 +841,9 @@ class App:
             return
         pygame.draw.rect(self.screen, PANEL, (SIDEBAR, 0, WIDTH - SIDEBAR, HEIGHT))
         self.text("COMANDOS", (1120, 28), GOLD, self.large)
-        if not self.audio.error:
+        if not self.audio.error and not self.music.error:
             self.text(f"Manobras neste turno: {game.players[game.current].maneuvers_played}", (1120, 70), MUTED, self.small)
-        if self.audio.error:
+        if self.audio.error or self.music.error:
             self.text("Erro de audio (veja o console)", (1120, 70), RED, self.small)
         human_turn = game.current == 0 and not game.over
         self.button(self.end_button, "Passar Turno", human_turn)
@@ -963,7 +966,7 @@ class App:
                 self.inventory.error or self.deck_message, pygame.Rect(360, 830, 720, 100),
                 RED if self.library_error or self.inventory.error or self.deck_message.startswith("Erro") else GREEN,
             )
-            if self.audio.error:
+            if self.audio.error or self.music.error:
                 self.text("Erro de audio (detalhes no console).", (30, 910), RED, self.small)
         else:
             game = self.game
@@ -976,6 +979,7 @@ class App:
         pygame.display.flip()
 
     def update(self, dt: float = 0.0) -> None:
+        self.music.update(self.state == State.MATCH)
         if self.state == State.PUZZLE:
             self.puzzle_view.update()
             return
@@ -1004,6 +1008,7 @@ class App:
         if self.game and self.game.winner == 0:
             self.audio.play_event("victory")
         self.state = State.GAME_OVER
+        self.music.update(False)
         self.clear_selection()
 
     def handle_event(self, event: pygame.event.Event) -> None:
@@ -1075,6 +1080,7 @@ class App:
                 self.clock.tick(60)
         finally:
             self.puzzle_view.close()
+            self.music.stop()
             pygame.quit()
 
 
@@ -1125,6 +1131,7 @@ def main() -> None:
                 raise RuntimeError("Transicao para fim de jogo falhou")
         finally:
             app.puzzle_view.close()
+            app.music.stop()
             pygame.quit()
     else:
         app.run()

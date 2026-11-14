@@ -11,7 +11,7 @@ os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 import pygame
 
-from audio import EVENT_SOUNDS, IMPACTS_PATH, ImpactAudio
+from audio import BackgroundMusic, EVENT_SOUNDS, IMPACTS_PATH, ImpactAudio
 from game_engine import Card, Game, RuleError, load_cards
 from tools.generate_impacts import PROFILES, SAMPLE_RATE, generate
 
@@ -195,6 +195,90 @@ class AudioTests(unittest.TestCase):
                     app.game.winner = winner
                     app.update()
                 self.assertNotIn("victory", [call.args[0] for call in play.call_args_list])
+
+
+class BackgroundMusicTests(unittest.TestCase):
+    def setUp(self):
+        pygame.init()
+        self.addCleanup(pygame.quit)
+
+    def test_real_tracks_can_be_streamed(self):
+        music = BackgroundMusic()
+        music.update(False)
+        self.assertEqual(music.error, "")
+        self.assertTrue(pygame.mixer.music.get_busy())
+        self.assertTrue(music.tracks[0].name.startswith("01."))
+        music.update(True)
+        self.assertEqual(music.error, "")
+        self.assertGreater(len(music.tracks), 1)
+        self.assertTrue(all(not track.name.startswith("01.") for track in music.tracks))
+        for index in range(len(music.tracks)):
+            music.index = index
+            music._play()
+            self.assertTrue(pygame.mixer.music.get_busy())
+        music.stop()
+
+    def test_menu_loops_match_rotates_without_restarting(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            for name in ("01. menu.mp3", "04. match.mp3", "12. match.mp3"):
+                (path / name).touch()
+            with patch("audio.pygame.mixer.music") as mixer:
+                mixer.get_busy.return_value = True
+                music = BackgroundMusic(path)
+                music.update(False)
+                mixer.load.assert_called_once_with(str(path / "01. menu.mp3"))
+                mixer.play.assert_called_once_with(loops=-1)
+                music.update(False)
+                self.assertEqual(mixer.load.call_count, 1)
+                music.update(True)
+                self.assertEqual(mixer.load.call_args.args[0], str(path / "04. match.mp3"))
+                self.assertEqual(mixer.play.call_args.kwargs, {"loops": 0})
+                mixer.get_busy.return_value = False
+                music.update(True)
+                self.assertEqual(mixer.load.call_args.args[0], str(path / "12. match.mp3"))
+                music.update(True)
+                self.assertEqual(mixer.load.call_args.args[0], str(path / "04. match.mp3"))
+                music.update(False)
+                self.assertEqual(mixer.load.call_args.args[0], str(path / "01. menu.mp3"))
+
+    def test_missing_and_invalid_tracks_are_reported_without_repeated_retries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            with patch("audio.pygame.mixer.music") as mixer, patch("audio.sys.stderr"):
+                music = BackgroundMusic(path)
+                music.update(False)
+                self.assertIn("01.", music.error)
+                music.update(False)
+                mixer.load.assert_not_called()
+                (path / "01. menu.mp3").touch()
+                music.update(True)
+                self.assertIn("nenhuma faixa", music.error)
+                (path / "02. match.mp3").touch()
+                mixer.load.side_effect = pygame.error("formato invalido")
+                music.update(False)
+                self.assertIn("formato invalido", music.error)
+                music.update(False)
+                self.assertEqual(mixer.load.call_count, 1)
+
+    def test_app_switches_modes_on_start_end_and_menu(self):
+        from main import App
+
+        with tempfile.TemporaryDirectory() as directory, patch("main.BackgroundMusic") as music_class:
+            app = App(decks_path=Path(directory) / "decks.json")
+            self.addCleanup(app.puzzle_view.close)
+            music = music_class.return_value
+            music.update.assert_called_with(False)
+            app.start_game()
+            music.update.assert_called_with(True)
+            app.click(app.menu_button.center)
+            app.update()
+            music.update.assert_called_with(False)
+            app.start_game()
+            app.game.over = True
+            app.game.winner = 0
+            app.update()
+            music.update.assert_called_with(False)
 
 
 class GameSoundEventTests(unittest.TestCase):
