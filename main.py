@@ -75,6 +75,7 @@ class App:
         self.game: Game | None = None
         self.selected_card: Card | None = None
         self.selected_unit: Unit | None = None
+        self.drag_unit: Unit | None = None
         self.position: int | None = None
         self.running = True
         self.ai_at = 0
@@ -294,6 +295,35 @@ class App:
         if self.game and self.selected_card:
             self.game.play_card(0, self.selected_card, target, self.position)
             self.clear_selection()
+
+    def begin_drag(self, point: tuple[int, int]) -> None:
+        self.drag_unit = None
+        game = self.game
+        if self.state != State.MATCH or not game or game.current != 0 or game.over or self.selected_card:
+            return
+        for unit in game.players[0].board:
+            if not unit.is_king and self.slots(0)[unit.slot].collidepoint(point):
+                self.drag_unit = unit
+
+    def drop_rects(self) -> list[tuple[int, pygame.Rect]]:
+        if not self.game or not self.drag_unit:
+            return []
+        slots = self.slots(0)
+        return [(slot, slots[slot]) for slot in self.game.players[0].free_slots()]
+
+    def end_drag(self, point: tuple[int, int]) -> None:
+        unit, self.drag_unit = self.drag_unit, None
+        game = self.game
+        if not unit or not game or self.state != State.MATCH:
+            return
+        for slot, rect in [(s, self.slots(0)[s]) for s in game.players[0].free_slots()]:
+            if rect.collidepoint(point):
+                try:
+                    game.move_unit(0, unit, slot)
+                    self.clear_selection()
+                except RuleError as error:
+                    game.log(str(error))
+                return
 
     def click(self, point: tuple[int, int]) -> None:
         if self.state == State.MENU:
@@ -529,6 +559,13 @@ class App:
                 )
         for _, rect in self.placement_rects():
             pygame.draw.rect(self.screen, GREEN, rect, 2)
+        for _, rect in self.drop_rects():
+            pygame.draw.rect(self.screen, BLUE, rect, 2)
+        if self.drag_unit:
+            ghost = self.slots(0)[0].copy()
+            ghost.center = pygame.mouse.get_pos()
+            pygame.draw.rect(self.screen, GOLD, ghost, 2, border_radius=5)
+            self.text(self.drag_unit.name, (ghost.x + 8, ghost.y + 8), GOLD, self.small)
         hint = "Selecione carta ou unidade. Verde = alvo/espaco valido; azul = pronto; vermelho = Provocar."
         if self.selected_card:
             hint = (
@@ -761,9 +798,13 @@ class App:
             self.clear_selection()
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
+                self.begin_drag(event.pos)
                 self.click(event.pos)
             elif event.button == 3:
+                self.drag_unit = None
                 self.clear_selection()
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            self.end_drag(event.pos)
 
     def run(self) -> None:
         try:

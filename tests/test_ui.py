@@ -39,6 +39,28 @@ class InterfaceTests(unittest.TestCase):
     def select_first_card(self):
         self.app.click(self.app.hand_rects()[0][1].center)
 
+    def test_drag_unit_to_empty_slot(self):
+        unit = self.game.summon(0, "peao", 0)
+        before = self.player.mana
+        slots = self.app.slots(0)
+        event = pygame.event.Event
+        self.app.handle_event(event(pygame.MOUSEBUTTONDOWN, button=1, pos=slots[0].center))
+        self.assertIs(self.app.drag_unit, unit)
+        self.app.draw()
+        self.app.handle_event(event(pygame.MOUSEBUTTONUP, button=1, pos=slots[4].center))
+        self.assertEqual((unit.slot, self.player.mana), (4, before - 1))
+        self.assertIsNone(self.app.drag_unit)
+
+    def test_drag_onto_occupied_slot_is_rejected(self):
+        unit = self.game.summon(0, "peao", 0)
+        self.game.summon(0, "peao", 1)
+        before = self.player.mana
+        slots = self.app.slots(0)
+        event = pygame.event.Event
+        self.app.handle_event(event(pygame.MOUSEBUTTONDOWN, button=1, pos=slots[0].center))
+        self.app.handle_event(event(pygame.MOUSEBUTTONUP, button=1, pos=slots[1].center))
+        self.assertEqual((unit.slot, self.player.mana), (0, before))
+
     def test_select_and_place_minion(self):
         card = self.add_card("peao")
         self.select_first_card()

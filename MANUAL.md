@@ -44,6 +44,7 @@ primeiro turno. Nao ha mulligan, moeda, armas ou poder heroico.
 | Jogar feitico com alvo | Selecione a carta e clique em um alvo verde |
 | Jogar carta sem alvo | Use **Jogar carta** depois de selecionar |
 | Atacar | Clique em uma unidade aliada pronta e depois em um inimigo verde |
+| Reposicionar | Arraste uma unidade sua (exceto o Rei) para um slot vazio (borda azul); custa 1 mana |
 | Cancelar selecao | Clique direito ou Esc |
 | Encerrar turno | Clique em **Passar Turno** |
 | Ativar o Rei manualmente | Use **Ativar Rei (Endgame)** quando estiver disponivel |

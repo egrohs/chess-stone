@@ -16,6 +16,7 @@ from mate_rules import MateRules
 
 
 BOARD_LIMIT = 8
+MOVE_COST = 1
 CENTER_SLOTS = range(2, 6)
 HAND_LIMIT = 10
 KEYWORD_LABELS = {
@@ -286,6 +287,23 @@ class Game:
         self.mates.invalidate()
         self.log(f"{player.name} invoca {unit.name} no slot {position + 1}.")
         return unit
+
+    def move_unit(self, owner: int, unit: Unit, position: int) -> None:
+        self.require_turn(owner)
+        player = self.players[owner]
+        if unit.owner != owner or unit not in player.board:
+            raise RuleError("Escolha uma unidade sua na mesa.")
+        if unit.is_king:
+            raise RuleError("O Rei nao pode ser reposicionado.")
+        self.require_free_slot(owner, position)
+        if player.mana < MOVE_COST:
+            raise RuleError(f"Mana insuficiente para reposicionar ({MOVE_COST}).")
+        origin = unit.slot
+        player.mana -= MOVE_COST
+        unit.slot = position
+        player.board.sort(key=lambda item: item.slot)
+        self.mates.invalidate()
+        self.log(f"{player.name} move {unit.name}: slot {origin + 1} -> {position + 1} ({MOVE_COST} mana).")
 
     def require_free_slot(self, owner: int, position: int) -> None:
         if (

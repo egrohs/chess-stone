@@ -16,6 +16,39 @@ class TacticalRulesTests(unittest.TestCase):
         unit.effects = []
         return unit
 
+    def test_move_unit_costs_mana_and_changes_slot(self):
+        unit = self.unit(0, 0)
+        before = self.p0.mana
+        self.game.move_unit(0, unit, 4)
+        self.assertEqual((unit.slot, self.p0.mana), (4, before - 1))
+        self.assertIs(self.p0.unit_at(4), unit)
+        self.assertIsNone(self.p0.unit_at(0))
+
+    def test_move_unit_rejections_change_nothing(self):
+        unit = self.unit(0, 0)
+        other = self.unit(0, 1)
+        before = self.p0.mana
+        for owner, mover, slot in ((0, unit, 1), (0, unit, 8), (1, unit, 3), (0, self.unit(1, 0), 3)):
+            with self.assertRaises(RuleError):
+                self.game.move_unit(owner, mover, slot)
+        self.p0.mana = 0
+        with self.assertRaises(RuleError):
+            self.game.move_unit(0, unit, 3)
+        self.assertEqual((unit.slot, other.slot), (0, 1))
+        self.p0.mana = before
+
+    def test_move_unit_king_rejected(self):
+        self.p0.endgame_ready = True
+        self.game.activate_king(0)
+        with self.assertRaises(RuleError):
+            self.game.move_unit(0, self.p0.king, 7)
+
+    def test_move_unit_changes_center_control(self):
+        unit = self.unit(0, 0)
+        self.assertEqual(self.game.center_control(0), 0)
+        self.game.move_unit(0, unit, 3)
+        self.assertEqual(self.game.center_control(0), 1)
+
     def card(self, card_id):
         card = Card(self.game.uid(), self.game.catalog[card_id])
         self.p0.hand.append(card)
