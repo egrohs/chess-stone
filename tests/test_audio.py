@@ -70,7 +70,7 @@ class DamageEventTests(unittest.TestCase):
         self.game.summon(1, "bispo")
         card = Card(self.game.uid(), self.game.catalog["ataque_duplo"])
         player.hand.append(card)
-        self.game.play_card(0, card)
+        self.game.play_card(0, card, mode="manobra")
         self.assertEqual(self.events, [2, 2])
 
 

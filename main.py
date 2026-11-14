@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pygame
 
-from game_engine import BOARD_LIMIT, CENTER_SLOTS, KEYWORD_LABELS, Card, Entity, Game, RuleError, Unit, load_cards
+from game_engine import BOARD_LIMIT, CENTER_SLOTS, KEYWORD_LABELS, Card, Entity, Game, PlayMode, RuleError, Unit, load_cards
 from deck_store import DEFAULT_PATH, DeckStore, validate_legendary
 from collection_view import CollectionView
 from ui_theme import BG, PANEL, WHITE, MUTED, GREEN, GOLD, RED, BLUE
@@ -76,6 +76,7 @@ class App:
         self.game: Game | None = None
         self.selected_card: Card | None = None
         self.selected_unit: Unit | None = None
+        self.selected_mode: PlayMode | None = None
         self.drag_unit: Unit | None = None
         self.position: int | None = None
         self.running = True
@@ -238,6 +239,7 @@ class App:
     def clear_selection(self) -> None:
         self.selected_card = None
         self.selected_unit = None
+        self.selected_mode = None
         self.position = None
 
     def slots(self, owner: int) -> list[pygame.Rect]:
@@ -272,10 +274,11 @@ class App:
     def valid_targets(self) -> list[Entity]:
         if not self.game or self.game.current != 0 or self.game.over:
             return []
-        if self.selected_card and self.game.playable(0, self.selected_card):
-            if self.selected_card.definition["type"] == "peça" and self.position is None:
-                return []
-            return self.game.valid_card_targets(0, self.selected_card)
+        if self.selected_card:
+            mode = self.selected_mode or "manobra"
+            if self.game.playable(0, self.selected_card, mode):
+                return self.game.valid_card_targets(0, self.selected_card, mode)
+            return []
         if self.selected_unit:
             return self.game.attack_targets(self.selected_unit)
         return []
@@ -283,8 +286,8 @@ class App:
     def choosing_position(self) -> bool:
         return bool(
             self.game and self.selected_card
-            and self.selected_card.definition["type"] == "peça"
-            and self.position is None and self.game.playable(0, self.selected_card)
+            and self.selected_mode is None
+            and self.game.playable(0, self.selected_card, "piece")
         )
 
     def placement_rects(self) -> list[tuple[int, pygame.Rect]]:
@@ -295,8 +298,26 @@ class App:
 
     def commit_card(self, target: Entity | None = None) -> None:
         if self.game and self.selected_card:
-            self.game.play_card(0, self.selected_card, target, self.position)
+            if self.selected_mode is None:
+                raise RuleError("Escolha Peça ou Manobra.")
+            self.game.play_card(0, self.selected_card, target, self.position, mode=self.selected_mode)
             self.clear_selection()
+
+    def choose_maneuver(self, point: tuple[int, int]) -> None:
+        if not self.game or not self.selected_card:
+            return
+        self.selected_mode = "manobra"
+        self.position = None
+        if not self.game.manual_effects(self.selected_card, "manobra"):
+            self.commit_card()
+            return
+        for entity, rect in self.entity_rects():
+            if rect.collidepoint(point):
+                if entity not in self.valid_targets():
+                    raise RuleError("Alvo invalido para a Manobra. Use os destaques verdes.")
+                self.commit_card(entity)
+                return
+        self.game.log("Manobra selecionada: escolha um alvo verde (Esc cancela).")
 
     def begin_drag(self, point: tuple[int, int]) -> None:
         self.drag_unit = None
@@ -382,9 +403,7 @@ class App:
                 self.clear_selection()
                 return
             if self.play_button.collidepoint(point) and self.selected_card:
-                if self.selected_card.definition["type"] == "peça" and self.position is None:
-                    raise RuleError("Escolha uma casa verde no seu tabuleiro.")
-                self.commit_card()
+                self.choose_maneuver(point)
                 return
             for card, rect in self.hand_rects():
                 if rect.collidepoint(point):
@@ -394,27 +413,36 @@ class App:
                         self.clear_selection()
                         self.selected_card = card
                         if not game.playable(0, card):
-                            game.log(game.mate_unavailable_reason(0, card) or
-                                     "Carta indisponivel: verifique tempo, espacos e alvos.")
+                            game.log("Carta indisponivel nos dois modos: verifique tempo, casas e alvos.")
                     return
-            for position, rect in self.placement_rects():
-                if rect.collidepoint(point):
-                    self.position = position
-                    if self.selected_card and not game.manual_effects(self.selected_card):
-                        self.commit_card()
-                    return
+            if self.selected_card:
+                if self.selected_mode is None:
+                    for position, rect in enumerate(self.slots(0)):
+                        if rect.collidepoint(point):
+                            game.require_free_slot(0, position)
+                            self.position = position
+                            self.selected_mode = "piece"
+                            if not game.manual_effects(self.selected_card, "piece"):
+                                self.commit_card()
+                            return
+                    self.choose_maneuver(point)
+                elif self.selected_mode == "manobra":
+                    self.choose_maneuver(point)
+                else:
+                    for entity, rect in self.entity_rects():
+                        if rect.collidepoint(point):
+                            self.commit_card(entity)
+                            return
+                    raise RuleError("Escolha um alvo verde para o efeito de entrada da Peça.")
+                return
             for entity, rect in self.entity_rects():
                 if not rect.collidepoint(point):
                     continue
                 if entity in self.valid_targets():
-                    if self.selected_card:
-                        self.commit_card(entity)
-                    elif self.selected_unit:
+                    if self.selected_unit:
                         game.attack(0, self.selected_unit, entity)
                         self.clear_selection()
                     return
-                if self.selected_card:
-                    raise RuleError("Alvo invalido. Use os destaques verdes.")
                 if isinstance(entity, Unit) and entity.owner == 0:
                     self.clear_selection()
                     if not game.attack_targets(entity):
@@ -487,7 +515,7 @@ class App:
         if prepared:
             pygame.draw.rect(self.screen, GOLD, rect.inflate(-8, -8), 1, border_radius=4)
         self.paragraph(unit.name, pygame.Rect(rect.x + 7, rect.y + 7, rect.width - 14, 43), font=self.font)
-        labels = [KEYWORD_LABELS[k] for k in sorted(unit.keywords)]
+        labels = [unit.piece_type.capitalize(), *[KEYWORD_LABELS[k] for k in sorted(unit.keywords)]]
         if game and game.players[unit.owner].turns_started <= unit.frozen_through:
             labels.append("Congelado")
         self.paragraph(" / ".join(labels), pygame.Rect(rect.x + 7, rect.y + 54, rect.width - 14, 42), GOLD, font=self.small)
@@ -546,7 +574,8 @@ class App:
                 (24, y), BLUE,
             )
             self.text(
-                f"Deck: {len(player.deck)} | Mao: {len(player.hand)}/10 | Tabuleiro: {len(player.board)}/{BOARD_LIMIT}",
+                f"Deck: {len(player.deck)} | Mao: {len(player.hand)}/10 | Tabuleiro: {len(player.board)}/{BOARD_LIMIT}"
+                f" | Descarte: {len(player.discard)}",
                 (24, y + 28), MUTED, self.small,
             )
             if player.armor:
@@ -569,19 +598,19 @@ class App:
         hint = "Selecione carta ou peça. Verde = alvo/espaco valido; azul = pronto."
         if self.selected_card:
             hint = (
-                "Escolha uma casa verde livre. Pecas nao mudam de casa quando outras morrem."
-                if self.choosing_position()
-                else "Escolha um alvo verde ou use Jogar carta para efeitos sem alvo."
+                "Casa vazia = Peca; fora das casas = Manobra. Mesmo custo nos dois modos."
+                if self.selected_mode is None
+                else f"Modo {'Peca' if self.selected_mode == 'piece' else 'Manobra'}: escolha um alvo verde. Esc cancela."
             )
         elif self.selected_unit:
             hint = "Escolha um inimigo verde para atacar."
         self.text(hint, (24, 674), GREEN if self.selected_card or self.selected_unit else MUTED, self.small)
         self.text("Clique direito / ESC: cancelar selecao", (24, 696), MUTED, self.small)
         for card, rect in self.hand_rects():
-            definition = card.definition
+            definition = card.definition["piece_mode"]
             playable = game.playable(0, card)
             pygame.draw.rect(
-                self.screen, (43, 61, 77) if definition["type"] == "peça" else (66, 49, 80),
+                self.screen, (43, 61, 77),
                 rect, border_radius=5,
             )
             border = GOLD if card is self.selected_card else GREEN if playable else MUTED
@@ -589,14 +618,10 @@ class App:
             self.text(str(definition["cost"]), (rect.x + 8, rect.y + 5), BLUE, self.large)
             self.paragraph(card.name, pygame.Rect(rect.x + 7, rect.y + 46, 85, 49), font=self.small)
             self.paragraph(
-                definition["description"], pygame.Rect(rect.x + 7, rect.y + 98, 85, 62),
+                card.definition["description"], pygame.Rect(rect.x + 7, rect.y + 98, 85, 62),
                 WHITE if playable else MUTED,
             )
-            footer = (
-                f"{definition['attack']} / {definition['health']}"
-                if definition["type"] == "peça" else "MANOBRA"
-            )
-            self.text(footer, (rect.x + 8, rect.bottom - 28), WHITE, self.small)
+            self.text(f"{definition['attack']}/{definition['health']} ou M", (rect.x + 8, rect.bottom - 28), WHITE, self.small)
         self.draw_sidebar()
 
     def draw_sidebar(self) -> None:
@@ -612,16 +637,12 @@ class App:
         human_turn = game.current == 0 and not game.over
         self.button(self.end_button, "Passar Turno", human_turn)
         self.button(self.king_button, "Ativar Rei (Final de jogo)", human_turn and game.can_activate_king(0))
-        can_play = bool(
-            human_turn and self.selected_card and game.playable(0, self.selected_card)
-            and not game.manual_effects(self.selected_card)
-            and (self.selected_card.definition["type"] == "manobra" or self.position is not None)
-        )
-        self.button(self.play_button, "Jogar carta", can_play)
+        can_play = bool(human_turn and self.selected_card and game.playable(0, self.selected_card, "manobra"))
+        self.button(self.play_button, "Jogar como Manobra", can_play)
         if self.selected_card:
             automatic_targets = [
                 game.entity_name(entity) + (f" (casa {entity.slot + 1})" if isinstance(entity, Unit) else "")
-                for effect in self.selected_card.definition["effects"]
+                for effect in self.selected_card.mode(self.selected_mode or "manobra")["effects"]
                 if effect.get("target", "").startswith("lowest_health_")
                 for entity in game.parser.resolve_targets(effect, 0, preview=True)
             ]
@@ -664,9 +685,8 @@ class App:
         self.button(self.new_deck_button, "Novo (descartar rascunho)")
         self.button(self.back_deck_button, "Voltar (descartar)")
         total = sum(self.draft.values())
-        pieces = sum(self.draft[c["id"]] for c in self.cards if c["type"] == "peça")
-        self.text(f"{total} cartas | {pieces} peças | {total - pieces} manobras", (910, 235), GOLD)
-        average = sum(c["cost"] * self.draft[c["id"]] for c in self.cards) / total if total else 0
+        self.text(f"{total} cartas modais | Peca ou Manobra", (910, 235), GOLD)
+        average = sum(c["piece_mode"]["cost"] * self.draft[c["id"]] for c in self.cards) / total if total else 0
         self.text(f"Custo medio: {average:.1f} tempo", (910, 270), BLUE)
         self.paragraph(
             "Clique em um deck salvo para carregar e selecionar."
@@ -677,8 +697,9 @@ class App:
         for card, minus, plus in self.catalog_rows():
             y = minus.y
             pygame.draw.rect(self.screen, PANEL, (30, y, 820, 55), border_radius=5)
-            stats = f" {card['attack']}/{card['health']}" if card["type"] == "peça" else " Manobra"
-            self.text(f"{card['cost']} - {card['name']}{stats}", (40, y + 3), WHITE)
+            piece = card["piece_mode"]
+            stats = f" {piece['attack']}/{piece['health']} ou Manobra"
+            self.text(f"{piece['cost']} - {card['name']}{stats}", (40, y + 3), WHITE)
             self.paragraph(card["description"], pygame.Rect(40, y + 29, 605, 22), MUTED)
             self.button(minus, "-", self.draft[card["id"]] > 0)
             self.paragraph(

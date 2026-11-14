@@ -53,8 +53,8 @@ class MateTests(unittest.TestCase):
         pair = self.anastasia()
         card = self.card("mate_anastasia")
         self.cycle()
-        self.assertTrue(self.game.playable(0, card))
-        self.game.play_card(0, card)
+        self.assertTrue(self.game.playable(0, card, mode="manobra"))
+        self.game.play_card(0, card, mode="manobra")
         self.assertTrue(self.game.over)
         self.assertEqual(self.game.winner, 0)
         self.assertEqual(self.p1.health, 15)
@@ -65,15 +65,15 @@ class MateTests(unittest.TestCase):
     def test_right_edge_anastasia(self):
         self.anastasia(right=True)
         self.cycle()
-        self.game.play_card(0, self.card("mate_anastasia"))
+        self.game.play_card(0, self.card("mate_anastasia"), mode="manobra")
         self.assertTrue(self.game.over)
 
     def test_no_instant_victory_and_no_resources_spent_on_failure(self):
         self.anastasia()
         card = self.card("mate_anastasia")
-        self.assertFalse(self.game.playable(0, card))
+        self.assertFalse(self.game.playable(0, card, mode="manobra"))
         with self.assertRaises(RuleError):
-            self.game.play_card(0, card)
+            self.game.play_card(0, card, mode="manobra")
         self.assertEqual(self.p0.mana, 10)
         self.assertIn(card, self.p0.hand)
         self.assertFalse(self.game.over)
@@ -90,7 +90,7 @@ class MateTests(unittest.TestCase):
         self.p0.maneuvers_played = 1
         card = self.card("mate_boden")
         with self.assertRaisesRegex(RuleError, "duas outras"):
-            self.game.play_card(0, card)
+            self.game.play_card(0, card, mode="manobra")
         self.assertEqual(self.p0.maneuvers_played, 1)
         self.assertEqual(self.p0.mana, 10)
 
@@ -100,9 +100,9 @@ class MateTests(unittest.TestCase):
         # Two copies of Coluna Aberta on interior pawns cost 4; mate costs 5.
         pawn = self.p0.board[1]
         for _ in range(2):
-            self.game.play_card(0, self.card("coluna_aberta"), pawn)
+            self.game.play_card(0, self.card("coluna_aberta"), pawn, mode="manobra")
         self.assertEqual(self.p0.maneuvers_played, 2)
-        self.game.play_card(0, self.card("mate_boden"))
+        self.game.play_card(0, self.card("mate_boden"), mode="manobra")
         self.assertEqual(self.p0.maneuvers_played, 3)
         self.assertEqual(self.p0.mana, 1)
         self.assertTrue(self.game.over)
@@ -144,7 +144,7 @@ class MateTests(unittest.TestCase):
         self.unit("peao", position=1)
         self.game.end_turn(1)
         self.p0.maneuvers_played = 2
-        self.assertFalse(self.game.playable(0, self.card("mate_boden")))
+        self.assertFalse(self.game.playable(0, self.card("mate_boden"), mode="manobra"))
 
     def test_frozen_then_thawed_formation_stays_cancelled(self):
         rook, knight = self.anastasia()
@@ -156,7 +156,7 @@ class MateTests(unittest.TestCase):
         self.assertEqual(self.game.mates.threats[0], [])
         rook.frozen_through = knight.frozen_through = -1
         self.game.end_turn(1)
-        self.assertFalse(self.game.playable(0, self.card("mate_anastasia")))
+        self.assertFalse(self.game.playable(0, self.card("mate_anastasia"), mode="manobra"))
 
     def test_replacing_same_piece_type_does_not_preserve_preparation(self):
         rook, _ = self.anastasia()
@@ -165,13 +165,13 @@ class MateTests(unittest.TestCase):
         self.game.cleanup()
         self.unit("torre", position=0)
         self.game.end_turn(1)
-        self.assertFalse(self.game.playable(0, self.card("mate_anastasia")))
+        self.assertFalse(self.game.playable(0, self.card("mate_anastasia"), mode="manobra"))
 
     def test_attack_uses_up_execution_opportunity(self):
         rook, _ = self.anastasia()
         self.cycle()
         self.game.attack(0, rook, self.p1.board[0])
-        self.assertFalse(self.game.playable(0, self.card("mate_anastasia")))
+        self.assertFalse(self.game.playable(0, self.card("mate_anastasia"), mode="manobra"))
 
     def test_enemy_can_counter_with_health_or_board_clearance(self):
         self.anastasia()
@@ -202,7 +202,7 @@ class MateTests(unittest.TestCase):
         self.assertIn("anastasia", {t.pattern for t in self.game.mates.threats[0]})
         self.game.end_turn(1)
         self.p0.mana = 10
-        self.assertTrue(self.game.playable(0, self.card("mate_anastasia")))
+        self.assertTrue(self.game.playable(0, self.card("mate_anastasia"), mode="manobra"))
 
     def test_boden_intermediate_death_with_two_survivors_keeps_threat(self):
         self.unit("bispo")
@@ -218,11 +218,11 @@ class MateTests(unittest.TestCase):
         self.game.end_turn(1)
         self.p0.mana = 10
         self.p0.maneuvers_played = 2
-        self.game.play_card(0, self.card("mate_boden"))
+        self.game.play_card(0, self.card("mate_boden"), mode="manobra")
         self.assertTrue(self.game.over)
 
     def test_direct_effect_cannot_bypass_conditions(self):
-        self.game.parser.execute(self.game.catalog["mate_boden"]["effects"], "on_play", 0)
+        self.game.parser.execute(self.game.catalog["mate_boden"]["manouvre_mode"]["effects"], "on_play", 0)
         self.assertFalse(self.game.over)
         self.assertIn("falhou", self.game.messages[-1])
 
@@ -241,8 +241,8 @@ class MateTests(unittest.TestCase):
         base = self.game.catalog["mate_boden"]
         for quality in ("improved", "perfect"):
             variant = make_variant(base, quality)
-            self.assertEqual(variant["cost"], 5)
-            self.assertEqual(variant["effects"][0], base["effects"][0])
+            self.assertEqual(variant["piece_mode"]["cost"], 5)
+            self.assertEqual(variant["manouvre_mode"]["effects"][0], base["manouvre_mode"]["effects"][0])
             self.assertEqual(variant["rarity"], "legendary")
         self.assertEqual(THEMES["mate_boden"][0], "bodenMate")
         self.assertEqual(THEMES["mate_anastasia"][0], "anastasiaMate")
@@ -252,18 +252,18 @@ class MateTests(unittest.TestCase):
             cards = copy.deepcopy(load_cards())
             mate = next(c for c in cards if c["id"] == "mate_boden")
             if mutation == "pattern":
-                mate["effects"][0]["pattern"] = "unknown"
+                mate["manouvre_mode"]["effects"][0]["pattern"] = "unknown"
             elif mutation == "rarity":
                 del mate["rarity"]
             elif mutation == "trigger":
-                mate["effects"][0]["trigger"] = "on_turn_end"
+                mate["manouvre_mode"]["effects"][0]["trigger"] = "on_turn_end"
             else:
-                mate.update(type="peça", attack=1, health=1)
+                mate["piece_mode"]["effects"] = mate["manouvre_mode"]["effects"]
             with self.subTest(mutation=mutation), self.assertRaises(ValueError):
                 validate_cards(cards)
 
     def test_maneuver_counter_resets_on_own_next_turn(self):
-        self.game.play_card(0, self.card("roque"))
+        self.game.play_card(0, self.card("roque"), mode="manobra")
         self.assertEqual(self.p0.maneuvers_played, 1)
         self.game.end_turn(0)
         self.game.end_turn(1)
@@ -321,7 +321,7 @@ class MateTests(unittest.TestCase):
     def test_smothered_wins_with_six_pieces_and_surviving_knight(self):
         self.smothered()
         self.cycle()
-        self.game.play_card(0, self.card("mate_abafado"))
+        self.game.play_card(0, self.card("mate_abafado"), mode="manobra")
         self.assertTrue(self.game.over)
         self.assertEqual(self.game.winner, 0)
         self.assertEqual(self.p1.health, 30)
@@ -331,7 +331,7 @@ class MateTests(unittest.TestCase):
         self.smothered()
         self.cycle()
         self.p1.board[0].frozen_through = 100
-        self.game.play_card(0, self.card("mate_abafado"))
+        self.game.play_card(0, self.card("mate_abafado"), mode="manobra")
         self.assertTrue(self.game.over)
 
     def test_smothered_fails_if_enemy_opens_a_slot_or_has_a_king(self):
@@ -340,25 +340,25 @@ class MateTests(unittest.TestCase):
         card = self.card("mate_abafado")
         self.p1.board[0].health = 0
         self.game.cleanup()
-        self.assertFalse(self.game.playable(0, card))
+        self.assertFalse(self.game.playable(0, card, mode="manobra"))
         self.p1.endgame_ready = True
         self.game.activate_king(1)
         self.assertEqual(len(self.p1.board), 6)
-        self.assertFalse(self.game.playable(0, card))
+        self.assertFalse(self.game.playable(0, card, mode="manobra"))
 
     def test_smothered_knight_must_not_attack_in_execution_turn(self):
         knight = self.smothered()
         self.cycle()
         self.game.attack(0, knight, self.p1.board[0])
-        self.assertFalse(self.game.playable(0, self.card("mate_abafado")))
+        self.assertFalse(self.game.playable(0, self.card("mate_abafado"), mode="manobra"))
 
     def test_back_rank_requires_actual_attack_this_turn_and_survival(self):
         rook = self.back_rank()
         self.cycle()
         card = self.card("mate_gaveta")
-        self.assertFalse(self.game.playable(0, card))
+        self.assertFalse(self.game.playable(0, card, mode="manobra"))
         self.game.attack(0, rook, self.p1)
-        self.game.play_card(0, card)
+        self.game.play_card(0, card, mode="manobra")
         self.assertTrue(self.game.over)
         self.assertEqual(self.p1.health, 27)
         self.assertEqual(self.p0.mana, 2)
@@ -371,14 +371,14 @@ class MateTests(unittest.TestCase):
         removed = self.p1.board[-1]
         removed.health = 0
         self.game.cleanup()
-        self.assertFalse(self.game.playable(0, card))
+        self.assertFalse(self.game.playable(0, card, mode="manobra"))
         self.p1.endgame_ready = True
         self.game.activate_king(1)
-        self.assertFalse(self.game.playable(0, card))
+        self.assertFalse(self.game.playable(0, card, mode="manobra"))
         self.unit("torre", 1)
-        self.assertFalse(self.game.playable(0, card))
+        self.assertFalse(self.game.playable(0, card, mode="manobra"))
         self.unit("peao_passado", 1)
-        self.assertTrue(self.game.playable(0, card))
+        self.assertTrue(self.game.playable(0, card, mode="manobra"))
 
     def test_back_rank_zero_armor_requirement(self):
         rook = self.back_rank()
@@ -387,13 +387,13 @@ class MateTests(unittest.TestCase):
         self.p1.armor = 1
         card = self.card("mate_gaveta")
         with self.assertRaisesRegex(RuleError, "Armadura"):
-            self.game.play_card(0, card)
+            self.game.play_card(0, card, mode="manobra")
         self.assertEqual(self.p0.mana, 10)
         self.assertIn(card, self.p0.hand)
         self.game.damage(self.p1, 1)
         self.assertEqual(self.p1.armor, 0)
         self.assertEqual(self.p1.health, 27)
-        self.game.play_card(0, card)
+        self.game.play_card(0, card, mode="manobra")
         self.assertTrue(self.game.over)
 
     def test_back_rank_dead_attacker_cannot_execute(self):
@@ -404,13 +404,13 @@ class MateTests(unittest.TestCase):
         self.game.attack(0, rook, self.p1.board[0])  # Shield absorbs retaliation.
         self.game.damage(rook, 99)
         self.game.cleanup()
-        self.assertFalse(self.game.playable(0, self.card("mate_gaveta")))
+        self.assertFalse(self.game.playable(0, self.card("mate_gaveta"), mode="manobra"))
 
     def test_opera_victory_uses_history_of_same_units(self):
         pair = self.opera()
         self.cycle()
         self.assertTrue(all(u.has_attacked and u.attacks_used == 0 for u in pair))
-        self.game.play_card(0, self.card("mate_opera"))
+        self.game.play_card(0, self.card("mate_opera"), mode="manobra")
         self.assertTrue(self.game.over)
         self.assertEqual(self.p1.health, 15)
         self.assertEqual(self.p0.mana, 3)
@@ -423,17 +423,17 @@ class MateTests(unittest.TestCase):
         self.assertIn("nesta partida", self.game.mate_unavailable_reason(0, card))
         bishop.has_attacked = True
         self.game.attack(0, rook, self.p1.board[0])
-        self.assertFalse(self.game.playable(0, card))
+        self.assertFalse(self.game.playable(0, card, mode="manobra"))
 
     def test_opera_enemy_health_and_exactly_one_piece(self):
         self.opera()
         self.cycle()
         card = self.card("mate_opera")
         self.p1.health = 16
-        self.assertFalse(self.game.playable(0, card))
+        self.assertFalse(self.game.playable(0, card, mode="manobra"))
         self.p1.health = 15
         self.unit("peao", 1)
-        self.assertFalse(self.game.playable(0, card))
+        self.assertFalse(self.game.playable(0, card, mode="manobra"))
 
     def test_opera_requires_exactly_one_rook_bishop_and_adjacency(self):
         self.unit("torre")
@@ -452,7 +452,7 @@ class MateTests(unittest.TestCase):
     def test_opposition_victory_with_passed_pawn_in_hand(self):
         self.opposition()
         self.cycle()
-        self.game.play_card(0, self.card("endgame_puro"))
+        self.game.play_card(0, self.card("endgame_puro"), mode="manobra")
         self.assertTrue(self.game.over)
         self.assertEqual(self.game.winner, 0)
         self.assertEqual(self.p0.mana, 0)
@@ -467,9 +467,9 @@ class MateTests(unittest.TestCase):
         self.assertIn("Peao Passado", self.game.mate_unavailable_reason(0, card))
         self.card("peao_passado")
         self.p0.health = self.p1.health
-        self.assertFalse(self.game.playable(0, card))
+        self.assertFalse(self.game.playable(0, card, mode="manobra"))
         self.p0.health = self.p1.health - 1
-        self.assertFalse(self.game.playable(0, card))
+        self.assertFalse(self.game.playable(0, card, mode="manobra"))
 
     def test_opposition_any_other_piece_cancels_preparation_permanently(self):
         self.opposition()
@@ -480,20 +480,20 @@ class MateTests(unittest.TestCase):
         pawn.health = 0
         self.game.cleanup()
         self.game.end_turn(1)
-        self.assertFalse(self.game.playable(0, self.card("endgame_puro")))
+        self.assertFalse(self.game.playable(0, self.card("endgame_puro"), mode="manobra"))
 
     def test_opposition_king_attack_blocks_execution(self):
         king = self.opposition()
         self.cycle()
         self.game.attack(0, king, self.p1.king)
-        self.assertFalse(self.game.playable(0, self.card("endgame_puro")))
+        self.assertFalse(self.game.playable(0, self.card("endgame_puro"), mode="manobra"))
 
     def test_new_patterns_require_prior_announcement(self):
         for pattern, card_id in (
             ("smothered", "mate_abafado"), ("back_rank", "mate_gaveta"),
             ("opera", "mate_opera"), ("opposition", "endgame_puro"),
         ):
-            self.assertFalse(self.game.playable(0, self.card(card_id)))
+            self.assertFalse(self.game.playable(0, self.card(card_id), mode="manobra"))
             self.game.mates.execute(0, pattern)
             self.assertFalse(self.game.over)
 
@@ -501,14 +501,14 @@ class MateTests(unittest.TestCase):
         from mate_rules import PATTERNS
 
         mates = [c for c in self.game.catalog.values()
-                 if any(e["action"] == "win_pattern" for e in c["effects"])]
+                 if any(e["action"] == "win_pattern" for e in c["manouvre_mode"]["effects"])]
         self.assertEqual(len(mates), 6)
-        self.assertEqual({c["effects"][0]["pattern"] for c in mates}, PATTERNS)
+        self.assertEqual({c["manouvre_mode"]["effects"][0]["pattern"] for c in mates}, PATTERNS)
         for base in mates:
             for quality in ("improved", "perfect"):
                 variant = make_variant(base, quality)
-                self.assertEqual(variant["effects"][0], base["effects"][0])
-                self.assertEqual(variant["cost"], base["cost"])
+                self.assertEqual(variant["manouvre_mode"]["effects"][0], base["manouvre_mode"]["effects"][0])
+                self.assertEqual(variant["piece_mode"]["cost"], base["piece_mode"]["cost"])
                 self.assertEqual(variant["rarity"], "legendary")
                 with self.assertRaises(ValueError):
                     validate_legendary([base["id"], variant["id"]],

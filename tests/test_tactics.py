@@ -275,10 +275,10 @@ class TacticalRulesTests(unittest.TestCase):
         high = self.unit(1, 0, "bispo")
         later = self.unit(1, 5)
         earlier = self.unit(1, 3)
-        effect = self.game.catalog["ataque_duplo"]["effects"][0]
+        effect = self.game.catalog["ataque_duplo"]["manouvre_mode"]["effects"][0]
         with patch.object(self.game.rng, "sample", side_effect=AssertionError("RNG")):
             self.assertEqual(self.game.parser.resolve_targets(effect, 0, preview=True), [earlier, later])
-            self.game.play_card(0, self.card("ataque_duplo"))
+            self.game.play_card(0, self.card("ataque_duplo"), mode="manobra")
         self.assertEqual(self.p1.board, [high])
         self.assertEqual(len(self.p0.hand), 2)
         self.assertEqual(self.p1.health, 30)
@@ -300,7 +300,7 @@ class TacticalRulesTests(unittest.TestCase):
         self.assertEqual(self.game.parser.resolve_targets(effect, 0), [bishop])
 
     def test_lowest_health_with_zero_or_one_target(self):
-        effect = self.game.catalog["ataque_duplo"]["effects"][0]
+        effect = self.game.catalog["ataque_duplo"]["manouvre_mode"]["effects"][0]
         self.assertEqual(self.game.parser.resolve_targets(effect, 0), [])
         only = self.unit(1, 5)
         self.assertEqual(self.game.parser.resolve_targets(effect, 0), [only])

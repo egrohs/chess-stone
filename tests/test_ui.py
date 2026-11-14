@@ -1,4 +1,5 @@
 import os
+import copy
 import tempfile
 import unittest
 from pathlib import Path
@@ -39,6 +40,67 @@ class InterfaceTests(unittest.TestCase):
     def select_first_card(self):
         self.app.click(self.app.hand_rects()[0][1].center)
 
+    def test_outside_board_click_plays_piece_card_as_maneuver(self):
+        card = self.add_card("peao")
+        self.select_first_card()
+        self.assertIn(card, self.player.hand)
+        self.assertIsNone(self.app.selected_mode)
+        self.app.click((50, 380))
+        self.assertEqual(self.player.board, [])
+        self.assertEqual(self.player.discard, [card])
+        self.assertEqual(self.player.mana, 9)
+        self.assertIsNone(self.app.selected_card)
+
+    def test_board_click_plays_former_maneuver_as_piece(self):
+        card = self.add_card("roque")
+        self.player.health = 20
+        self.select_first_card()
+        self.app.click(self.app.slots(0)[5].center)
+        self.assertEqual(self.player.unit_at(5).piece_type, "torre")
+        self.assertEqual(self.player.health, 20)
+        self.assertEqual(self.player.mana, 6)
+        self.assertEqual(self.player.discard, [])
+        self.assertNotIn(card, self.player.hand)
+
+    def test_outside_click_selects_targeted_maneuver_before_ally_target(self):
+        ally = self.game.summon(0, "peao", 0)
+        card = self.add_card("torre")
+        self.select_first_card()
+        self.app.click((50, 380))
+        self.assertEqual(self.app.selected_mode, "manobra")
+        self.assertIn(card, self.player.hand)
+        self.assertEqual(self.player.mana, 10)
+        self.assertIn(ally, self.app.valid_targets())
+        self.app.draw()
+        self.app.click(self.app.slots(0)[0].center)
+        self.assertIn("divine_shield", ally.keywords)
+        self.assertEqual(self.player.discard, [card])
+        self.assertEqual(len(self.player.board), 1)
+
+    def test_occupied_piece_destination_does_not_accidentally_play_maneuver(self):
+        self.game.summon(0, "peao", 0)
+        card = self.add_card("peao")
+        self.select_first_card()
+        self.app.click(self.app.slots(0)[0].center)
+        self.assertIn("Casa ocupada", self.game.messages[-1])
+        self.assertIn(card, self.player.hand)
+        self.assertEqual(self.player.mana, 10)
+        self.assertEqual(self.player.discard, [])
+
+    def test_full_board_and_cancel_targeted_maneuver(self):
+        for _ in range(6):
+            self.game.summon(0, "peao")
+        card = self.add_card("torre")
+        self.select_first_card()
+        self.assertEqual(self.app.placement_rects(), [])
+        self.app.click((50, 380))
+        self.assertEqual(self.app.selected_mode, "manobra")
+        self.app.handle_event(pygame.event.Event(pygame.KEYDOWN, key=pygame.K_ESCAPE))
+        self.assertIsNone(self.app.selected_mode)
+        self.assertIsNone(self.app.selected_card)
+        self.assertIn(card, self.player.hand)
+        self.assertEqual(self.player.mana, 10)
+
     def test_six_slots_are_centered_and_labeled_for_both_players(self):
         labels = ["1 Canto", "2 Borda", "3 Centro", "4 Centro", "5 Borda", "6 Canto"]
         with patch.object(self.app, "text", wraps=self.app.text) as text:
@@ -51,6 +113,24 @@ class InterfaceTests(unittest.TestCase):
             self.assertEqual(len(slots), 6)
             self.assertEqual(slots[0].left, SIDEBAR - slots[-1].right)
             self.assertTrue(all(left.right < right.left for left, right in zip(slots, slots[1:])))
+
+    def test_maneuver_button_switches_from_pending_piece_target(self):
+        ally = self.game.summon(0, "peao", 0)
+        card = self.add_card("torre")
+        card.definition = copy.deepcopy(card.definition)
+        card.definition["piece_mode"]["effects"] = [{
+            "trigger": "on_play", "action": "heal", "amount": 1, "target": "target_ally_piece",
+        }]
+        self.select_first_card()
+        self.app.click(self.app.slots(0)[5].center)
+        self.assertEqual(self.app.selected_mode, "piece")
+        self.app.click(self.app.play_button.center)
+        self.assertEqual(self.app.selected_mode, "manobra")
+        self.assertIsNone(self.app.position)
+        self.app.click(self.app.slots(0)[0].center)
+        self.assertIn("divine_shield", ally.keywords)
+        self.assertEqual(self.player.discard, [card])
+        self.assertIsNone(self.player.unit_at(5))
 
     def test_drag_from_last_corner_to_center(self):
         unit = self.game.summon(0, "peao", 5)
@@ -84,9 +164,8 @@ class InterfaceTests(unittest.TestCase):
         ):
             self.app.draw()
         labels = [call.args[0] for call in text.call_args_list + paragraph.call_args_list]
-        self.assertIn("Proteção", labels)
-        self.assertIn("Iniciativa / Ataque duplo", labels)
-        self.assertIn("Desenvolvimento", labels)
+        for keyword in ("Proteção", "Ataque duplo", "Iniciativa", "Desenvolvimento"):
+            self.assertTrue(any(keyword in label for label in labels))
         self.assertTrue(any("Tabuleiro: 3/6" in label for label in labels))
         self.assertTrue(any(call.args[1] == "Ativar Rei (Final de jogo)" for call in button.call_args_list))
         for label in labels:
@@ -193,9 +272,10 @@ class InterfaceTests(unittest.TestCase):
     def test_piece_with_target_uses_two_click_stages(self):
         enemy = self.game.summon(1, "peao")
         card = self.add_card("peao")
-        card.definition = dict(card.definition, effects=[{
+        card.definition = copy.deepcopy(card.definition)
+        card.definition["piece_mode"]["effects"] = [{
             "trigger": "on_play", "action": "damage", "amount": 1, "target": "target_enemy",
-        }])
+        }]
         self.select_first_card()
         self.assertEqual(self.app.valid_targets(), [])
         self.app.click(self.app.slots(0)[0].center)
@@ -319,7 +399,7 @@ class DeckBuilderTests(unittest.TestCase):
         with patch.object(self.app, "text", wraps=self.app.text) as text:
             self.app.draw()
         rendered = [call.args[0] for call in text.call_args_list]
-        self.assertIn("0 cartas | 0 peças | 0 manobras", rendered)
+        self.assertIn("0 cartas modais | Peca ou Manobra", rendered)
         self.assertIn("Custo medio: 0.0 tempo", rendered)
 
     def test_build_save_reload_select_and_play(self):
@@ -483,31 +563,31 @@ class CollectionTests(unittest.TestCase):
         self.assertFalse(self.path.exists())
 
     def test_collection_uses_new_piece_and_resource_labels(self):
-        self.collection.card_type = "peça"
+        self.collection.card_type = "peao"
         self.collection.refresh()
         with (
             patch.object(self.app, "text", wraps=self.app.text) as text,
             patch.object(self.app, "button", wraps=self.app.button) as button,
         ):
             self.app.draw()
-        self.assertTrue(any(call.args[1] == "Peças" for call in button.call_args_list))
+        self.assertTrue(any(call.args[1] == "Peao" for call in button.call_args_list))
         self.assertTrue(any(call.args[1] == "Ordem: custo de tempo" for call in button.call_args_list))
         self.assertTrue(any(call.args[0].endswith(" tempo") for call in text.call_args_list))
-        self.assertTrue(any("Tipo: Peças | Custo:" in call.args[0] for call in text.call_args_list))
+        self.assertTrue(any("Custo nos dois modos:" in call.args[0] for call in text.call_args_list))
         for card in self.app.cards:
             self.assertNotRegex(card["description"].casefold(), r"\b(?:mana|lacaios?)\b")
 
     def test_collection_uses_maneuver_labels(self):
-        self.collection.card_type = "manobra"
+        self.collection.card_type = None
         self.collection.refresh()
         with (
             patch.object(self.app, "text", wraps=self.app.text) as text,
             patch.object(self.app, "button", wraps=self.app.button) as button,
         ):
             self.app.draw()
-        self.assertTrue(any(call.args[1] == "Manobras" for call in button.call_args_list))
-        self.assertTrue(any("Tipo: Manobras | Custo:" in call.args[0] for call in text.call_args_list))
-        self.assertTrue(all(card["type"] == "manobra" for card in self.collection.filtered_cards()))
+        self.assertTrue(any(call.args[1] == "Todas as pecas" for call in button.call_args_list))
+        self.assertTrue(any("ou Manobra" in call.args[0] for call in text.call_args_list))
+        self.assertTrue(all("manouvre_mode" in card for card in self.collection.filtered_cards()))
 
     def test_accent_insensitive_search_and_empty_results(self):
         self.search("peao")
@@ -526,7 +606,8 @@ class CollectionTests(unittest.TestCase):
     def test_keywords_type_filter_sort_and_reset_page(self):
         self.search("protecao")
         self.assertIn("torre", [c["id"] for c in self.collection.filtered_cards()])
-        self.click(self.collection.type_button)
+        self.collection.card_type = "torre"
+        self.collection.refresh()
         self.assertEqual([c["id"] for c in self.collection.filtered_cards()], ["torre"])
         self.collection.card_type = None
         self.collection.query = ""
@@ -534,10 +615,11 @@ class CollectionTests(unittest.TestCase):
         self.click(self.collection.next)
         self.click(self.collection.type_button)
         self.assertEqual(self.collection.page, 0)
-        self.assertTrue(all(c["type"] == "peça" for c in self.collection.filtered_cards()))
+        self.assertTrue(all(c["piece_mode"]["piece_type"] == "peao" for c in self.collection.filtered_cards()))
         self.click(self.collection.type_button)
-        self.assertTrue(all(c["type"] == "manobra" for c in self.collection.filtered_cards()))
-        self.click(self.collection.type_button)
+        self.assertTrue(all(c["piece_mode"]["piece_type"] == "cavalo" for c in self.collection.filtered_cards()))
+        for _ in range(4):
+            self.click(self.collection.type_button)
         self.assertEqual(len(self.collection.filtered_cards()), len(self.app.cards))
         self.click(self.collection.sort_button)
         self.assertTrue(self.collection.sort_by_name)

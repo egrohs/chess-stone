@@ -38,23 +38,23 @@ class MateRules:
             player = self.game.players[owner]
             for rook_slot, knight_slot in ((0, 1), (BOARD_LIMIT - 1, BOARD_LIMIT - 2)):
                 rook, knight = player.unit_at(rook_slot), player.unit_at(knight_slot)
-                if rook and knight and rook.card_id == "torre" and knight.card_id == "cavalo":
+                if rook and knight and rook.piece_type == "torre" and knight.piece_type == "cavalo":
                     pairs.append((rook, knight))
         elif pattern == "boden" and len(board) >= 4:
             player = self.game.players[owner]
             left, right = player.unit_at(0), player.unit_at(BOARD_LIMIT - 1)
             if (
-                left and right and left.card_id == right.card_id == "bispo"
+                left and right and left.piece_type == right.piece_type == "bispo"
                 and sum(not unit.is_king and 0 < unit.slot < BOARD_LIMIT - 1 for unit in board) >= 2
             ):
                 pairs.append((left, right))
         elif pattern == "smothered":
-            pairs.extend((unit,) for unit in board if unit.card_id == "cavalo")
+            pairs.extend((unit,) for unit in board if unit.piece_type == "cavalo")
         elif pattern == "back_rank":
-            pairs.extend((unit,) for unit in board if unit.card_id == "torre")
+            pairs.extend((unit,) for unit in board if unit.piece_type == "torre")
         elif pattern == "opera":
-            rooks = [unit for unit in board if unit.card_id == "torre"]
-            bishops = [unit for unit in board if unit.card_id == "bispo"]
+            rooks = [unit for unit in board if unit.piece_type == "torre"]
+            bishops = [unit for unit in board if unit.piece_type == "bispo"]
             if len(rooks) == len(bishops) == 1:
                 rook, bishop = rooks[0], bishops[0]
                 if abs(rook.slot - bishop.slot) == 1:
@@ -131,7 +131,7 @@ class MateRules:
                 return f"Mate Abafado exige {BOARD_LIMIT} peças inimigas (Rei nao conta)."
         elif pattern == "back_rank":
             blockers = sum(
-                not unit.is_king and unit.card_id in {"peao", "peao_passado"}
+                not unit.is_king and unit.piece_type == "peao"
                 for unit in enemy.board
             )
             if blockers < 3:

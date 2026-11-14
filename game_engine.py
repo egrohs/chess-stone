@@ -7,7 +7,7 @@ import random
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Literal
 
 from csv_to_json import validate_cards
 from deck_store import validate_deck, validate_legendary
@@ -18,6 +18,7 @@ from board_rules import BOARD_LIMIT, CENTER_SLOTS
 
 MOVE_COST = 1
 HAND_LIMIT = 10
+PlayMode = Literal["piece", "manobra"]
 KEYWORD_LABELS = {
     "charge": "Iniciativa", "rush": "Desenvolvimento",
     "divine_shield": "Proteção", "windfury": "Ataque duplo", "elusive": "Elusivo",
@@ -36,6 +37,11 @@ class Card:
     @property
     def name(self) -> str:
         return self.definition["name"]
+
+    def mode(self, mode: PlayMode) -> dict:
+        if mode not in ("piece", "manobra"):
+            raise RuleError("Modo invalido: escolha piece ou manobra.")
+        return self.definition["piece_mode" if mode == "piece" else "manouvre_mode"]
 
 
 @dataclass(eq=False)
@@ -57,6 +63,8 @@ class Unit:
     is_king: bool = False
     definition_id: str = ""
     has_attacked: bool = False
+    piece_type: str = ""
+    source_card: Card | None = None
 
 
 @dataclass(eq=False)
@@ -65,6 +73,7 @@ class Player:
     name: str
     deck: list[str]
     hand: list[Card] = field(default_factory=list)
+    discard: list[Card] = field(default_factory=list)
     board: list[Unit] = field(default_factory=list)
     _health: int = 30
     max_health: int = 30
@@ -190,6 +199,7 @@ class Game:
             return
         card_id = player.deck.pop()
         if len(player.hand) >= HAND_LIMIT:
+            player.discard.append(Card(self.uid(), self.catalog[card_id]))
             self.log(f"{player.name}: mao cheia, {self.catalog[card_id]['name']} descartada.")
         else:
             player.hand.append(Card(self.uid(), self.catalog[card_id]))
@@ -263,7 +273,7 @@ class Game:
         king = Unit(
             self.uid(), owner, "rei", f"Rei ({player.name})", 2, player.health,
             player.max_health, set(), [], self.turn_number, is_king=True,
-            slot=player.free_slots()[0],
+            slot=player.free_slots()[0], piece_type="rei",
         )
         player.king = king
         player.board.append(king)
@@ -280,10 +290,11 @@ class Game:
         position = player.free_slots()[0] if position is None else position
         self.require_free_slot(owner, position)
         card = self.catalog[card_id]
+        piece = card["piece_mode"]
         unit = Unit(
-            self.uid(), owner, card.get("base_id", card_id), card["name"], card["attack"], card["health"],
-            card["health"], set(card["keywords"]), card["effects"], self.turn_number,
-            definition_id=card_id, slot=position,
+            self.uid(), owner, card.get("base_id", card_id), card["name"], piece["attack"], piece["health"],
+            piece["health"], set(piece["keywords"]), piece["effects"], self.turn_number,
+            definition_id=card_id, slot=position, piece_type=piece["piece_type"],
         )
         player.board.append(unit)
         player.board.sort(key=lambda unit: unit.slot)
@@ -337,38 +348,41 @@ class Game:
         )
         return adjusted
 
-    def manual_effects(self, card: Card) -> list[dict]:
+    def manual_effects(self, card: Card, mode: PlayMode = "piece") -> list[dict]:
         return [
-            effect for effect in card.definition["effects"]
+            effect for effect in card.mode(mode)["effects"]
             if effect["trigger"] == "on_play" and effect.get("target") in MANUAL_TARGETS
         ]
 
-    def valid_card_targets(self, owner: int, card: Card) -> list[Entity]:
-        effects = self.manual_effects(card)
+    def valid_card_targets(self, owner: int, card: Card, mode: PlayMode = "piece") -> list[Entity]:
+        effects = self.manual_effects(card, mode)
         if not effects:
             return []
         # A piece's battlecry is not a maneuver and can select Elusive units.
         groups = [
             self.parser.resolve_targets(
                 effect, owner, preview=True,
-                allow_elusive=card.definition["type"] == "peça",
+                allow_elusive=mode == "piece",
             )
             for effect in effects
         ]
         return [entity for entity in groups[0] if all(entity in group for group in groups[1:])]
 
-    def playable(self, owner: int, card: Card) -> bool:
+    def playable(self, owner: int, card: Card, mode: PlayMode | None = None) -> bool:
+        if mode is None:
+            return any(self.playable(owner, card, candidate) for candidate in ("piece", "manobra"))
+        definition = card.mode(mode)
         player = self.players[owner]
         return (
             not self.over and self.current == owner and card in player.hand
-            and card.definition["cost"] <= player.mana
-            and (card.definition["type"] != "peça" or len(player.board) < BOARD_LIMIT)
-            and (not self.manual_effects(card) or bool(self.valid_card_targets(owner, card)))
-            and not self.mate_unavailable_reason(owner, card)
+            and definition["cost"] <= player.mana
+            and (mode != "piece" or len(player.board) < BOARD_LIMIT)
+            and (not self.manual_effects(card, mode) or bool(self.valid_card_targets(owner, card, mode)))
+            and not self.mate_unavailable_reason(owner, card, mode)
         )
 
-    def mate_unavailable_reason(self, owner: int, card: Card) -> str:
-        for effect in card.definition["effects"]:
+    def mate_unavailable_reason(self, owner: int, card: Card, mode: PlayMode = "manobra") -> str:
+        for effect in card.mode(mode)["effects"]:
             if effect["action"] == "win_pattern":
                 reason = self.mates.unavailable_reason(owner, effect["pattern"])
                 if reason:
@@ -377,35 +391,40 @@ class Game:
 
     def play_card(
         self, owner: int, card: Card, target: Entity | None = None,
-        position: int | None = None,
+        position: int | None = None, *, mode: PlayMode = "piece",
     ) -> None:
         self.require_turn(owner)
         player = self.players[owner]
         if card not in player.hand:
             raise RuleError("Carta nao esta na mao.")
-        definition = card.definition
+        definition = card.mode(mode)
         if definition["cost"] > player.mana:
             raise RuleError("Tempo insuficiente.")
-        if definition["type"] == "peça":
+        if mode == "piece":
             if len(player.board) >= BOARD_LIMIT:
                 raise RuleError(f"Seu tabuleiro ja tem {BOARD_LIMIT} peças.")
             if position is not None:
                 self.require_free_slot(owner, position)
-        if self.manual_effects(card) and target not in self.valid_card_targets(owner, card):
+        elif position is not None:
+            raise RuleError("Manobras nao ocupam casas do tabuleiro.")
+        if self.manual_effects(card, mode) and target not in self.valid_card_targets(owner, card, mode):
             raise RuleError("Escolha um alvo valido para a carta.")
-        if not self.manual_effects(card) and target is not None:
+        if not self.manual_effects(card, mode) and target is not None:
             raise RuleError("Esta carta nao exige alvo.")
-        reason = self.mate_unavailable_reason(owner, card)
+        reason = self.mate_unavailable_reason(owner, card, mode)
         if reason:
             raise RuleError(reason)
         player.mana -= definition["cost"]
         player.hand.remove(card)
-        self.log(f"{player.name} joga {card.name}.")
+        self.log(f"{player.name} joga {card.name} como {'Peça' if mode == 'piece' else 'Manobra'}.")
         source = None
-        if definition["type"] == "peça":
-            source = self.summon(owner, definition["id"], position)
+        if mode == "piece":
+            source = self.summon(owner, card.definition["id"], position)
+            if source is not None:
+                source.source_card = card
         self.parser.execute(definition["effects"], "on_play", owner, source, target)
-        if definition["type"] == "manobra":
+        if mode == "manobra":
+            player.discard.append(card)
             player.maneuvers_played += 1
         self.cleanup()
 
@@ -422,13 +441,13 @@ class Game:
             return []
         enemy = self.players[1 - unit.owner]
         targets: list[Entity]
-        if unit.card_id in {"torre", "bispo", "cavalo", "dama"}:
-            if unit.card_id == "torre":
+        if unit.piece_type in {"torre", "bispo", "cavalo", "dama"}:
+            if unit.piece_type == "torre":
                 front = lambda slot: slot >= unit.slot if unit.owner == 0 else slot <= unit.slot
                 targets = [entity for entity in enemy.board if front(entity.slot) and abs(entity.slot - unit.slot) <= 3]
-            elif unit.card_id == "bispo":
+            elif unit.piece_type == "bispo":
                 targets = [entity for entity in enemy.board if abs(entity.slot - unit.slot) <= 2]
-            elif unit.card_id == "cavalo":
+            elif unit.piece_type == "cavalo":
                 targets = [entity for entity in enemy.board if abs(entity.slot - unit.slot) <= 2]
             else:
                 front = lambda slot: slot >= unit.slot if unit.owner == 0 else slot <= unit.slot
@@ -494,6 +513,10 @@ class Game:
                 dead = [unit for p in self.players for unit in p.board if unit.health <= 0]
                 for unit in dead:
                     self.players[unit.owner].board.remove(unit)
+                    if not unit.is_king:
+                        self.players[unit.owner].discard.append(
+                            unit.source_card or Card(unit.uid, self.catalog[unit.definition_id or unit.card_id])
+                        )
                     self.log(f"{unit.name} saiu do tabuleiro.")
                 self.mates.invalidate()
                 self.check_winner()
@@ -526,15 +549,22 @@ class Game:
             self.activate_king(1, manual=True)
             return
         player = self.players[1]
-        options = [card for card in player.hand if self.playable(1, card)]
+        options = [
+            (card, mode) for card in player.hand for mode in ("piece", "manobra")
+            if self.playable(1, card, mode)
+        ]
         if options:
-            card = max(options, key=lambda c: c.definition["cost"])
-            targets = self.valid_card_targets(1, card)
+            card, mode = max(options, key=lambda option: (
+                any(e["action"] == "win_pattern" for e in option[0].mode(option[1])["effects"]),
+                option[0].mode(option[1])["cost"],
+                option[1] == "piece",
+            ))
+            targets = self.valid_card_targets(1, card, mode)
             target = self.rng.choice(targets) if targets else None
             position = None
-            if card.definition["type"] == "peça":
+            if mode == "piece":
                 position = min(player.free_slots(), key=lambda slot: (slot not in CENTER_SLOTS, slot))
-            self.play_card(1, card, target, position)
+            self.play_card(1, card, target, position, mode=mode)
             return
         for unit in player.board:
             targets = self.attack_targets(unit)

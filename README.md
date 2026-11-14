@@ -193,19 +193,49 @@ Os sons especificos de `assets\cards\` continuam sem carregamento automatico.
 Exporte uma planilha como CSV UTF-8 com o cabecalho exato:
 
 ```text
-id,name,category,card_type,cost,attack,health,keywords,trigger,effect_code,description
+id,name,piece_type,piece_cost,attack,health,keywords,piece_effect,manouver_effect,description
 ```
 
-`card_type` aceita `peça` ou `manobra`; ataque e vida sao obrigatorios para
-peças. `keywords` aceita identificadores ingleses ou os nomes portugueses
-separados por `|`. Os IDs devem ser unicos e estaveis.
-O campo `type` do JSON usa os mesmos valores, incluindo o acento em `peça`.
-Alvos de efeitos usam `piece`/`pieces`, como `target_ally_piece` e
-`all_enemy_pieces`. O contador de manobras do jogador e `maneuvers_played`.
-Decks e colecoes salvos continuam validos, pois os IDs das cartas nao mudaram.
-`category` aceita somente `Peça`, `Tática` ou `Estratégia`.
-Raridade e categoria sao independentes: efeitos `win_pattern` geram
-`"rarity": "legendary"` no JSON, preservando a restricao dos mates no deck.
+**Toda carta tem os dois modos**, escolhidos ao jogar. `piece_type` aceita
+`peao`, `cavalo`, `bispo`, `torre` ou `dama`. `piece_cost` (inteiro de 0 a 10)
+e o custo em Tempo **de ambos os modos**. Ataque, vida e palavras-chave pertencem
+somente a Peca; ataque e vida sao obrigatorios. `keywords` aceita identificadores
+ingleses ou nomes portugueses separados por `|`. `piece_effect` pode ficar
+vazio; `manouver_effect` exige ao menos um efeito imediato.
+
+Exemplo de linha CSV:
+
+```csv
+peao,Peao,peao,1,1,2,,"{""trigger"":""on_death"",""action"":""draw"",""amount"":1}",DRAW:1:SELF,Peca: compra 1 ao morrer. Manobra: compra 1.
+```
+
+O conversor gera objetos separados, sem os antigos campos planos `type`,
+`category`, `cost` ou `effects`:
+
+```json
+{
+  "id": "peao",
+  "name": "Peao",
+  "piece_mode": {
+    "piece_type": "peao",
+    "cost": 1,
+    "attack": 1,
+    "health": 2,
+    "keywords": [],
+    "effects": [{"trigger": "on_death", "action": "draw", "amount": 1}]
+  },
+  "manouvre_mode": {
+    "cost": 1,
+    "effects": [{"trigger": "on_play", "action": "draw", "amount": 1}]
+  },
+  "description": "Peca: compra 1 ao morrer. Manobra: compra 1."
+}
+```
+
+As grafias `manouver_effect` (CSV) e `manouvre_mode` (JSON) fazem parte do
+contrato. Efeitos `win_pattern` geram `"rarity": "legendary"` na carta,
+preservando a restricao dos mates no deck em ambos os modos.
+IDs permanecem unicos e estaveis; decks e colecoes existentes continuam validos.
 
 ```powershell
 python csv_to_json.py
@@ -217,6 +247,22 @@ acoes, alvos e gatilhos desconhecidos, alem de referencias a cartas inexistentes
 O jogo revalida o JSON ao carregar. Apenas `on_play` solicita alvo manual;
 manobras nao podem usar gatilhos futuros, pois nao permanecem no tabuleiro.
 Uma conversao invalida nao substitui o catalogo existente.
+
+### API modal do motor
+
+`Game.play_card(owner, card, target=None, position=None, *, mode="piece")`
+aceita `mode="piece"` ou `mode="manobra"`. Peca exige casa livre (usa a primeira
+se `position` for omitida); Manobra nao aceita `position`, funciona com tabuleiro
+cheio e vai para `Player.discard` apos resolver. Somente os efeitos do modo
+escolhido sao executados. Erros de custo, modo, casa, alvo ou requisitos de mate
+sao rejeitados antes de gastar Tempo ou remover a carta da mao.
+
+`playable(owner, card, mode=None)` considera qualquer um dos modos quando o
+modo e omitido. `valid_card_targets` e `manual_effects` aceitam modo, com padrao
+`"piece"`. `Card.mode(mode)` retorna o objeto correspondente do JSON.
+`Unit.piece_type` determina alcance e formacoes; `card_id` identifica a carta
+base e `definition_id` preserva sua variante. Manobras, pecas mortas (exceto Rei)
+e compras com mao cheia sao registradas no descarte; nao ha reciclagem automatica.
 
 ### Efeitos
 
@@ -262,8 +308,9 @@ unico alvo, valido para todos eles. Uma peça com alvo manual primeiro exige
 posicionamento e depois selecao de alvo. `on_kill` e um objeto de acao adicional,
 executado por abate e sem solicitar novos alvos.
 
-Gatilhos: `on_play`, `on_death`, `on_turn_start`, `on_turn_end`. O gatilho da
-coluna CSV e o padrao; cada objeto JSON pode sobrescreve-lo.
+Gatilhos da Peca: `on_play`, `on_death`, `on_turn_start`, `on_turn_end`.
+Ambos os campos de efeito CSV usam `on_play` por padrao; outros gatilhos
+exigem JSON estruturado com `trigger`. Manobras aceitam somente `on_play`.
 
 Acoes: `damage`, `heal`, `buff`, `draw`, `summon`, `freeze`, `grant_keyword`,
 `destroy`, `activate_king`. Dano/cura/compra exigem `amount`; `summon` usa
@@ -280,7 +327,10 @@ a adjacencia. Seletores `lowest_health_*` aceitam `count`, ordenam por Vida e
 desempatam pela casa (Rei fora do tabuleiro vem depois das casas em empates).
 Os alvos sao definidos antes da resolucao da acao.
 Seletores antigos `random_*` sao rejeitados pela validacao.
-O filtro opcional `card_id` restringe os alvos a uma carta.
+O filtro opcional `card_id` aceita a identidade base da carta ou um arquetipo
+de `piece_type`: `"bispo"` tambem seleciona Cravada Absoluta desenvolvida como
+Bispo. `summon.card_id` continua exigindo um ID exato do catalogo e desenvolve
+apenas o modo Peca, sem executar efeitos de entrada.
 
 Cada `Unit.slot` identifica uma posicao fixa de 0 a 5; `Player.board` contem
 apenas peças ocupantes, ordenadas por casa. `unit_at` e `free_slots` consultam
@@ -292,6 +342,8 @@ A condicao suportada e `{"type":"friendly_count","card_id":"bispo","at_least":2}
 utilizada em Par de Bispos. Se nao atendida, a acao e ignorada com registro no
 log; o custo da jogada continua sendo pago. Sacrificio da Dama exige uma Dama
 aliada selecionavel, a destroi e executa dano em area seguido de compras.
+Essa contagem tambem aceita o arquetipo: qualquer carta desenvolvida como Bispo
+conta para Par de Bispos, independentemente do nome ou qualidade.
 
 ## Verificacoes
 

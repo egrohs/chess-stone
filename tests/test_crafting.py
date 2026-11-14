@@ -52,8 +52,8 @@ class CraftingTests(unittest.TestCase):
     def test_award_persist_and_duplicate_prevention(self):
         card = self.inventory.award("torre", "test1", 0, 25.0, 1)
         self.assertEqual(card["id"], "torre__perfect")
-        self.assertEqual((card["attack"], card["health"]), (5, 7))
-        self.assertEqual(card["effects"][-1]["action"], "draw")
+        self.assertEqual((card["piece_mode"]["attack"], card["piece_mode"]["health"]), (5, 7))
+        self.assertEqual(card["manouvre_mode"]["effects"][-1]["action"], "draw")
         self.assertEqual(self.inventory.count(card["id"]), 1)
         self.inventory.validate_owned([card["id"], "peao"] * 1)
         with self.assertRaises(ValueError):
@@ -95,15 +95,15 @@ class CraftingTests(unittest.TestCase):
             {"target": "target_ally_piece", "card_id": "dama"}, 0, preview=True,
         ), [queen])
         before = bishop.attack
-        game.parser.execute(game.catalog["par_de_bispos"]["effects"], "on_play", 0)
+        game.parser.execute(game.catalog["par_de_bispos"]["manouvre_mode"]["effects"], "on_play", 0)
         self.assertEqual(bishop.attack, before + 1)
 
     def test_improved_maneuver_extra_healing_and_perfect_draw(self):
         base = next(c for c in self.cards if c["id"] == "roque")
-        self.assertEqual(make_variant(base, "improved")["effects"][-1]["amount"], 1)
+        self.assertEqual(make_variant(base, "improved")["manouvre_mode"]["effects"][-1]["amount"], 1)
         perfect = make_variant(base, "perfect")
-        self.assertEqual(perfect["effects"][-2]["amount"], 2)
-        self.assertEqual(perfect["effects"][-1]["action"], "draw")
+        self.assertEqual(perfect["manouvre_mode"]["effects"][-2]["amount"], 2)
+        self.assertEqual(perfect["manouvre_mode"]["effects"][-1]["action"], "draw")
 
     def test_corrupt_inventory_cannot_be_overwritten(self):
         self.path.write_text("{", encoding="utf-8")

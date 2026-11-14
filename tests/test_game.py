@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from csv_to_json import CATEGORIES, KEYWORD_ALIASES, ROOT, convert_csv, normalize, parse_effect_code, validate_cards
+from csv_to_json import PIECE_TYPES, KEYWORD_ALIASES, ROOT, convert_csv, normalize, parse_effect_code, validate_cards
 from game_engine import BOARD_LIMIT, KEYWORD_LABELS, Card, Game, RuleError, load_cards
 
 
@@ -16,25 +16,24 @@ class CatalogTests(unittest.TestCase):
         cards = load_cards()
         catalog = {card["id"]: card for card in cards}
         self.assertEqual(catalog["ataque_duplo"]["name"], "Garfo")
-        self.assertEqual(catalog["torre"]["keywords"], ["divine_shield"])
-        self.assertEqual(catalog["dama"]["keywords"], ["charge", "windfury"])
-        cards[0]["keywords"] = ["taunt"]
+        self.assertEqual(catalog["torre"]["piece_mode"]["keywords"], ["divine_shield"])
+        self.assertEqual(catalog["dama"]["piece_mode"]["keywords"], ["charge", "windfury"])
+        cards[0]["piece_mode"]["keywords"] = ["taunt"]
         with self.assertRaisesRegex(ValueError, "keywords"):
             validate_cards(cards)
 
     def test_card_types_are_piece_and_maneuver(self):
         cards = load_cards()
-        self.assertEqual({card["type"] for card in cards}, {"peça", "manobra"})
         for card in cards:
-            if card["type"] == "peça":
-                self.assertIn("attack", card)
-                self.assertIn("health", card)
+            self.assertIn("attack", card["piece_mode"])
+            self.assertIn("health", card["piece_mode"])
+            self.assertIn("effects", card["manouvre_mode"])
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "cards.csv"
             source.write_text(
                 (ROOT / "data" / "cards.csv").read_text(encoding="utf-8").replace(
-                    ",peça,", ", PEÇA ,"
-                ).replace(",manobra,", ", MANOBRA ,"),
+                    ",peao,", ", PEAO ,"
+                ),
                 encoding="utf-8",
             )
             converted = convert_csv(source, Path(directory) / "cards.json")
@@ -56,31 +55,30 @@ class CatalogTests(unittest.TestCase):
             }],
         )
 
-    def test_categories_and_mate_rarity(self):
+    def test_archetypes_and_mate_rarity(self):
         with tempfile.TemporaryDirectory() as directory:
             cards = convert_csv(ROOT / "data" / "cards.csv", Path(directory) / "cards.json")
-        self.assertEqual({card["category"] for card in cards}, CATEGORIES)
+        self.assertEqual({card["piece_mode"]["piece_type"] for card in cards}, PIECE_TYPES)
         mates = [
             card for card in cards
-            if any(effect["action"] == "win_pattern" for effect in card["effects"])
+            if any(effect["action"] == "win_pattern" for effect in card["manouvre_mode"]["effects"])
         ]
         self.assertEqual(len(mates), 6)
         for card in mates:
-            self.assertEqual(card["category"], "Tática")
             self.assertEqual(card["rarity"], "legendary")
 
-    def test_invalid_category_csv_does_not_overwrite_json(self):
+    def test_invalid_archetype_csv_does_not_overwrite_json(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "bad.csv"
             destination = Path(directory) / "cards.json"
             source.write_text(
                 (ROOT / "data" / "cards.csv").read_text(encoding="utf-8").replace(
-                    ",Peça,", ",Defesa,", 1
+                    ",peao,", ",desconhecido,", 1
                 ),
                 encoding="utf-8",
             )
             destination.write_text("preservado", encoding="utf-8")
-            with self.assertRaisesRegex(ValueError, "category"):
+            with self.assertRaisesRegex(ValueError, "piece_type"):
                 convert_csv(source, destination)
             self.assertEqual(destination.read_text(encoding="utf-8"), "preservado")
 
@@ -90,6 +88,17 @@ class CatalogTests(unittest.TestCase):
             '{"trigger":"on_death","action":"draw","amount":2}]'
         )
         self.assertEqual([e["trigger"] for e in effects], ["on_play", "on_death"])
+
+    def test_archetype_filters_do_not_require_a_card_with_that_id(self):
+        card = copy.deepcopy(next(c for c in load_cards() if c["id"] == "par_de_bispos"))
+        validate_cards([card])
+        card["manouvre_mode"]["effects"][0]["card_id"] = "bispo"
+        validate_cards([card])
+        card["manouvre_mode"]["effects"] = [{
+            "trigger": "on_play", "action": "summon", "card_id": "bispo",
+        }]
+        with self.assertRaisesRegex(ValueError, "referenciada"):
+            validate_cards([card])
 
     def test_invalid_short_codes(self):
         for code in (
@@ -102,35 +111,38 @@ class CatalogTests(unittest.TestCase):
         original = load_cards()
         mutations = [
             lambda c: c.append(copy.deepcopy(c[0])),
-            lambda c: c[0].update(cost=11),
-            lambda c: c[0].update(health=0),
-            lambda c: c[0].update(category="Peças"),
-            lambda c: c[0].update(category="Táticas"),
-            lambda c: c[0].update(category="Defesa"),
-            lambda c: c[0].update(category="Lendario"),
-            lambda c: c[0].update(effects=[{
-                "trigger": "on_play", "action": "damage", "amount": 1, "target": "random_enemy",
-            }]),
-            lambda c: c[0].update(effects=[{
-                "trigger": "on_play", "action": "damage", "amount": 1, "target": "random_enemy_piece",
-            }]),
-            lambda c: c[0].update(keywords=["flight"]),
-            lambda c: c[0].update(keywords=[{}]),
-            lambda c: c[0].update(effects=[{"trigger": "on_play", "action": "typo"}]),
-            lambda c: c[0].update(effects=[{"trigger": "on_play", "action": "draw", "amount": True}]),
-            lambda c: c[0].update(effects=[{
+            lambda c: c[0]["piece_mode"].update(cost=11),
+            lambda c: c[0]["piece_mode"].update(cost=True),
+            lambda c: c[0]["manouvre_mode"].update(cost=-1),
+            lambda c: c[0]["piece_mode"].update(health=0),
+            lambda c: c[0].pop("piece_mode"),
+            lambda c: c[0].pop("manouvre_mode"),
+            lambda c: c[0]["piece_mode"].update(piece_type="rei"),
+            lambda c: c[0]["manouvre_mode"].update(cost=2),
+            lambda c: c[0]["manouvre_mode"].update(effects=[]),
+            lambda c: c[0]["manouvre_mode"].update(effects=[{
                 "trigger": "on_play", "action": "summon", "card_id": "missing",
             }]),
-            lambda c: c[0].update(effects=[{
-                "trigger": "on_play", "action": "summon", "card_id": "roque",
+            lambda c: c[0]["piece_mode"].update(effects=[{
+                "trigger": "on_play", "action": "damage", "amount": 1, "target": "random_enemy",
             }]),
-            lambda c: c[0].update(effects=[{
+            lambda c: c[0]["piece_mode"].update(effects=[{
+                "trigger": "on_play", "action": "damage", "amount": 1, "target": "random_enemy_piece",
+            }]),
+            lambda c: c[0]["piece_mode"].update(keywords=["flight"]),
+            lambda c: c[0]["piece_mode"].update(keywords=[{}]),
+            lambda c: c[0]["piece_mode"].update(effects=[{"trigger": "on_play", "action": "typo"}]),
+            lambda c: c[0]["piece_mode"].update(effects=[{"trigger": "on_play", "action": "draw", "amount": True}]),
+            lambda c: c[0]["piece_mode"].update(effects=[{
+                "trigger": "on_play", "action": "summon", "card_id": "missing",
+            }]),
+            lambda c: c[0]["piece_mode"].update(effects=[{
                 "trigger": "on_play", "action": "damage", "amount": 1, "target": "wrong",
             }]),
-            lambda c: c[0].update(effects=[{
+            lambda c: c[0]["piece_mode"].update(effects=[{
                 "trigger": "on_death", "action": "damage", "amount": 1, "target": "target_enemy",
             }]),
-            lambda c: next(card for card in c if card["id"] == "roque").update(effects=[{
+            lambda c: next(card for card in c if card["id"] == "roque")["manouvre_mode"].update(effects=[{
                 "trigger": "on_turn_end", "action": "draw", "amount": 1,
             }]),
         ]
@@ -313,18 +325,18 @@ class RulesTests(unittest.TestCase):
         bishop = self.unit("bispo", 1)
         pawn = self.unit(owner=1)
         card = self.card("cravada_absoluta")
-        self.assertEqual(self.game.valid_card_targets(0, card), [pawn])
+        self.assertEqual(self.game.valid_card_targets(0, card, mode="manobra"), [pawn])
         with self.assertRaises(RuleError):
-            self.game.play_card(0, card, bishop)
+            self.game.play_card(0, card, bishop, mode="manobra")
         self.assertEqual(self.p0.mana, 10)
         self.assertIn(card, self.p0.hand)
-        self.game.play_card(0, card, pawn)
+        self.game.play_card(0, card, pawn, mode="manobra")
         self.assertGreater(pawn.frozen_through, self.p1.turns_started)
 
     def test_elusive_allows_battlecry_targeting(self):
         bishop = self.unit("bispo", 1)
         definition = copy.deepcopy(self.game.catalog["peao"])
-        definition["effects"] = [{
+        definition["piece_mode"]["effects"] = [{
             "trigger": "on_play", "action": "damage", "amount": 1, "target": "target_enemy",
         }]
         card = Card(self.game.uid(), definition)
@@ -335,7 +347,7 @@ class RulesTests(unittest.TestCase):
 
     def test_freeze_expires_after_next_owner_turn(self):
         knight = self.unit("cavalo", 1, ready=True)
-        self.game.play_card(0, self.card("cravada_absoluta"), knight)
+        self.game.play_card(0, self.card("cravada_absoluta"), knight, mode="manobra")
         self.game.end_turn(0)
         self.assertEqual(self.game.attack_targets(knight), [])
         self.game.end_turn(1)
@@ -346,7 +358,7 @@ class RulesTests(unittest.TestCase):
         victims = [self.unit(owner=1) for _ in range(3)]
         for unit in victims:
             unit.effects = []
-        self.game.play_card(0, self.card("ataque_duplo"))
+        self.game.play_card(0, self.card("ataque_duplo"), mode="manobra")
         self.assertEqual(len(self.p1.board), 1)
         self.assertEqual(len(self.p0.hand), 2)
         self.assertEqual(sum(u.health <= 0 for u in victims), 2)
@@ -354,21 +366,21 @@ class RulesTests(unittest.TestCase):
     def test_area_effect_ignores_elusive(self):
         bishop = self.unit("bispo", 1)
         rook = self.unit("torre", 1)
-        self.game.play_card(0, self.card("zugzwang"))
+        self.game.play_card(0, self.card("zugzwang"), mode="manobra")
         self.assertEqual(bishop.frozen_through, 1)
         self.assertEqual(rook.frozen_through, 1)
 
     def test_conditional_pair_of_bishops(self):
         one = self.unit("bispo")
-        self.game.play_card(0, self.card("par_de_bispos"))
+        self.game.play_card(0, self.card("par_de_bispos"), mode="manobra")
         self.assertEqual((one.attack, one.health), (2, 4))
         two = self.unit("bispo")
-        self.game.play_card(0, self.card("par_de_bispos"))
+        self.game.play_card(0, self.card("par_de_bispos"), mode="manobra")
         self.assertEqual((one.attack, one.health, two.attack, two.health), (3, 5, 3, 5))
 
     def test_temporary_attack_and_permanent_keyword(self):
         pawn = self.unit()
-        self.game.play_card(0, self.card("coluna_aberta"), pawn)
+        self.game.play_card(0, self.card("coluna_aberta"), pawn, mode="manobra")
         self.assertEqual(pawn.attack, 3)
         self.assertIn("rush", pawn.keywords)
         self.game.end_turn(0)
@@ -377,7 +389,7 @@ class RulesTests(unittest.TestCase):
 
     def test_castle_heals_and_summons_without_battlecry(self):
         self.p0.health = 27
-        self.game.play_card(0, self.card("roque"))
+        self.game.play_card(0, self.card("roque"), mode="manobra")
         self.assertEqual(self.p0.health, 30)
         self.assertEqual(self.p0.board[0].card_id, "torre")
 
@@ -386,8 +398,8 @@ class RulesTests(unittest.TestCase):
         pawn = self.unit(owner=1)
         pawn.effects = []
         card = self.card("sacrificio_da_dama")
-        self.assertEqual(self.game.valid_card_targets(0, card), [queen])
-        self.game.play_card(0, card, queen)
+        self.assertEqual(self.game.valid_card_targets(0, card, mode="manobra"), [queen])
+        self.game.play_card(0, card, queen, mode="manobra")
         self.assertNotIn(queen, self.p0.board)
         self.assertEqual(self.p1.board, [])
         self.assertEqual(self.p1.health, 25)
@@ -505,12 +517,13 @@ class RulesTests(unittest.TestCase):
                 elif game.can_activate_king(owner):
                     game.activate_king(owner, manual=True)
                 else:
-                    options = [c for c in player.hand if game.playable(owner, c)]
+                    options = [(c, mode) for c in player.hand for mode in ("piece", "manobra")
+                               if game.playable(owner, c, mode)]
                     attackers = [(u, game.attack_targets(u)) for u in player.board if game.attack_targets(u)]
                     if options:
-                        card = max(options, key=lambda c: c.definition["cost"])
-                        targets = game.valid_card_targets(owner, card)
-                        game.play_card(owner, card, game.rng.choice(targets) if targets else None)
+                        card, mode = max(options, key=lambda option: option[0].mode(option[1])["cost"])
+                        targets = game.valid_card_targets(owner, card, mode)
+                        game.play_card(owner, card, game.rng.choice(targets) if targets else None, mode=mode)
                     elif attackers:
                         unit, targets = attackers[0]
                         game.attack(owner, unit, game.rng.choice(targets))

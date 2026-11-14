@@ -50,7 +50,11 @@ class EffectParser:
         candidates = [
             entity for entity in candidates
             if entity.health > 0
-            and (not effect.get("card_id") or getattr(entity, "card_id", None) == effect["card_id"])
+            and (
+                not effect.get("card_id")
+                or getattr(entity, "card_id", None) == effect["card_id"]
+                or getattr(entity, "piece_type", None) == effect["card_id"]
+            )
         ]
         if code in MANUAL_TARGETS:
             # Elusive prevents manual maneuver targeting, not battlecries or area effects.
@@ -80,7 +84,10 @@ class EffectParser:
         game = self.game
         condition = effect.get("condition")
         if condition:
-            count = sum(u.card_id == condition["card_id"] for u in game.players[owner].board)
+            count = sum(
+                u.card_id == condition["card_id"] or u.piece_type == condition["card_id"]
+                for u in game.players[owner].board
+            )
             if count < condition["at_least"]:
                 game.log("Condicao do efeito nao atendida.")
                 return

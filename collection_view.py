@@ -16,8 +16,11 @@ if TYPE_CHECKING:
 
 
 PAGE_SIZE = 8
-TYPES = (None, "peça", "manobra")
-TYPE_LABELS = {None: "Todos os tipos", "peça": "Peças", "manobra": "Manobras"}
+TYPES = (None, "peao", "cavalo", "bispo", "torre", "dama")
+TYPE_LABELS = {
+    None: "Todas as pecas", "peao": "Peao", "cavalo": "Cavalo",
+    "bispo": "Bispo", "torre": "Torre", "dama": "Dama",
+}
 TRIGGER_LABELS = {
     "on_play": "Ao jogar", "on_death": "Ao morrer",
     "on_turn_start": "Inicio do turno", "on_turn_end": "Fim do turno",
@@ -48,16 +51,16 @@ class CollectionView:
         query = normalize(self.query)
         matches = [
             card for card in self.cards
-            if (self.card_type is None or card["type"] == self.card_type)
+            if (self.card_type is None or card["piece_mode"]["piece_type"] == self.card_type)
             and query in normalize(" ".join([
-                card["name"], card["id"], card["category"], card["description"],
-                *[KEYWORD_LABELS[keyword] for keyword in card["keywords"]],
+                card["name"], card["id"], card["piece_mode"]["piece_type"], card["description"],
+                *[KEYWORD_LABELS[keyword] for keyword in card["piece_mode"]["keywords"]],
             ]))
         ]
         return sorted(
             matches,
-            key=lambda c: (normalize(c["name"]), c["cost"]) if self.sort_by_name
-            else (c["cost"], normalize(c["name"])),
+            key=lambda c: (normalize(c["name"]), c["piece_mode"]["cost"]) if self.sort_by_name
+            else (c["piece_mode"]["cost"], normalize(c["name"])),
         )
 
     def refresh(self) -> None:
@@ -127,7 +130,7 @@ class CollectionView:
         pygame.draw.rect(app.screen, GOLD if self.search_focused else MUTED, self.search_rect, 2)
         app.paragraph(
             self.query + ("|" if self.search_focused else "") if self.query or self.search_focused
-            else "Buscar nome, categoria, descricao ou palavra-chave...",
+            else "Buscar nome, peca, descricao ou palavra-chave...",
             self.search_rect.inflate(-16, -12), font=app.font,
         )
         app.button(self.type_button, TYPE_LABELS[self.card_type])
@@ -136,22 +139,23 @@ class CollectionView:
         matches = self.filtered_cards()
         app.text(f"{len(matches)} de {len(self.cards)} cartas | Clique para ver detalhes", (30, 167), MUTED)
         for card, rect in self.rows():
+            piece = card["piece_mode"]
             pygame.draw.rect(
-                app.screen, (43, 61, 77) if card["type"] == "peça" else (66, 49, 80),
+                app.screen, (43, 61, 77),
                 rect, border_radius=6,
             )
             pygame.draw.rect(app.screen, GOLD if card is self.selected else MUTED, rect, 3, border_radius=6)
-            app.text(f"{card['cost']} tempo", (rect.x + 12, rect.y + 10), BLUE, app.large)
+            app.text(f"{piece['cost']} tempo", (rect.x + 12, rect.y + 10), BLUE, app.large)
             app.paragraph(card["name"], pygame.Rect(rect.x + 12, rect.y + 60, 186, 55), font=app.font)
-            app.text(TYPE_LABELS[card["type"]], (rect.x + 12, rect.y + 120), MUTED, app.small)
+            app.text(f"{TYPE_LABELS[piece['piece_type']]} ou Manobra", (rect.x + 12, rect.y + 120), MUTED, app.small)
             app.paragraph(card["description"], pygame.Rect(rect.x + 12, rect.y + 148, 186, 92))
-            if card["type"] == "peça":
-                app.text(f"ATQ {card['attack']} / VIDA {card['health']}", (rect.x + 12, rect.bottom - 34), GOLD)
+            app.text(f"ATQ {piece['attack']} / VIDA {piece['health']}", (rect.x + 12, rect.bottom - 34), GOLD)
         if not matches:
             app.text("Nenhuma carta encontrada. Altere a busca ou o filtro.", (30, 250), MUTED)
         pygame.draw.rect(app.screen, PANEL, (930, 180, 480, 645), border_radius=6)
         if self.selected:
             card = self.selected
+            piece = card["piece_mode"]
             available = app.inventory.count(card["id"])
             base_id = card.get("base_id", card["id"])
             sections = [
@@ -159,19 +163,19 @@ class CollectionView:
                 "Disponivel: base liberada (copias livres)" if available is None
                 else f"Copias criadas: {available}" if available else "Bloqueada: resolva um puzzle para criar.",
                 f"Qualidade: {QUALITY_LABELS.get(card.get('quality', 'basic'), 'Basica')}",
-                f"Categoria: {card['category']}",
+                f"Peca: {TYPE_LABELS[piece['piece_type']]} | Alternativa: Manobra",
                 "Lendaria: uma copia por deck entre todas as qualidades."
                 if card.get("rarity") == "legendary" else "",
-                f"Tipo: {TYPE_LABELS[card['type']]} | Custo: {card['cost']} tempo",
+                f"Custo nos dois modos: {piece['cost']} tempo",
                 "Puzzle: " + THEMES.get(base_id, ("", "Tema nao configurado"))[1],
             ]
-            if card["type"] == "peça":
-                sections.append(f"Ataque: {card['attack']} | Vida: {card['health']}")
+            sections.append(f"Ataque: {piece['attack']} | Vida: {piece['health']}")
             sections.extend([
-                "Palavras-chave: " + (", ".join(KEYWORD_LABELS[k] for k in card["keywords"]) or "Nenhuma"),
+                "Palavras-chave da Peca: " + (", ".join(KEYWORD_LABELS[k] for k in piece["keywords"]) or "Nenhuma"),
                 "", "Descricao:", card["description"], "", "Gatilhos:",
-                ", ".join(dict.fromkeys(TRIGGER_LABELS[e["trigger"]] for e in card["effects"]))
+                ", ".join(dict.fromkeys(TRIGGER_LABELS[e["trigger"]] for e in piece["effects"]))
                 or "Nenhum efeito disparado.",
+                "Manobra: efeito imediato e descarte.",
             ])
             lines = [line for section in sections for line in (app.wrap(section, self.detail_rect.width, app.font) or [""])]
             line_height = app.font.get_linesize()

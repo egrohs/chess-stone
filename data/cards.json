@@ -2,358 +2,521 @@
   {
     "id": "peao",
     "name": "Peão",
-    "category": "Peça",
-    "type": "peça",
-    "cost": 1,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "draw",
-        "amount": 1,
-        "trigger": "on_death"
-      }
-    ],
-    "description": "Ao morrer: compre uma carta.",
-    "attack": 1,
-    "health": 2
+    "piece_mode": {
+      "piece_type": "peao",
+      "cost": 1,
+      "attack": 1,
+      "health": 2,
+      "keywords": [],
+      "effects": [
+        {
+          "action": "draw",
+          "amount": 1,
+          "trigger": "on_death"
+        }
+      ]
+    },
+    "manouvre_mode": {
+      "cost": 1,
+      "effects": [
+        {
+          "action": "draw",
+          "amount": 1,
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Ao morrer: compre uma carta. Manobra: Compre uma carta."
   },
   {
     "id": "cavalo",
     "name": "Cavalo",
-    "category": "Peça",
-    "type": "peça",
-    "cost": 3,
-    "keywords": [
-      "rush"
-    ],
-    "effects": [
-      {
-        "action": "buff",
-        "attack": 1,
-        "target": "adjacent_allies",
-        "trigger": "on_play"
-      }
-    ],
-    "description": "Desenvolvimento. Ao entrar: aliados adjacentes ganham +1 de ataque.",
-    "attack": 3,
-    "health": 2
+    "piece_mode": {
+      "piece_type": "cavalo",
+      "cost": 3,
+      "attack": 3,
+      "health": 2,
+      "keywords": [
+        "rush"
+      ],
+      "effects": [
+        {
+          "action": "buff",
+          "attack": 1,
+          "target": "adjacent_allies",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "manouvre_mode": {
+      "cost": 3,
+      "effects": [
+        {
+          "action": "damage",
+          "amount": 2,
+          "target": "target_enemy_piece",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Desenvolvimento. Ao entrar: aliados adjacentes ganham +1 de ataque. Manobra: Cause 2 a uma peca inimiga."
   },
   {
     "id": "bispo",
     "name": "Bispo",
-    "category": "Peça",
-    "type": "peça",
-    "cost": 3,
-    "keywords": [
-      "elusive"
-    ],
-    "effects": [
-      {
-        "action": "heal",
-        "amount": 1,
-        "target": "own_hero",
-        "trigger": "on_turn_end"
-      }
-    ],
-    "description": "Elusivo. No fim do seu turno: cure seu Rei em 1.",
-    "attack": 2,
-    "health": 4
+    "piece_mode": {
+      "piece_type": "bispo",
+      "cost": 3,
+      "attack": 2,
+      "health": 4,
+      "keywords": [
+        "elusive"
+      ],
+      "effects": [
+        {
+          "action": "heal",
+          "amount": 1,
+          "target": "own_hero",
+          "trigger": "on_turn_end"
+        }
+      ]
+    },
+    "manouvre_mode": {
+      "cost": 3,
+      "effects": [
+        {
+          "action": "heal",
+          "amount": 4,
+          "target": "own_hero",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Elusivo. No fim do seu turno: cure seu Rei em 1. Manobra: Cure seu Rei em 4."
   },
   {
     "id": "torre",
     "name": "Torre",
-    "category": "Peça",
-    "type": "peça",
-    "cost": 4,
-    "keywords": [
-      "divine_shield"
-    ],
-    "effects": [],
-    "description": "Proteção.",
-    "attack": 3,
-    "health": 5
+    "piece_mode": {
+      "piece_type": "torre",
+      "cost": 4,
+      "attack": 3,
+      "health": 5,
+      "keywords": [
+        "divine_shield"
+      ],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 4,
+      "effects": [
+        {
+          "action": "grant_keyword",
+          "keyword": "divine_shield",
+          "target": "target_ally_piece",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Proteção. Manobra: Conceda Protecao a uma peca aliada."
   },
   {
     "id": "dama",
     "name": "Dama",
-    "category": "Peça",
-    "type": "peça",
-    "cost": 7,
-    "keywords": [
-      "charge",
-      "windfury"
-    ],
-    "effects": [],
-    "description": "Iniciativa. Ataque duplo.",
-    "attack": 5,
-    "health": 5
+    "piece_mode": {
+      "piece_type": "dama",
+      "cost": 7,
+      "attack": 5,
+      "health": 5,
+      "keywords": [
+        "charge",
+        "windfury"
+      ],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 7,
+      "effects": [
+        {
+          "action": "damage",
+          "amount": 4,
+          "target": "all_enemies",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Iniciativa. Ataque duplo. Manobra: Cause 4 a todos os inimigos."
   },
   {
     "id": "cravada_absoluta",
     "name": "Cravada Absoluta",
-    "category": "Tática",
-    "type": "manobra",
-    "cost": 2,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "freeze",
-        "amount": 1,
-        "target": "target_enemy_piece",
-        "trigger": "on_play"
-      }
-    ],
-    "description": "Congele uma peça inimiga até o fim do próximo turno dela."
+    "piece_mode": {
+      "piece_type": "bispo",
+      "cost": 2,
+      "attack": 2,
+      "health": 3,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 2,
+      "effects": [
+        {
+          "action": "freeze",
+          "amount": 1,
+          "target": "target_enemy_piece",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Bispo 2/3, sem efeito de entrada. Manobra: Congele uma peça inimiga até o fim do próximo turno dela."
   },
   {
     "id": "ataque_duplo",
     "name": "Garfo",
-    "category": "Tática",
-    "type": "manobra",
-    "cost": 3,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "damage",
-        "amount": 2,
-        "target": "lowest_health_enemy_piece",
-        "count": 2,
-        "trigger": "on_play",
-        "on_kill": {
-          "action": "draw",
-          "amount": 1
+    "piece_mode": {
+      "piece_type": "cavalo",
+      "cost": 3,
+      "attack": 3,
+      "health": 2,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 3,
+      "effects": [
+        {
+          "action": "damage",
+          "amount": 2,
+          "target": "lowest_health_enemy_piece",
+          "count": 2,
+          "trigger": "on_play",
+          "on_kill": {
+            "action": "draw",
+            "amount": 1
+          }
         }
-      }
-    ],
-    "description": "Cause 2 às duas peças inimigas com menor Vida. Empates: menor numero de casa primeiro. Compre 1 por abate."
+      ]
+    },
+    "description": "Peca: Cavalo 3/2, sem efeito de entrada. Manobra: Cause 2 às duas peças inimigas com menor Vida. Empates: menor numero de casa primeiro. Compre 1 por abate."
   },
   {
     "id": "par_de_bispos",
     "name": "Par de Bispos",
-    "category": "Estratégia",
-    "type": "manobra",
-    "cost": 3,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "buff",
-        "attack": 1,
-        "health": 1,
-        "target": "all_allied_pieces",
-        "condition": {
-          "type": "friendly_count",
-          "card_id": "bispo",
-          "at_least": 2
-        },
-        "trigger": "on_play"
-      }
-    ],
-    "description": "Se controlar pelo menos dois Bispos: suas peças ganham +1/+1."
+    "piece_mode": {
+      "piece_type": "bispo",
+      "cost": 3,
+      "attack": 2,
+      "health": 4,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 3,
+      "effects": [
+        {
+          "action": "buff",
+          "attack": 1,
+          "health": 1,
+          "target": "all_allied_pieces",
+          "condition": {
+            "type": "friendly_count",
+            "card_id": "bispo",
+            "at_least": 2
+          },
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Bispo 2/4, sem efeito de entrada. Manobra: Se controlar pelo menos dois Bispos: suas peças ganham +1/+1."
   },
   {
     "id": "coluna_aberta",
     "name": "Coluna Aberta",
-    "category": "Estratégia",
-    "type": "manobra",
-    "cost": 2,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "buff",
-        "attack": 2,
-        "duration": "until_end_of_turn",
-        "target": "target_ally_piece",
-        "trigger": "on_play"
-      },
-      {
-        "action": "grant_keyword",
-        "keyword": "rush",
-        "target": "target_ally_piece",
-        "trigger": "on_play"
-      }
-    ],
-    "description": "Uma peça aliada ganha +2 de ataque neste turno e Desenvolvimento permanente."
+    "piece_mode": {
+      "piece_type": "torre",
+      "cost": 2,
+      "attack": 2,
+      "health": 3,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 2,
+      "effects": [
+        {
+          "action": "buff",
+          "attack": 2,
+          "duration": "until_end_of_turn",
+          "target": "target_ally_piece",
+          "trigger": "on_play"
+        },
+        {
+          "action": "grant_keyword",
+          "keyword": "rush",
+          "target": "target_ally_piece",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Torre 2/3, sem efeito de entrada. Manobra: Uma peça aliada ganha +2 de ataque neste turno e Desenvolvimento permanente."
   },
   {
     "id": "zugzwang",
     "name": "Zugzwang",
-    "category": "Estratégia",
-    "type": "manobra",
-    "cost": 5,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "freeze",
-        "amount": 1,
-        "target": "all_enemy_pieces",
-        "trigger": "on_play"
-      }
-    ],
-    "description": "Congele todas as peças inimigas até o fim do próximo turno delas."
+    "piece_mode": {
+      "piece_type": "cavalo",
+      "cost": 5,
+      "attack": 4,
+      "health": 4,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 5,
+      "effects": [
+        {
+          "action": "freeze",
+          "amount": 1,
+          "target": "all_enemy_pieces",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Cavalo 4/4, sem efeito de entrada. Manobra: Congele todas as peças inimigas até o fim do próximo turno delas."
   },
   {
     "id": "roque",
     "name": "Roque",
-    "category": "Estratégia",
-    "type": "manobra",
-    "cost": 4,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "heal",
-        "amount": 4,
-        "target": "own_hero",
-        "trigger": "on_play"
-      },
-      {
-        "action": "summon",
-        "card_id": "torre",
-        "count": 1,
-        "trigger": "on_play"
-      }
-    ],
-    "description": "Cure seu Rei em 4 e desenvolva uma Torre se houver espaço."
+    "piece_mode": {
+      "piece_type": "torre",
+      "cost": 4,
+      "attack": 3,
+      "health": 5,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 4,
+      "effects": [
+        {
+          "action": "heal",
+          "amount": 4,
+          "target": "own_hero",
+          "trigger": "on_play"
+        },
+        {
+          "action": "summon",
+          "card_id": "torre",
+          "count": 1,
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Torre 3/5, sem efeito de entrada. Manobra: Cure seu Rei em 4 e desenvolva uma Torre se houver espaço."
   },
   {
     "id": "sacrificio_da_dama",
     "name": "Sacrifício da Dama",
-    "category": "Tática",
-    "type": "manobra",
-    "cost": 6,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "destroy",
-        "target": "target_ally_piece",
-        "card_id": "dama",
-        "trigger": "on_play"
-      },
-      {
-        "action": "damage",
-        "amount": 5,
-        "target": "all_enemies",
-        "trigger": "on_play"
-      },
-      {
-        "action": "draw",
-        "amount": 2,
-        "trigger": "on_play"
-      }
-    ],
-    "description": "Destrua sua Dama. Cause 5 a todos os inimigos e compre 2 cartas."
+    "piece_mode": {
+      "piece_type": "dama",
+      "cost": 6,
+      "attack": 5,
+      "health": 4,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 6,
+      "effects": [
+        {
+          "action": "destroy",
+          "target": "target_ally_piece",
+          "card_id": "dama",
+          "trigger": "on_play"
+        },
+        {
+          "action": "damage",
+          "amount": 5,
+          "target": "all_enemies",
+          "trigger": "on_play"
+        },
+        {
+          "action": "draw",
+          "amount": 2,
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Dama 5/4, sem efeito de entrada. Manobra: Destrua sua Dama. Cause 5 a todos os inimigos e compre 2 cartas."
   },
   {
     "id": "mate_anastasia",
     "name": "Mate de Anastasia",
-    "category": "Tática",
-    "type": "manobra",
-    "cost": 9,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "win_pattern",
-        "pattern": "anastasia",
-        "trigger": "on_play"
-      }
-    ],
-    "description": "Anuncie Torre na casa 1 ou 6 junto a Cavalo adjacente com pelo menos 3 peças aliadas. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: venca se o inimigo tem ate 15 de vida e pelo menos 2 peças. Rei nao conta na quantidade de peças inimigas.",
+    "piece_mode": {
+      "piece_type": "torre",
+      "cost": 9,
+      "attack": 6,
+      "health": 7,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 9,
+      "effects": [
+        {
+          "action": "win_pattern",
+          "pattern": "anastasia",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Torre 6/7, sem efeito de entrada. Manobra: Anuncie Torre na casa 1 ou 6 junto a Cavalo adjacente com pelo menos 3 peças aliadas. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: venca se o inimigo tem ate 15 de vida e pelo menos 2 peças. Rei nao conta na quantidade de peças inimigas.",
     "rarity": "legendary"
   },
   {
     "id": "mate_boden",
     "name": "Mate de Boden",
-    "category": "Tática",
-    "type": "manobra",
-    "cost": 5,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "win_pattern",
-        "pattern": "boden",
-        "trigger": "on_play"
-      }
-    ],
-    "description": "Anuncie Bispos nas casas 1 e 6 com pelo menos 2 peças entre eles. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: apos jogar 2 outras manobras neste turno venca a partida. Rei nao conta na quantidade de peças intermediarias.",
+    "piece_mode": {
+      "piece_type": "bispo",
+      "cost": 5,
+      "attack": 4,
+      "health": 5,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 5,
+      "effects": [
+        {
+          "action": "win_pattern",
+          "pattern": "boden",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Bispo 4/5, sem efeito de entrada. Manobra: Anuncie Bispos nas casas 1 e 6 com pelo menos 2 peças entre eles. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: apos jogar 2 outras manobras neste turno venca a partida. Rei nao conta na quantidade de peças intermediarias.",
     "rarity": "legendary"
   },
   {
     "id": "mate_abafado",
     "name": "Mate Abafado",
-    "category": "Tática",
-    "type": "manobra",
-    "cost": 6,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "win_pattern",
-        "pattern": "smothered",
-        "trigger": "on_play"
-      }
-    ],
-    "description": "Anuncie um Cavalo e preserve-o por um turno inimigo. Sem atacar nem estar congelado: venca se o inimigo controla seis peças. Rei nao conta na quantidade de peças.",
+    "piece_mode": {
+      "piece_type": "cavalo",
+      "cost": 6,
+      "attack": 4,
+      "health": 5,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 6,
+      "effects": [
+        {
+          "action": "win_pattern",
+          "pattern": "smothered",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Cavalo 4/5, sem efeito de entrada. Manobra: Anuncie um Cavalo e preserve-o por um turno inimigo. Sem atacar nem estar congelado: venca se o inimigo controla seis peças. Rei nao conta na quantidade de peças.",
     "rarity": "legendary"
   },
   {
     "id": "mate_gaveta",
     "name": "Mate de Gaveta",
-    "category": "Tática",
-    "type": "manobra",
-    "cost": 8,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "win_pattern",
-        "pattern": "back_rank",
-        "trigger": "on_play"
-      }
-    ],
-    "description": "Anuncie uma Torre e preserve-a por um turno inimigo. Ela deve atacar e sobreviver neste turno sem estar congelada. Venca se o inimigo tem zero de Armadura e pelo menos tres Peoes. Peao Passado tambem conta. Rei nao conta na quantidade de peças.",
+    "piece_mode": {
+      "piece_type": "torre",
+      "cost": 8,
+      "attack": 5,
+      "health": 7,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 8,
+      "effects": [
+        {
+          "action": "win_pattern",
+          "pattern": "back_rank",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Torre 5/7, sem efeito de entrada. Manobra: Anuncie uma Torre e preserve-a por um turno inimigo. Ela deve atacar e sobreviver neste turno sem estar congelada. Venca se o inimigo tem zero de Armadura e pelo menos tres Peoes. Peao Passado tambem conta. Rei nao conta na quantidade de peças.",
     "rarity": "legendary"
   },
   {
     "id": "mate_opera",
     "name": "Mate da Ópera",
-    "category": "Tática",
-    "type": "manobra",
-    "cost": 7,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "win_pattern",
-        "pattern": "opera",
-        "trigger": "on_play"
-      }
-    ],
-    "description": "Anuncie exatamente uma Torre e um Bispo adjacentes e preserve-os por um turno inimigo. Ambos devem ter atacado nesta partida mas nao neste turno nem estar congelados. Venca se o inimigo tem ate 15 de vida e exatamente uma peça. Rei nao conta na quantidade de peças inimigas.",
+    "piece_mode": {
+      "piece_type": "bispo",
+      "cost": 7,
+      "attack": 5,
+      "health": 6,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 7,
+      "effects": [
+        {
+          "action": "win_pattern",
+          "pattern": "opera",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Bispo 5/6, sem efeito de entrada. Manobra: Anuncie exatamente uma Torre e um Bispo adjacentes e preserve-os por um turno inimigo. Ambos devem ter atacado nesta partida mas nao neste turno nem estar congelados. Venca se o inimigo tem ate 15 de vida e exatamente uma peça. Rei nao conta na quantidade de peças inimigas.",
     "rarity": "legendary"
   },
   {
     "id": "endgame_puro",
     "name": "Final de jogo Puro (Rei e Peão)",
-    "category": "Tática",
-    "type": "manobra",
-    "cost": 10,
-    "keywords": [],
-    "effects": [
-      {
-        "action": "win_pattern",
-        "pattern": "opposition",
-        "trigger": "on_play"
-      }
-    ],
-    "description": "Anuncie seu Rei quando so restarem os dois Reis no tabuleiro e preserve esse tabuleiro por um turno inimigo. Sem atacar nem estar congelado: venca se possui Peao Passado na mao e seu Rei tem mais vida que o inimigo.",
+    "piece_mode": {
+      "piece_type": "peao",
+      "cost": 10,
+      "attack": 7,
+      "health": 8,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 10,
+      "effects": [
+        {
+          "action": "win_pattern",
+          "pattern": "opposition",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Peao 7/8, sem efeito de entrada. Manobra: Anuncie seu Rei quando so restarem os dois Reis no tabuleiro e preserve esse tabuleiro por um turno inimigo. Sem atacar nem estar congelado: venca se possui Peao Passado na mao e seu Rei tem mais vida que o inimigo.",
     "rarity": "legendary"
   },
   {
     "id": "peao_passado",
     "name": "Peão Passado",
-    "category": "Peça",
-    "type": "peça",
-    "cost": 2,
-    "keywords": [],
-    "effects": [],
-    "description": "Peca de apoio: mantenha na mao para executar Final de jogo Puro. Nao e uma das cinco pecas basicas liberadas.",
-    "attack": 2,
-    "health": 3
+    "piece_mode": {
+      "piece_type": "peao",
+      "cost": 2,
+      "attack": 2,
+      "health": 3,
+      "keywords": [],
+      "effects": []
+    },
+    "manouvre_mode": {
+      "cost": 2,
+      "effects": [
+        {
+          "action": "buff",
+          "attack": 1,
+          "health": 1,
+          "target": "target_ally_piece",
+          "trigger": "on_play"
+        }
+      ]
+    },
+    "description": "Peca: Peca de apoio: mantenha na mao para executar Final de jogo Puro. Nao e uma das cinco pecas basicas liberadas. Manobra: Uma peca aliada ganha +1/+1."
   }
 ]

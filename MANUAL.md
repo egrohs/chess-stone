@@ -40,9 +40,9 @@ primeiro turno. Nao ha mulligan, moeda, armas ou poder heroico.
 | Acao | Como executar |
 |---|---|
 | Selecionar carta | Clique na carta da mao; a borda fica dourada |
-| Posicionar peça | Clique na casa verde vazia desejada; peças existentes nao sao deslocadas |
-| Jogar manobra com alvo | Selecione a carta e clique em um alvo verde |
-| Jogar carta sem alvo | Use **Jogar carta** depois de selecionar |
+| Jogar como Peca | Selecione a carta e clique numa das suas seis casas vazias; pecas existentes nao sao deslocadas |
+| Jogar como Manobra | Selecione a carta e clique fora das suas casas ou em **Jogar como Manobra** |
+| Manobra com alvo | Clique direto no inimigo valido, ou escolha Manobra fora das casas e depois clique no alvo verde (inclusive aliado) |
 | Atacar | Clique em uma peça aliada pronta e depois em um inimigo verde |
 | Reposicionar | Arraste uma peça sua (exceto o Rei) para uma casa vazia (borda azul); custa 1 tempo |
 | Cancelar selecao | Clique direito ou Esc |
@@ -57,6 +57,47 @@ anunciadas recebem uma borda interna dourada.
 
 Uma peça com efeito de entrada que exige alvo primeiro pede posicionamento
 e depois selecao de alvo.
+
+**Todas as cartas sao modais:** a mesma carta pode virar Peca ou Manobra, nunca
+as duas na mesma jogada. Os dois modos custam o mesmo Tempo. Como Peca, usa
+ataque, vida, palavras-chave e efeitos de Peca, permanecendo no tabuleiro.
+Como Manobra, executa somente o efeito imediato e vai ao descarte, sem ocupar
+casa, mesmo com tabuleiro cheio. O descarte tambem recebe pecas mortas e compras
+com mao cheia e tem seu tamanho exibido; nao retorna automaticamente ao deck.
+
+Clicar numa casa sua ocupada nao joga a carta nem dispara Manobra por acidente.
+Botoes de turno, Rei e menu, e cliques na mao continuam sendo controles:
+nao contam como cliques de Manobra. Esc permite cancelar sem pagar Tempo.
+
+### Modos das cartas
+
+ATQ/VIDA e o arquetipo referem-se ao modo Peca. Efeitos antigos continuam no
+modo original; os novos modos complementam cada carta:
+
+| Carta | Tempo | Peca | Manobra |
+|---|---|---|---|
+| Peao | 1 | Peao 1/2, compra 1 ao morrer | Compra 1 |
+| Cavalo | 3 | Cavalo 3/2, Desenvolvimento; ao entrar, +1 de ataque aos aliados adjacentes | Causa 2 de dano a uma peca inimiga |
+| Bispo | 3 | Bispo 2/4, Elusivo; cura 1 no seu Rei no fim do turno | Cura 4 no seu Rei |
+| Torre | 4 | Torre 3/5, Proteção | Concede Proteção a uma peca aliada |
+| Dama | 7 | Dama 5/5, Iniciativa e Ataque duplo | Causa 4 de dano a todos os inimigos |
+| Peao Passado | 2 | Peao 2/3 | Concede +1/+1 a uma peca aliada |
+| Cravada Absoluta | 2 | Bispo 2/3 | Congela uma peca inimiga |
+| Garfo | 3 | Cavalo 3/2 | Causa 2 de dano a ate duas pecas de menor Vida; compra 1 por abate |
+| Par de Bispos | 3 | Bispo 2/4 | Com dois Bispos aliados, concede +1/+1 a todas as pecas aliadas |
+| Coluna Aberta | 2 | Torre 2/3 | Concede +2 de ataque neste turno e Desenvolvimento a uma peca aliada |
+| Zugzwang | 5 | Cavalo 4/4 | Congela todas as pecas inimigas |
+| Roque | 4 | Torre 3/5 | Cura 4 no seu Rei e desenvolve uma Torre se houver espaco |
+| Sacrificio da Dama | 6 | Dama 5/4 | Destroi uma Dama aliada, causa 5 a todos os inimigos e compra 2 |
+| Mate de Anastasia | 9 | Torre 6/7 | Executa o mate se preparado |
+| Mate de Boden | 5 | Bispo 4/5 | Executa o mate se preparado |
+| Mate Abafado | 6 | Cavalo 4/5 | Executa o mate se preparado |
+| Mate de Gaveta | 8 | Torre 5/7 | Executa o mate se preparado |
+| Mate da Opera | 7 | Bispo 5/6 | Executa o mate se preparado |
+| Final de jogo Puro | 10 | Peao 7/8 | Executa a vitoria de oposicao se preparada |
+
+O arquetipo aparece na peca em jogo e define alcance, formacoes e efeitos por
+tipo: Cravada Absoluta como Peca conta como Bispo, por exemplo.
 
 ## Turnos, tabuleiro e combate
 
@@ -160,7 +201,9 @@ na primeira casa livre e precisa esperar para atacar, como uma peça sem Iniciat
 
 ## Vitorias alternativas: seis padroes de mate
 
-As seis cartas de mate sao manobras **lendarias**, adquiridas por crafting.
+As seis cartas de mate sao **lendarias** modais, adquiridas por crafting.
+Seus requisitos de preparacao e vitoria valem somente para o modo Manobra:
+desenvolve-las como Peca nao exige preparacao nem executa o mate.
 Cada deck aceita no maximo uma copia de cada mate, somando todas as qualidades.
 Os decks automaticos nao incluem lendarias.
 
@@ -235,13 +278,14 @@ depois de uma vitoria, pois a partida ja terminou.
 
 No menu, **Colecao de cartas** mostra todo o catalogo base e as variantes
 adquiridas, sem alterar decks ou a partida durante a consulta. As cartas aparecem
-em grade com custo, tipo, atributos e um resumo; clique em uma para consultar
-a descricao completa, categoria, ID, palavras-chave e gatilhos no painel lateral.
+em grade com custo comum, arquetipo, atributos e um resumo; clique em uma para
+consultar os dois modos, ID, palavras-chave e gatilhos no painel lateral.
 O painel tambem indica copias disponiveis, qualidade e tema do puzzle.
 
-A busca aceita nome, ID, categoria, descricao e palavras-chave, ignorando
-acentos e maiusculas. Clique no filtro para alternar entre todos os tipos,
-peças e manobras, e no botao de ordem para alternar entre custo e nome.
+A busca aceita nome, ID, arquetipo, descricao e palavras-chave, ignorando
+acentos e maiusculas. O filtro alterna entre todos os arquetipos,
+Peao, Cavalo, Bispo, Torre e Dama; todas as cartas tambem possuem Manobra.
+O botao de ordem alterna entre custo e nome.
 Use os botoes de pagina para percorrer a colecao. Descricoes longas podem ser
 roladas com o mouse sobre o painel de detalhes. **Voltar ao Menu** ou Esc sai.
 
@@ -273,7 +317,8 @@ Nao ha prazo para terminar.
 | Aprimorada | Ate 1 erro, ate 120 segundos por lance do jogador na solucao | Peça: +1/+1. Manobra: cura extra de 1 no Rei. |
 | Basica | Demais resultados, desde que conclua | Atributos e efeitos originais. |
 
-O custo de tempo nao muda; efeitos originais sao preservados. Os limites de tempo
+Cada variante recebe os bonus dos dois modos, mas so aplica os do modo escolhido
+ao jogar. O custo de tempo nao muda; efeitos originais sao preservados. Os limites de tempo
 sao para o puzzle inteiro, multiplicados pela quantidade total de lances do
 jogador na solucao (nao incluem as respostas adversarias). Por exemplo, uma
 solucao com tres lances seus permite ate 180 segundos para qualidade Perfeita.
@@ -330,7 +375,7 @@ Pecas basicas tem copias livres; cartas taticas e variantes respeitam as
 quantidades criadas na colecao. Uma copia pode ser usada em varios decks, mas
 nao repetida no mesmo deck alem do inventario. Cada lendaria aceita somente uma
 copia por deck, somando qualidades. Salvar/jogar nao consome cartas.
-O painel mostra total, tipos de carta e custo medio.
+O painel mostra total de cartas modais e custo medio.
 
 **Salvar / substituir e selecionar** grava o deck e o seleciona para a proxima
 partida. Salvar com um nome existente substitui sua composicao; mudar o nome

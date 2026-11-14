@@ -52,22 +52,18 @@ def make_variant(base: dict, quality: str) -> dict:
     card["base_id"] = base["id"]
     card["quality"] = quality
     card["name"] += f" ({QUALITY_LABELS[quality]})"
-    if card["type"] == "peça":
-        card["attack"] += bonus
-        card["health"] += bonus
-        extra = f"+{bonus}/+{bonus}."
-        if quality == "perfect":
-            # A separate triggered effect avoids duplicating an existing keyword.
-            card["effects"].append({"trigger": "on_play", "action": "draw", "amount": 1})
-            extra += " Ao jogar: compre 1 carta."
-    else:
-        card["effects"].append({
-            "trigger": "on_play", "action": "heal", "amount": bonus, "target": "own_hero",
-        })
-        extra = f"Cure seu Rei em mais {bonus}."
-        if quality == "perfect":
-            card["effects"].append({"trigger": "on_play", "action": "draw", "amount": 1})
-            extra += " Compre mais 1 carta."
+    piece = card["piece_mode"]
+    maneuver = card["manouvre_mode"]
+    piece["attack"] += bonus
+    piece["health"] += bonus
+    maneuver["effects"].append({
+        "trigger": "on_play", "action": "heal", "amount": bonus, "target": "own_hero",
+    })
+    extra = f"Peca: +{bonus}/+{bonus}. Manobra: cure seu Rei em mais {bonus}."
+    if quality == "perfect":
+        for mode in (piece, maneuver):
+            mode["effects"].append({"trigger": "on_play", "action": "draw", "amount": 1})
+        extra += " Em qualquer modo: compre mais 1 carta ao jogar."
     card["description"] += f" Crafting: {extra}"
     return card
 

@@ -12,13 +12,13 @@ from mate_rules import PATTERNS
 
 ROOT = Path(__file__).resolve().parent
 COLUMNS = {
-    "id", "name", "category", "card_type", "cost", "attack", "health",
-    "keywords", "trigger", "effect_code", "description",
+    "id", "name", "piece_type", "piece_cost", "attack", "health",
+    "keywords", "piece_effect", "manouver_effect", "description",
 }
 KEYWORDS = {"charge", "rush", "divine_shield", "windfury", "elusive"}
-CATEGORIES = {"Peça", "Tática", "Estratégia"}
+PIECE_TYPES = {"peao", "cavalo", "bispo", "torre", "dama"}
 KEYWORD_ALIASES = {
-    "iniciativa": "charge", "desenvolvimento_rapido": "rush",
+    "iniciativa": "charge", "desenvolvimento": "rush", "desenvolvimento_rapido": "rush",
     "protecao": "divine_shield", "ataque_duplo": "windfury",
     "elusivo": "elusive",
 }
@@ -134,52 +134,55 @@ def validate_cards(cards: object) -> list[dict]:
         label = f"carta {index + 1}"
         if not isinstance(card, dict):
             raise ValueError(f"{label}: esperado objeto")
-        for field in ("id", "name", "category", "description"):
+        for field in ("id", "name", "description"):
             if not isinstance(card.get(field), str) or not card[field].strip():
                 raise ValueError(f"{label}: {field} deve ser texto nao vazio")
-        if card["category"] not in CATEGORIES:
-            raise ValueError(f"{label}: category deve ser Peça, Tática ou Estratégia")
         if card["id"] in ids:
             raise ValueError(f"ID duplicado: {card['id']}")
         ids.add(card["id"])
-        if not isinstance(card.get("type"), str) or card["type"] not in {"peça", "manobra"}:
-            raise ValueError(f"{label}: type deve ser peça ou manobra")
-        integer(card.get("cost"), f"{label}.cost")
-        if card["cost"] > 10:
-            raise ValueError(f"{label}: custo maximo e 10")
-        if card["type"] == "peça":
-            integer(card.get("attack"), f"{label}.attack")
-            integer(card.get("health"), f"{label}.health", 1)
-        keywords = card.get("keywords")
+        for mode_name in ("piece_mode", "manouvre_mode"):
+            mode = card.get(mode_name)
+            if not isinstance(mode, dict):
+                raise ValueError(f"{label}: {mode_name} deve ser objeto")
+            integer(mode.get("cost"), f"{label}.{mode_name}.cost")
+            if mode["cost"] > 10:
+                raise ValueError(f"{label}: custo maximo e 10")
+            if not isinstance(mode.get("effects"), list):
+                raise ValueError(f"{label}: {mode_name}.effects deve ser uma lista")
+            if mode_name == "manouvre_mode" and not mode["effects"]:
+                raise ValueError(f"{label}: manobra exige ao menos um efeito")
+            for effect in mode["effects"]:
+                validate_effect(effect, f"{label}.{mode_name}")
+                if effect["action"] == "win_pattern" and (
+                    mode_name != "manouvre_mode" or card.get("rarity") != "legendary"
+                ):
+                    raise ValueError(f"{label}: mate exige modo manobra lendario")
+                if mode_name == "manouvre_mode" and effect["trigger"] != "on_play":
+                    raise ValueError(f"{label}: manobras nao persistem para gatilhos futuros")
+        piece = card["piece_mode"]
+        if not isinstance(piece.get("piece_type"), str) or piece["piece_type"] not in PIECE_TYPES:
+            raise ValueError(f"{label}: piece_type desconhecido")
+        if piece["cost"] != card["manouvre_mode"]["cost"]:
+            raise ValueError(f"{label}: os dois modos devem ter o mesmo custo")
+        integer(piece.get("attack"), f"{label}.attack")
+        integer(piece.get("health"), f"{label}.health", 1)
+        keywords = piece.get("keywords")
         if not isinstance(keywords, list) or any(
             not isinstance(k, str) or k not in KEYWORDS for k in keywords
         ):
             raise ValueError(f"{label}: keywords invalidas")
-        if not isinstance(card.get("effects"), list):
-            raise ValueError(f"{label}: effects deve ser uma lista")
         if "rarity" in card and card["rarity"] != "legendary":
             raise ValueError(f"{label}: raridade desconhecida")
-        for effect in card["effects"]:
-            validate_effect(effect, label)
-            if effect["action"] == "win_pattern" and (
-                card["type"] != "manobra" or card.get("rarity") != "legendary"
-            ):
-                raise ValueError(f"{label}: mate exige manobra lendaria")
-            if card["type"] == "manobra" and effect["trigger"] != "on_play":
-                raise ValueError(f"{label}: manobras nao persistem para gatilhos futuros")
     for card in cards:
-        pending = list(card["effects"])
+        pending = [*card["piece_mode"]["effects"], *card["manouvre_mode"]["effects"]]
         while pending:
             effect = pending.pop()
             reference = effect.get("card_id")
-            if reference is not None and reference not in ids:
+            references = ids if effect["action"] == "summon" else ids | PIECE_TYPES
+            if reference is not None and reference not in references:
                 raise ValueError(f"{card['id']}: carta referenciada inexistente {reference}")
-            if effect["action"] == "summon":
-                referenced = next(c for c in cards if c["id"] == reference)
-                if referenced["type"] != "peça":
-                    raise ValueError(f"{card['id']}: summon exige uma peça")
             condition = effect.get("condition")
-            if condition and condition["card_id"] not in ids:
+            if condition and condition["card_id"] not in ids | PIECE_TYPES:
                 raise ValueError(f"{card['id']}: condicao referencia carta inexistente")
             if "on_kill" in effect:
                 pending.append(effect["on_kill"])
@@ -244,15 +247,20 @@ def convert_csv(source: Path, destination: Path) -> list[dict]:
                 ]
                 card = {
                     "id": row["id"].strip(), "name": row["name"].strip(),
-                    "category": row["category"].strip(),
-                    "type": row["card_type"].strip().casefold(), "cost": int(row["cost"]),
-                    "keywords": keywords,
-                    "effects": parse_effect_code(row["effect_code"], row["trigger"].strip()),
+                    "piece_mode": {
+                        "piece_type": normalize(row["piece_type"]),
+                        "cost": int(row["piece_cost"]),
+                        "attack": int(row["attack"]), "health": int(row["health"]),
+                        "keywords": keywords,
+                        "effects": parse_effect_code(row["piece_effect"]),
+                    },
+                    "manouvre_mode": {
+                        "cost": int(row["piece_cost"]),
+                        "effects": parse_effect_code(row["manouver_effect"]),
+                    },
                     "description": row["description"].strip(),
                 }
-                if card["type"] == "peça":
-                    card.update(attack=int(row["attack"]), health=int(row["health"]))
-                if any(effect["action"] == "win_pattern" for effect in card["effects"]):
+                if any(effect["action"] == "win_pattern" for effect in card["manouvre_mode"]["effects"]):
                     card["rarity"] = "legendary"
                 cards.append(card)
             except (ValueError, TypeError) as error:
