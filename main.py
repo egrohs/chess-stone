@@ -111,6 +111,7 @@ class App:
         self.selected_unit: Unit | None = None
         self.selected_mode: PlayMode | None = None
         self.drag_unit: Unit | None = None
+        self.end_button_pressed = False
         self.drag_card: Card | None = None
         self.card_drag_start: tuple[int, int] | None = None
         self.card_drag_point: tuple[int, int] | None = None
@@ -149,6 +150,7 @@ class App:
             self.game = Game(
                 self.cards, deck_size=self.deck_size, seed=self.seed, player_deck=deck,
                 on_damage=self.audio.play_damage,
+                on_event=self.audio.play_event,
             )
         except ValueError as error:
             self.deck_message = f"Erro ao iniciar partida: {error}"
@@ -839,7 +841,7 @@ class App:
         if not self.audio.error:
             self.text(f"Manobras neste turno: {game.players[game.current].maneuvers_played}", (1120, 70), MUTED, self.small)
         if self.audio.error:
-            self.text("Audio indisponivel (veja o console)", (1120, 70), RED, self.small)
+            self.text("Erro de audio (veja o console)", (1120, 70), RED, self.small)
         human_turn = game.current == 0 and not game.over
         self.button(self.end_button, "Passar Turno", human_turn)
         self.button(self.king_button, "Ativar Rei (Final de jogo)", human_turn and game.can_activate_king(0))
@@ -962,7 +964,7 @@ class App:
                 RED if self.library_error or self.inventory.error or self.deck_message.startswith("Erro") else GREEN,
             )
             if self.audio.error:
-                self.text("Audio indisponivel (detalhes no console).", (30, 910), RED, self.small)
+                self.text("Erro de audio (detalhes no console).", (30, 910), RED, self.small)
         else:
             game = self.game
             title = "Empate!" if game is None or game.winner is None else (
@@ -981,8 +983,7 @@ class App:
         if self.state != State.MATCH or game is None:
             return
         if game.over:
-            self.state = State.GAME_OVER
-            self.clear_selection()
+            self.finish_match()
             return
         if self.selected_card and self.selected_card not in game.players[0].hand:
             self.clear_selection()
@@ -997,7 +998,13 @@ class App:
             game.ai_step()
             self.ai_at = now + 450
             if game.over:
-                self.state = State.GAME_OVER
+                self.finish_match()
+
+    def finish_match(self) -> None:
+        if self.game and self.game.winner == 0:
+            self.audio.play_event("victory")
+        self.state = State.GAME_OVER
+        self.clear_selection()
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.QUIT:
@@ -1031,11 +1038,18 @@ class App:
             self.clear_selection()
         elif event.type == pygame.WINDOWFOCUSLOST:
             self.drag_unit = None
+            self.end_button_pressed = False
             self.clear_selection()
         elif event.type == pygame.MOUSEMOTION and self.drag_card:
             self.move_card_drag(event.pos)
         elif event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 1:
+                if (
+                    self.state == State.MATCH and self.game and self.game.current == 0
+                    and not self.game.over and self.end_button.collidepoint(event.pos)
+                ):
+                    self.end_button_pressed = True
+                    self.audio.play_event("end_turn_down")
                 if not self.begin_card_drag(event.pos):
                     self.begin_drag(event.pos)
                     self.click(event.pos)
@@ -1043,6 +1057,9 @@ class App:
                 self.drag_unit = None
                 self.clear_selection()
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            if self.end_button_pressed:
+                self.end_button_pressed = False
+                self.audio.play_event("end_turn_up")
             if self.drag_card:
                 self.end_card_drag(event.pos)
             else:

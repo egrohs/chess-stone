@@ -168,21 +168,13 @@ e `perfect` dentro da pasta base, por exemplo
 `assets\cards\torre\perfect\art.png`. Para novas cartas, crie uma pasta com o
 mesmo `id` do CSV, sem acentos ou espacos.
 
-Os arquivos `.gitkeep` apenas preservam as pastas vazias no Git e podem ser
-removidos depois de adicionar seus recursos. **Esta estrutura ainda nao carrega
-nem reproduz os arquivos no jogo**; a imagem do Peao acima e carregada
-separadamente.
+Os arquivos `.gitkeep` apenas preservam as pastas vazias no Git. A estrutura
+de recursos individuais por carta ainda nao e carregada automaticamente.
 
 ### Sons genericos de impacto
 
-O jogo ja reproduz os impactos originais incluidos em `assets\sounds\impacts\`:
+O jogo reproduz os impactos incluidos em `assets\sounds\impacts\`:
 `light.wav` para 1-2 de dano, `medium.wav` para 3-4 e `heavy.wav` para 5 ou mais.
-Sao sons sintetizados, sem recursos de terceiros, com duracoes de 120, 180 e
-260 ms, respectivamente. Podem ser recriados com:
-
-```powershell
-python tools\generate_impacts.py
-```
 
 Os WAVs sao carregados uma vez ao iniciar. O motor notifica o cliente
 sincronamente logo apos descontar a vida; o som e iniciado nesse mesmo ponto,
@@ -195,9 +187,15 @@ dano absorvido por Proteção nao disparam o som.
 O mixer usa buffer de 256 amostras a 44,1 kHz (aproximadamente 5,8 ms por buffer),
 volume de 45% e pelo menos 16 canais. A latencia audivel final tambem depende do
 driver e do dispositivo; nao e possivel garantir latencia fisica zero. Nenhuma
-reproducao bloqueia o loop. Se o dispositivo ou os WAVs estiverem indisponiveis,
-o jogo continua com aviso visivel no menu/partida e detalhes no console.
+reproducao bloqueia o loop. Se o dispositivo ou algum arquivo estiver indisponivel,
+o jogo continua com aviso visivel no menu/partida e detalhes no console; os
+demais sons carregados continuam disponiveis.
 Os sons especificos de `assets\cards\` continuam sem carregamento automatico.
+
+Os OGGs em `assets\sounds\` acompanham o embaralhamento, distribuicao inicial,
+compras para a mao, aumento, renovacao e gasto de Tempo, congelamento, inicio
+do turno do jogador, botao de passar turno e vitoria do jogador. A partida nao
+possui moeda nem mulligan, portanto o som de lancamento da moeda nao e usado.
 
 ## Editar as cartas
 

@@ -110,6 +110,7 @@ class EffectParser:
             return
         targets = self.resolve_targets(effect, owner, source, target)
         killed = []
+        freeze_played = False
         for entity in targets:
             if action == "damage":
                 game.damage(entity, effect["amount"])
@@ -134,6 +135,9 @@ class EffectParser:
                 if hasattr(entity, "frozen_through"):
                     entity.frozen_through = game.players[entity.owner].turns_started + 1
                     game.log(f"{entity.name} congelado ate o fim do proximo turno dele.")
+                    if not freeze_played:
+                        game.emit_event("freeze")
+                        freeze_played = True
                 else:
                     game.log(f"{entity.name}: congelamento exige peça no tabuleiro.")
             elif action == "grant_keyword":

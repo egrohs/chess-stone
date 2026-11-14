@@ -11,8 +11,8 @@ os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 import pygame
 
-from audio import IMPACTS_PATH, ImpactAudio
-from game_engine import Card, Game, load_cards
+from audio import EVENT_SOUNDS, IMPACTS_PATH, ImpactAudio
+from game_engine import Card, Game, RuleError, load_cards
 from tools.generate_impacts import PROFILES, SAMPLE_RATE, generate
 
 
@@ -136,6 +136,130 @@ class AudioTests(unittest.TestCase):
                 app.start_game()
                 app.game.damage(app.game.hero_target(1), 2)
                 play.assert_called_once_with(2)
+
+    def test_event_assets_load_and_play_without_blocking(self):
+        audio = ImpactAudio()
+        self.assertEqual(audio.error, "")
+        self.assertEqual(set(audio.event_sounds), set(EVENT_SOUNDS))
+        for event, sound in audio.event_sounds.items():
+            channel = Mock()
+            with self.subTest(event=event), patch("audio.pygame.mixer.find_channel", return_value=channel):
+                audio.play_event(event)
+                channel.play.assert_called_once_with(sound)
+
+    def test_missing_event_asset_preserves_other_sounds_and_reports_failure(self):
+        original = pygame.mixer.Sound
+
+        def load(path):
+            if path.endswith(EVENT_SOUNDS["freeze"]):
+                raise pygame.error("invalid sound")
+            return original(path)
+
+        with patch("audio.pygame.mixer.Sound", side_effect=load):
+            audio = ImpactAudio()
+        self.assertIn(EVENT_SOUNDS["freeze"], audio.error)
+        self.assertNotIn("freeze", audio.event_sounds)
+        self.assertIn("draw", audio.event_sounds)
+        self.assertIn("light", audio.sounds)
+
+    def test_button_press_release_and_victory_only_once(self):
+        from main import App, State
+
+        with tempfile.TemporaryDirectory() as directory:
+            app = App(decks_path=Path(directory) / "decks.json")
+            self.addCleanup(app.puzzle_view.close)
+            app.start_game()
+            with patch.object(app.audio, "play_event") as play:
+                app.handle_event(pygame.event.Event(pygame.MOUSEBUTTONDOWN, button=1, pos=app.end_button.center))
+                app.handle_event(pygame.event.Event(pygame.MOUSEBUTTONUP, button=1, pos=app.end_button.center))
+                events = [call.args[0] for call in play.call_args_list]
+                self.assertEqual(events.count("end_turn_down"), 1)
+                self.assertEqual(events.count("end_turn_up"), 1)
+                app.game.over = True
+                app.game.winner = 0
+                app.update()
+                app.update()
+                self.assertEqual(app.state, State.GAME_OVER)
+                self.assertEqual([call.args[0] for call in play.call_args_list].count("victory"), 1)
+
+    def test_defeat_and_draw_do_not_play_victory(self):
+        from main import App
+
+        with tempfile.TemporaryDirectory() as directory:
+            app = App(decks_path=Path(directory) / "decks.json")
+            self.addCleanup(app.puzzle_view.close)
+            with patch.object(app.audio, "play_event") as play:
+                for winner in (1, None):
+                    app.start_game()
+                    app.game.over = True
+                    app.game.winner = winner
+                    app.update()
+                self.assertNotIn("victory", [call.args[0] for call in play.call_args_list])
+
+
+class GameSoundEventTests(unittest.TestCase):
+    def setUp(self):
+        self.events = []
+        self.game = Game(load_cards(), seed=42, opening_hand=2, on_event=self.events.append)
+
+    def test_opening_shuffle_deals_and_turn_sounds(self):
+        self.assertEqual(self.events, [
+            "shuffle", "opening_deal", "opening_deal", "opening_deal", "opening_deal",
+            "mana_add", "mana_refresh", "your_turn", "draw",
+        ])
+
+    def test_draw_only_when_card_enters_hand(self):
+        player = self.game.players[0]
+        self.events.clear()
+        self.game.draw_card(0)
+        self.assertEqual(self.events, ["draw"])
+        while len(player.hand) < 10:
+            player.hand.append(Card(self.game.uid(), self.game.catalog["peao"]))
+        self.events.clear()
+        self.game.draw_card(0)
+        self.assertEqual(self.events, [])
+
+    def test_mana_sound_only_for_successful_costs(self):
+        player = self.game.players[0]
+        player.mana = 10
+        card = Card(self.game.uid(), self.game.catalog["peao"])
+        player.hand.append(card)
+        self.events.clear()
+        self.game.play_card(0, card, position=0)
+        self.assertEqual(self.events, ["mana_expend"])
+        self.events.clear()
+        unit = player.unit_at(0)
+        self.game.move_unit(0, unit, 1)
+        self.assertEqual(self.events, ["mana_expend"])
+        self.events.clear()
+        with self.assertRaises(RuleError):
+            self.game.move_unit(0, unit, 1)
+        self.assertEqual(self.events, [])
+        self.game.summon(0, "torre", 5)
+        self.game.castle(0)
+        self.assertEqual(self.events, ["mana_expend"])
+
+    def test_turn_alert_only_on_human_turn_and_no_add_at_cap(self):
+        self.events.clear()
+        self.game.end_turn(0)
+        self.assertIn("mana_refresh", self.events)
+        self.assertNotIn("your_turn", self.events)
+        self.game.players[0].max_mana = 10
+        self.events.clear()
+        self.game.end_turn(1)
+        self.assertIn("your_turn", self.events)
+        self.assertIn("mana_refresh", self.events)
+        self.assertNotIn("mana_add", self.events)
+
+    def test_freeze_once_per_effect_only_when_target_hit(self):
+        self.events.clear()
+        effect = {"action": "freeze", "target": "all_enemy_pieces", "amount": 1}
+        self.game.parser.execute_action(effect, 0)
+        self.assertEqual(self.events, [])
+        self.game.summon(1, "peao", 0)
+        self.game.summon(1, "torre", 1)
+        self.game.parser.execute_action(effect, 0)
+        self.assertEqual(self.events, ["freeze"])
 
 
 if __name__ == "__main__":

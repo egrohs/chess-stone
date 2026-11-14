@@ -124,6 +124,7 @@ class Game:
         opening_hand: int = 3,
         player_deck: list[str] | None = None,
         on_damage: Callable[[int], None] | None = None,
+        on_event: Callable[[str], None] | None = None,
     ):
         validate_cards(cards)
         if isinstance(deck_size, bool) or not isinstance(deck_size, int) or deck_size < 1:
@@ -143,10 +144,12 @@ class Game:
         self.winner: int | None = None
         self._cleaning = False
         self.on_damage = on_damage
+        self.on_event = on_event
         decks = [self._make_deck(deck_size) if custom_deck is None else custom_deck,
                  self._make_deck(deck_size)]
         if custom_deck is not None:
             self.rng.shuffle(decks[0])
+        self.emit_event("shuffle")
         self.players = [
             Player(owner, name, decks[owner])
             for owner, name in enumerate(("Jogador", "Adversario"))
@@ -155,8 +158,12 @@ class Game:
         self.mates = MateRules(self)
         for owner in (0, 1):
             for _ in range(min(opening_hand, len(self.players[owner].deck))):
-                self.draw_card(owner)
+                self.draw_card(owner, opening=True)
         self.start_turn()
+
+    def emit_event(self, event: str) -> None:
+        if self.on_event is not None:
+            self.on_event(event)
 
     def _make_deck(self, size: int) -> list[str]:
         ids = [
@@ -218,11 +225,12 @@ class Game:
             raise RuleError(reason)
         player = self.players[owner]
         player.mana -= CASTLE_COST
+        self.emit_event("mana_expend")
         player.armor += CASTLE_ARMOR
         player.castled = True
         self.log(f"{player.name} usa Roque: +{CASTLE_ARMOR} de Armadura (Seguranca do Rei).")
 
-    def draw_card(self, owner: int) -> None:
+    def draw_card(self, owner: int, *, opening: bool = False) -> None:
         player = self.players[owner]
         if not player.deck:
             player.endgame_ready = True
@@ -239,6 +247,7 @@ class Game:
         else:
             player.hand.append(Card(self.uid(), self.catalog[card_id]))
             self.log(f"{player.name} compra uma carta.")
+            self.emit_event("opening_deal" if opening else "draw")
         if not player.deck:
             player.endgame_ready = True
             self.activate_king(owner)
@@ -247,10 +256,16 @@ class Game:
         player = self.players[self.current]
         player.turns_started += 1
         player.maneuvers_played = 0
+        previous_max = player.max_mana
         player.max_mana = min(10, player.max_mana + 1)
         player.temporary_mana = int(player.center_bonus_pending)
         player.center_bonus_pending = False
         player.mana = player.max_mana + player.temporary_mana
+        if player.max_mana > previous_max:
+            self.emit_event("mana_add")
+        self.emit_event("mana_refresh")
+        if self.current == 0:
+            self.emit_event("your_turn")
         if player.temporary_mana:
             self.log(f"{player.name}: dominio do Centro concede +1 tempo temporario.")
         for unit in player.board:
@@ -349,6 +364,7 @@ class Game:
             raise RuleError(f"Tempo insuficiente para reposicionar ({MOVE_COST}).")
         origin = unit.slot
         player.mana -= MOVE_COST
+        self.emit_event("mana_expend")
         unit.slot = position
         player.board.sort(key=lambda item: item.slot)
         self.mates.invalidate()
@@ -450,6 +466,8 @@ class Game:
         if reason:
             raise RuleError(reason)
         player.mana -= definition["cost"]
+        if definition["cost"]:
+            self.emit_event("mana_expend")
         player.hand.remove(card)
         self.log(f"{player.name} joga {card.name} como {'Peça' if mode == 'piece' else 'Manobra'}.")
         source = None
