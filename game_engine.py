@@ -418,7 +418,25 @@ class Game:
         if just_summoned and not ({"charge", "rush"} & unit.keywords):
             return []
         enemy = self.players[1 - unit.owner]
-        targets: list[Entity] = list(enemy.board)
+        targets: list[Entity]
+        if unit.card_id in {"torre", "bispo", "cavalo", "dama"}:
+            if unit.card_id == "torre":
+                front = lambda slot: slot >= unit.slot if unit.owner == 0 else slot <= unit.slot
+                targets = [entity for entity in enemy.board if front(entity.slot) and abs(entity.slot - unit.slot) <= 3]
+            elif unit.card_id == "bispo":
+                targets = [entity for entity in enemy.board if abs(entity.slot - unit.slot) <= 2]
+            elif unit.card_id == "cavalo":
+                targets = [entity for entity in enemy.board if abs(entity.slot - unit.slot) <= 2]
+            else:
+                front = lambda slot: slot >= unit.slot if unit.owner == 0 else slot <= unit.slot
+                targets = [entity for entity in enemy.board if front(entity.slot) and abs(entity.slot - unit.slot) <= 3]
+            if not targets:
+                targets = [enemy]
+            if just_summoned and "charge" not in unit.keywords:
+                targets = [entity for entity in targets if entity is not self.hero_target(enemy.owner)]
+            return targets
+
+        targets = list(enemy.board)
         if not enemy.king:
             targets.append(enemy)
         taunts = [entity for entity in targets if "taunt" in getattr(entity, "keywords", set())]

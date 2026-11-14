@@ -90,6 +90,12 @@ Ataques diretos ao heroi/Rei continuam permitidos, respeitando Provocar e Rapide
 Uma unidade normalmente precisa esperar ate seu proximo turno para atacar,
 e pode atacar uma vez por turno. O combate causa dano simultaneo entre
 atacante e defensor; o heroi fora da mesa nao contra-ataca.
+
+Os lacaios respeitam o alcance do padrao da peca: torre em linha direta,
+bispo em diagonais, cavalo em L e dama em alcance curto. Quando nao ha
+alvo na fileira/padrao, a unidade pode atacar o oponente diretamente; nao
+existe obrigatoriedade de Provocar para decidir o alvo.
+
 O dano permanece entre turnos. Morte dos dois Reis na mesma acao resulta em
 empate.
 
