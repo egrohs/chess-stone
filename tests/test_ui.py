@@ -562,6 +562,22 @@ class InterfaceTests(unittest.TestCase):
         self.app.click(self.app.hero_rect(1).center)
         self.assertEqual(self.game.players[1].health, 25)
 
+    def test_hero_health_is_drawn_over_drops_and_tracks_activated_king(self):
+        self.player.health = 17
+        self.game.players[1].health = 9
+        self.assertEqual(self.app.hero_health_rect(0).center, (599, 662))
+        self.assertEqual(self.app.hero_health_rect(1).center, (599, 266))
+        with patch.object(self.app, "draw_hero_health", wraps=self.app.draw_hero_health) as health:
+            self.app.draw()
+        self.assertEqual([call.args for call in health.call_args_list], [(0, 17), (1, 9)])
+        self.player.endgame_ready = True
+        self.game.activate_king(0)
+        self.game.damage(self.player.king, 3)
+        with patch.object(self.app, "draw_hero_health", wraps=self.app.draw_hero_health) as health:
+            self.app.draw()
+        self.assertEqual([call.args for call in health.call_args_list], [(0, 14), (1, 9)])
+        self.assertNotIn(self.player, [entity for entity, _ in self.app.entity_rects()])
+
     def test_invalid_card_shows_reason(self):
         self.player.mana = 0
         self.add_card("bispo")

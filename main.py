@@ -40,6 +40,8 @@ BOARD_SOURCE_SIZE = (2626, 1600)
 BOARD_X_EDGES = (446, 722, 1022, 1320, 1622, 1922, 2219)
 BOARD_Y_EDGES = (460, 742, 1050)
 BOARD_TOP = 105
+HERO_PORTRAITS = ((1205, 1060, 250, 310), (1205, 130, 250, 300))
+HERO_HEALTH_CENTERS = ((1430, 1330), (1430, 385))
 
 
 class State(Enum):
@@ -82,6 +84,7 @@ class App:
         self.font = pygame.font.SysFont("segoeui", 18)
         self.small = pygame.font.SysFont("segoeui", 15)
         self.large = pygame.font.SysFont("segoeui", 30, bold=True)
+        self.health_font = pygame.font.SysFont("segoeui", 18, bold=True)
         self.base_cards = load_cards()
         self.inventory = CraftingInventory(self.base_cards, decks_path.with_name("collection.json"))
         self.cards = self.inventory.catalog()
@@ -304,7 +307,27 @@ class App:
         ]
 
     def hero_rect(self, owner: int) -> pygame.Rect:
-        return pygame.Rect(402, 595, 300, 70) if owner == 0 else pygame.Rect(460, 150, 180, 70)
+        x, y, width, height = HERO_PORTRAITS[owner]
+        left = self.board_rect.left + round(x * self.board_rect.width / BOARD_SOURCE_SIZE[0])
+        top = self.board_rect.top + round(y * self.board_rect.height / BOARD_SOURCE_SIZE[1])
+        right = self.board_rect.left + round((x + width) * self.board_rect.width / BOARD_SOURCE_SIZE[0])
+        bottom = self.board_rect.top + round((y + height) * self.board_rect.height / BOARD_SOURCE_SIZE[1])
+        return pygame.Rect(left, top, right - left, bottom - top)
+
+    def hero_health_rect(self, owner: int) -> pygame.Rect:
+        x, y = HERO_HEALTH_CENTERS[owner]
+        center = (
+            self.board_rect.left + round(x * self.board_rect.width / BOARD_SOURCE_SIZE[0]),
+            self.board_rect.top + round(y * self.board_rect.height / BOARD_SOURCE_SIZE[1]),
+        )
+        return pygame.Rect(0, 0, 29, 26).move(center[0] - 14, center[1] - 13)
+
+    def draw_hero_health(self, owner: int, health_value: int) -> None:
+        rect = self.hero_health_rect(owner)
+        pygame.draw.ellipse(self.screen, (48, 12, 12), rect)
+        pygame.draw.ellipse(self.screen, (135, 23, 24), rect.inflate(-3, -3))
+        label = self.health_font.render(str(health_value), True, WHITE)
+        self.screen.blit(label, label.get_rect(center=rect.center))
 
     def hand_rects(self) -> list[tuple[Card, pygame.Rect]]:
         if not self.game:
@@ -707,16 +730,8 @@ class App:
                 (24, 560 if owner == 0 else 275), BLUE, self.small,
             )
             hero = self.hero_rect(owner)
-            if player.king:
-                self.text(
-                    f"Rei no tabuleiro | Vida compartilhada: {player.health}",
-                    (hero.x, hero.y + 10), GOLD,
-                )
-            else:
-                pygame.draw.rect(self.screen, PANEL, hero, border_radius=6)
-                pygame.draw.rect(self.screen, GREEN if player in targets else MUTED, hero, 3, border_radius=6)
-                self.text(f"Rei - {player.name}", (hero.x + 12, hero.y + 6))
-                self.text(f"Vida: {player.health} / 30", (hero.x + 12, hero.y + 35), GOLD)
+            if not player.king and player in targets:
+                pygame.draw.rect(self.screen, GREEN, hero, 3, border_radius=6)
             y = 90 if owner == 1 else 603
             self.text(
                 f"Tempo: {player.mana}/{player.max_mana}"
@@ -765,6 +780,8 @@ class App:
             if self.card_dragging and card is self.drag_card:
                 continue
             self.draw_hand_card(card, motion)
+        for owner, player in enumerate(game.players):
+            self.draw_hero_health(owner, player.health)
         self.draw_sidebar()
         if self.card_dragging and self.drag_card and self.card_drag_start and self.card_drag_point and self.card_drag_center:
             motion = self.hand_view.motions[self.drag_card.uid]
