@@ -142,7 +142,7 @@ class CatalogTests(unittest.TestCase):
             lambda c: c[0]["piece_mode"].update(effects=[{
                 "trigger": "on_death", "action": "damage", "amount": 1, "target": "target_enemy",
             }]),
-            lambda c: next(card for card in c if card["id"] == "roque")["manouvre_mode"].update(effects=[{
+            lambda c: next(card for card in c if card["id"] == "peao")["manouvre_mode"].update(effects=[{
                 "trigger": "on_turn_end", "action": "draw", "amount": 1,
             }]),
         ]
@@ -386,12 +386,6 @@ class RulesTests(unittest.TestCase):
         self.game.end_turn(0)
         self.assertEqual(pawn.attack, 1)
         self.assertIn("rush", pawn.keywords)
-
-    def test_castle_heals_and_summons_without_battlecry(self):
-        self.p0.health = 27
-        self.game.play_card(0, self.card("roque"), mode="manobra")
-        self.assertEqual(self.p0.health, 30)
-        self.assertEqual(self.p0.board[0].card_id, "torre")
 
     def test_sacrifice_queen_is_playable_and_chains_actions(self):
         queen = self.unit("dama")

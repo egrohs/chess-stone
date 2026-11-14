@@ -167,19 +167,19 @@ class PuzzleInterfaceTests(unittest.TestCase):
         self.app.draw()
 
     def test_ownership_blocks_unearned_and_excess_copies(self):
-        self.app.inventory.award("roque", "ui1", 1, 10, 1)
+        self.app.inventory.award("zugzwang", "ui1", 1, 10, 1)
         self.app.refresh_collection()
         self.app.open_builder()
         self.app.draft_name = "Invalido"
-        self.app.draft["roque"] = 1
+        self.app.draft["zugzwang"] = 1
         self.app.save_draft()
         self.assertIn("colecao possui 0", self.app.deck_message)
         self.assertFalse(self.path.exists())
         self.app.draft.clear()
-        self.app.draft["roque__improved"] = 2
+        self.app.draft["zugzwang__improved"] = 2
         self.app.save_draft()
         self.assertIn("colecao possui 1", self.app.deck_message)
-        self.app.saved_decks["Antigo"] = ["roque"]
+        self.app.saved_decks["Antigo"] = ["zugzwang"]
         self.app.active_deck = "Antigo"
         self.app.start_game()
         self.assertEqual(self.app.state, State.MENU)
@@ -196,10 +196,10 @@ class PuzzleInterfaceTests(unittest.TestCase):
 
     def test_locked_card_cannot_be_added_and_starters_still_play(self):
         self.app.open_builder()
-        self.app.catalog_page = 1
-        _, _, plus = next(row for row in self.app.catalog_rows() if row[0]["id"] == "roque")
+        self.app.catalog_page = 0
+        _, _, plus = next(row for row in self.app.catalog_rows() if row[0]["id"] == "zugzwang")
         self.app.click(plus.center)
-        self.assertEqual(self.app.draft["roque"], 0)
+        self.assertEqual(self.app.draft["zugzwang"], 0)
         self.assertIn("Sem copias", self.app.deck_message)
         self.app.active_deck = None
         self.app.start_game()

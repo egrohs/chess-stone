@@ -26,7 +26,6 @@ THEMES = {
     "par_de_bispos": ("doubleBishopMate", "Mate com dois bispos"),
     "coluna_aberta": ("clearance", "Desobstrucao (aproximacao de coluna aberta)"),
     "zugzwang": ("zugzwang", "Zugzwang"),
-    "roque": ("castling", "Roque"),
     "sacrificio_da_dama": ("sacrifice", "Sacrificio (nao necessariamente da dama)"),
     "mate_anastasia": ("anastasiaMate", "Mate de Anastasia"),
     "mate_boden": ("bodenMate", "Mate de Boden"),
@@ -74,19 +73,35 @@ class CraftingInventory:
         self.base_catalog = {c["id"]: c for c in base_cards}
         self.path = path
         self.rewards: list[dict] = []
+        self.retired_puzzles: list[str] = []
         self.error = ""
+        self.migrated = False
         try:
             data = json.loads(path.read_text(encoding="utf-8"))
-            self.rewards = self.validate(data)
+            rewards = self.validate(data, allow_retired=True)
+            retained = [reward for reward in rewards if reward["base_id"] != "roque"]
+            retired = data.get("retired_puzzles", []) + [
+                reward["puzzle_id"] for reward in rewards if reward["base_id"] == "roque"
+            ]
+            if retained != rewards:
+                write_json(path, {"version": 1, "rewards": retained, "retired_puzzles": retired})
+                self.migrated = True
+            self.rewards = retained
+            self.retired_puzzles = retired
         except FileNotFoundError:
             pass
         except (OSError, ValueError) as error:
             self.error = f"Erro ao ler colecao: {error}. Corrija o arquivo e reinicie o jogo."
 
-    def validate(self, data: object) -> list[dict]:
+    def validate(self, data: object, *, allow_retired: bool = False) -> list[dict]:
         if not isinstance(data, dict) or data.get("version") != 1 or not isinstance(data.get("rewards"), list):
             raise ValueError("Formato de colecao invalido.")
-        seen = set()
+        retired = data.get("retired_puzzles", [])
+        if not isinstance(retired, list) or any(
+            not isinstance(puzzle, str) or not puzzle.isalnum() for puzzle in retired
+        ) or len(set(retired)) != len(retired):
+            raise ValueError("Historico de puzzles invalido.")
+        seen = set(retired)
         for reward in data["rewards"]:
             if not isinstance(reward, dict) or set(reward) != {
                 "puzzle_id", "base_id", "quality", "errors", "elapsed", "moves",
@@ -95,7 +110,9 @@ class CraftingInventory:
             if (
                 not isinstance(reward["puzzle_id"], str) or not reward["puzzle_id"].isalnum()
                 or reward["puzzle_id"] in seen
-                or not isinstance(reward["base_id"], str) or reward["base_id"] not in self.base_catalog
+                or not isinstance(reward["base_id"], str)
+                or (reward["base_id"] not in self.base_catalog
+                    and not (allow_retired and reward["base_id"] == "roque"))
             ):
                 raise ValueError("Puzzle repetido ou carta desconhecida na colecao.")
             for field, minimum in (("errors", 0), ("moves", 1)):
@@ -112,7 +129,7 @@ class CraftingInventory:
 
     @property
     def completed(self) -> set[str]:
-        return {r["puzzle_id"] for r in self.rewards}
+        return {r["puzzle_id"] for r in self.rewards} | set(self.retired_puzzles)
 
     def count(self, card_id: str) -> int | None:
         if card_id in STARTER_IDS:
@@ -142,6 +159,8 @@ class CraftingInventory:
             errors=errors, elapsed=elapsed, moves=moves,
         )
         data = {"version": 1, "rewards": [*self.rewards, reward]}
+        if self.retired_puzzles:
+            data["retired_puzzles"] = self.retired_puzzles
         validated = self.validate(data)
         write_json(self.path, data)
         self.rewards = validated

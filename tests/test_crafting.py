@@ -47,7 +47,7 @@ class CraftingTests(unittest.TestCase):
             self.assertEqual(self.inventory.count(card["id"]), None if card["id"] in STARTER_IDS else 0)
         self.inventory.validate_owned(["peao"] * 100)
         with self.assertRaises(ValueError):
-            self.inventory.validate_owned(["roque"])
+            self.inventory.validate_owned(["zugzwang"])
 
     def test_award_persist_and_duplicate_prevention(self):
         card = self.inventory.award("torre", "test1", 0, 25.0, 1)
@@ -66,13 +66,53 @@ class CraftingTests(unittest.TestCase):
         self.assertEqual(self.path.read_bytes(), before)
 
     def test_basic_and_improved_rewards_have_separate_counts(self):
-        self.inventory.award("roque", "one", 2, 5, 1)
-        self.inventory.award("roque", "two", 1, 5, 1)
-        self.inventory.award("roque", "three", 0, 5, 1)
-        self.assertEqual(self.inventory.count("roque"), 1)
-        self.assertEqual(self.inventory.count("roque__improved"), 1)
-        self.assertEqual(self.inventory.count("roque__perfect"), 1)
+        self.inventory.award("zugzwang", "one", 2, 5, 1)
+        self.inventory.award("zugzwang", "two", 1, 5, 1)
+        self.inventory.award("zugzwang", "three", 0, 5, 1)
+        self.assertEqual(self.inventory.count("zugzwang"), 1)
+        self.assertEqual(self.inventory.count("zugzwang__improved"), 1)
+        self.assertEqual(self.inventory.count("zugzwang__perfect"), 1)
         self.assertEqual(len(self.inventory.catalog()), len(self.cards) + 2)
+
+    def test_retired_roque_rewards_are_removed_and_other_rewards_preserved(self):
+        self.inventory.award("zugzwang", "other", 0, 5, 1)
+        data = json.loads(self.path.read_text(encoding="utf-8"))
+        legacy = dict(data["rewards"][0], base_id="roque", puzzle_id="old")
+        data["rewards"].append(legacy)
+        self.path.write_text(json.dumps(data), encoding="utf-8")
+        inventory = CraftingInventory(self.cards, self.path)
+        self.assertFalse(inventory.error)
+        self.assertTrue(inventory.migrated)
+        self.assertEqual([reward["base_id"] for reward in inventory.rewards], ["zugzwang"])
+        self.assertEqual(json.loads(self.path.read_text(encoding="utf-8"))["rewards"], inventory.rewards)
+        self.assertIn("old", inventory.completed)
+        with self.assertRaises(ValueError):
+            inventory.award("zugzwang", "old", 0, 5, 1)
+        inventory.award("zugzwang", "new", 0, 5, 1)
+        self.assertIn("old", CraftingInventory(self.cards, self.path).completed)
+
+    def test_invalid_retired_reward_is_not_silently_removed(self):
+        data = {"version": 1, "rewards": [{
+            "base_id": "roque", "puzzle_id": "old", "quality": "perfect",
+            "errors": -1, "elapsed": 0, "moves": 1,
+        }]}
+        self.path.write_text(json.dumps(data), encoding="utf-8")
+        before = self.path.read_bytes()
+        inventory = CraftingInventory(self.cards, self.path)
+        self.assertTrue(inventory.error)
+        self.assertEqual(self.path.read_bytes(), before)
+
+    def test_retired_reward_migration_write_error_is_reported(self):
+        data = {"version": 1, "rewards": [{
+            "base_id": "roque", "puzzle_id": "old", "quality": "perfect",
+            "errors": 0, "elapsed": 0, "moves": 1,
+        }]}
+        self.path.write_text(json.dumps(data), encoding="utf-8")
+        before = self.path.read_bytes()
+        with patch("crafting.write_json", side_effect=OSError("sem permissao")):
+            inventory = CraftingInventory(self.cards, self.path)
+        self.assertIn("sem permissao", inventory.error)
+        self.assertEqual(self.path.read_bytes(), before)
 
     def test_all_variants_valid_and_originals_unchanged(self):
         originals = copy.deepcopy(self.cards)
@@ -99,7 +139,7 @@ class CraftingTests(unittest.TestCase):
         self.assertEqual(bishop.attack, before + 1)
 
     def test_improved_maneuver_extra_healing_and_perfect_draw(self):
-        base = next(c for c in self.cards if c["id"] == "roque")
+        base = next(c for c in self.cards if c["id"] == "zugzwang")
         self.assertEqual(make_variant(base, "improved")["manouvre_mode"]["effects"][-1]["amount"], 1)
         perfect = make_variant(base, "perfect")
         self.assertEqual(perfect["manouvre_mode"]["effects"][-2]["amount"], 2)
@@ -110,17 +150,17 @@ class CraftingTests(unittest.TestCase):
         inventory = CraftingInventory(self.cards, self.path)
         self.assertIn("Erro ao ler colecao", inventory.error)
         with self.assertRaises(ValueError):
-            inventory.award("roque", "test1", 0, 0, 1)
+            inventory.award("zugzwang", "test1", 0, 0, 1)
         self.assertEqual(self.path.read_text(), "{")
 
     def test_failed_write_does_not_grant_reward(self):
         with patch("crafting.write_json", side_effect=OSError("sem permissao")):
             with self.assertRaises(OSError):
-                self.inventory.award("roque", "test1", 0, 0, 1)
+                self.inventory.award("zugzwang", "test1", 0, 0, 1)
         self.assertEqual(self.inventory.rewards, [])
 
     def test_invalid_records_are_rejected(self):
-        self.inventory.award("roque", "good", 0, 1, 1)
+        self.inventory.award("zugzwang", "good", 0, 1, 1)
         original = json.loads(self.path.read_text())
         for field, value in (("elapsed", float("nan")), ("elapsed", -1), ("errors", True),
                              ("base_id", "missing"), ("quality", "basic"), ("moves", 0)):

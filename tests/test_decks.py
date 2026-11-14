@@ -1,4 +1,5 @@
 import tempfile
+import json
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -38,6 +39,32 @@ class DeckTests(unittest.TestCase):
         self.path.write_text("{", encoding="utf-8")
         with self.assertRaises(ValueError):
             self.store.load()
+
+    def test_retired_roque_is_removed_from_decks_without_losing_names(self):
+        self.path.parent.mkdir()
+        original = {"Misto": ["roque", "peao", "roque__perfect"], "Vazio": ["roque__improved"]}
+        self.path.write_text(json.dumps(original), encoding="utf-8")
+        expected = {"Misto": ["peao"], "Vazio": []}
+        self.assertEqual(self.store.load(), expected)
+        self.assertTrue(self.store.migrated)
+        self.assertEqual(json.loads(self.path.read_text(encoding="utf-8")), expected)
+        self.assertEqual(DeckStore(self.store.catalog, self.path).load(), expected)
+        self.store.save({"Misto": ["bispo"], "Vazio": []}, allow_empty=True)
+
+    def test_failed_or_invalid_migration_does_not_overwrite(self):
+        self.path.parent.mkdir()
+        for data in ({"Deck": ["roque", "missing"]}, {"Deck": ["roque", 1]}):
+            self.path.write_text(json.dumps(data), encoding="utf-8")
+            before = self.path.read_bytes()
+            with self.assertRaises(ValueError):
+                self.store.load()
+            self.assertEqual(self.path.read_bytes(), before)
+        self.path.write_text('{"Deck":["roque"]}', encoding="utf-8")
+        before = self.path.read_bytes()
+        with patch("deck_store.write_json", side_effect=OSError("sem permissao")):
+            with self.assertRaises(OSError):
+                self.store.load()
+        self.assertEqual(self.path.read_bytes(), before)
 
     def test_failed_replace_preserves_file_and_cleans_temporary(self):
         self.store.save({"Original": ["peao"]})

@@ -46,6 +46,7 @@ primeiro turno. Nao ha mulligan, moeda, armas ou poder heroico.
 | Manobra com alvo | Clique direto no inimigo valido, escolha Manobra e depois clique no alvo verde, ou arraste a carta diretamente ate o alvo verde (inclusive aliado) |
 | Atacar | Clique em uma peça aliada pronta e depois em um inimigo verde |
 | Reposicionar | Arraste uma peça sua (exceto o Rei) para uma casa vazia (borda azul); custa 1 tempo |
+| Roque | Com o Rei fora do tabuleiro e uma Torre aliada no canto 1 ou 6, use o botao Roque: custa 2 tempo e concede 6 de Armadura; uma vez por partida |
 | Cancelar selecao | Clique direito ou Esc |
 | Encerrar turno | Clique em **Passar Turno** |
 | Ativar o Rei manualmente | Use **Ativar Rei (Final de jogo)** quando estiver disponivel |
@@ -91,7 +92,6 @@ modo original; os novos modos complementam cada carta:
 | Par de Bispos | 3 | Bispo 2/4 | Com dois Bispos aliados, concede +1/+1 a todas as pecas aliadas |
 | Coluna Aberta | 2 | Torre 2/3 | Concede +2 de ataque neste turno e Desenvolvimento a uma peca aliada |
 | Zugzwang | 5 | Cavalo 4/4 | Congela todas as pecas inimigas |
-| Roque | 4 | Torre 3/5 | Cura 4 no seu Rei e desenvolve uma Torre se houver espaco |
 | Sacrificio da Dama | 6 | Dama 5/4 | Destroi uma Dama aliada, causa 5 a todos os inimigos e compra 2 |
 | Mate de Anastasia | 9 | Torre 6/7 | Executa o mate se preparado |
 | Mate de Boden | 5 | Bispo 4/5 | Executa o mate se preparado |
@@ -144,10 +144,10 @@ alvo na fileira/padrao, a peça pode atacar o Rei diretamente.
 O dano permanece entre turnos. Morte dos dois Reis na mesma acao resulta em
 empate.
 
-A Armadura dos Reis comeca em zero. Se houver Armadura, ela absorve dano
+A Armadura dos Reis comeca em zero. O Roque concede 6 de Armadura como
+Seguranca do Rei, sem mover nem curar peças. Se houver Armadura, ela absorve dano
 antes da vida, inclusive depois da Ativacao do Rei, e e exibida no tabuleiro.
-O catalogo atual ainda nao tem cartas que concedem Armadura; a condicao de
-Mate de Gaveta ja a verifica explicitamente.
+Mate de Gaveta exige que o Rei inimigo esteja sem Armadura.
 
 ## Palavras-chave e efeitos
 
@@ -347,7 +347,6 @@ Par de Bispos, Sacrificio da Dama e formacoes de mate.
 | Par de Bispos | `doubleBishopMate` |
 | Coluna Aberta | `clearance` (aproximacao: desobstrucao, nao necessariamente de coluna) |
 | Zugzwang | `zugzwang` |
-| Roque | `castling` |
 | Sacrificio da Dama | `sacrifice` (nao garante sacrificio especificamente da dama) |
 | Mate de Anastasia | `anastasiaMate` |
 | Mate de Boden | `bodenMate` |
@@ -393,7 +392,10 @@ os decks sao embaralhados antes da partida.
 
 Decks antigos com cartas ainda nao adquiridas permanecem no arquivo, mas nao
 podem ser usados ate ajustar as copias ou criar as cartas necessarias; o erro
-informa a quantidade solicitada e disponivel. Nao ha remocao silenciosa de cartas.
+informa a quantidade solicitada e disponivel. A antiga carta Roque e suas
+variantes sao removidas dos decks e da colecao ao carregar; decks que ficarem
+vazios permanecem salvos para edicao e nao podem iniciar partidas. Os puzzles
+ja concluidos para a antiga carta continuam registrados para evitar recompensas repetidas.
 
 ## Arquivos locais e recuperacao
 

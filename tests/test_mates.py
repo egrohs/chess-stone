@@ -263,7 +263,7 @@ class MateTests(unittest.TestCase):
                 validate_cards(cards)
 
     def test_maneuver_counter_resets_on_own_next_turn(self):
-        self.game.play_card(0, self.card("roque"), mode="manobra")
+        self.game.play_card(0, self.card("peao"), mode="manobra")
         self.assertEqual(self.p0.maneuvers_played, 1)
         self.game.end_turn(0)
         self.game.end_turn(1)

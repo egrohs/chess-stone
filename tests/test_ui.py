@@ -216,13 +216,13 @@ class InterfaceTests(unittest.TestCase):
         self.assertIsNone(self.app.selected_card)
 
     def test_board_click_plays_former_maneuver_as_piece(self):
-        card = self.add_card("roque")
+        card = self.add_card("coluna_aberta")
         self.player.health = 20
         self.select_first_card()
         self.app.click(self.app.slots(0)[5].center)
         self.assertEqual(self.player.unit_at(5).piece_type, "torre")
         self.assertEqual(self.player.health, 20)
-        self.assertEqual(self.player.mana, 6)
+        self.assertEqual(self.player.mana, 8)
         self.assertEqual(self.player.discard, [])
         self.assertNotIn(card, self.player.hand)
 
@@ -450,12 +450,12 @@ class InterfaceTests(unittest.TestCase):
         self.assertEqual(len(self.player.board), 1)
 
     def test_no_target_maneuver_uses_button(self):
-        card = self.add_card("roque")
+        card = self.add_card("bispo")
         self.select_first_card()
         self.assertIn(card, self.player.hand)
         self.app.click(self.app.play_button.center)
         self.assertNotIn(card, self.player.hand)
-        self.assertEqual(self.player.board[0].card_id, "torre")
+        self.assertEqual(self.player.discard, [card])
 
     def test_attack_hero_click(self):
         self.game.summon(0, "dama")
@@ -466,10 +466,27 @@ class InterfaceTests(unittest.TestCase):
 
     def test_invalid_card_shows_reason(self):
         self.player.mana = 0
-        self.add_card("roque")
+        self.add_card("bispo")
         self.select_first_card()
         self.app.click(self.app.play_button.center)
         self.assertIn("Tempo insuficiente", self.game.messages[-1])
+
+    def test_castle_button_requires_corner_rook_and_is_once_per_game(self):
+        self.app.click(self.app.castle_button.center)
+        self.assertIn("Torre aliada em um canto", self.game.messages[-1])
+        self.game.summon(0, "torre", 5)
+        self.add_card("peao")
+        self.select_first_card()
+        with patch.object(self.app, "button", wraps=self.app.button) as button:
+            self.app.draw()
+        castle = next(call for call in button.call_args_list if call.args[0] == self.app.castle_button)
+        self.assertTrue(castle.args[2])
+        self.app.click(self.app.castle_button.center)
+        self.assertEqual((self.player.mana, self.player.armor), (8, 6))
+        self.assertIsNone(self.app.selected_card)
+        self.app.click(self.app.castle_button.center)
+        self.assertIn("ja foi usado", self.game.messages[-1])
+        self.assertEqual((self.player.mana, self.player.armor), (8, 6))
 
     def test_cancel_selection_and_king_button(self):
         self.add_card("peao")
@@ -638,7 +655,7 @@ class DeckBuilderTests(unittest.TestCase):
     def test_pagination_name_backspace_and_discard(self):
         self.app.click(self.app.catalog_next.center)
         self.assertEqual(self.app.catalog_page, 1)
-        self.assertEqual(self.app.catalog_rows()[0][0]["id"], "roque")
+        self.assertEqual(self.app.catalog_rows()[0][0]["id"], "sacrificio_da_dama")
         self.app.click(self.app.catalog_rows()[0][2].center)
         self.app.draw()
         self.app.click(self.app.catalog_prev.center)

@@ -13,10 +13,12 @@ from csv_to_json import validate_cards
 from deck_store import validate_deck, validate_legendary
 from effect_parser import EffectParser, MANUAL_TARGETS
 from mate_rules import MateRules
-from board_rules import BOARD_LIMIT, CENTER_SLOTS
+from board_rules import BOARD_LIMIT, CENTER_SLOTS, CORNER_SLOTS
 
 
 MOVE_COST = 1
+CASTLE_COST = 2
+CASTLE_ARMOR = 6
 HAND_LIMIT = 10
 PlayMode = Literal["piece", "manobra"]
 KEYWORD_LABELS = {
@@ -85,6 +87,7 @@ class Player:
     king: Unit | None = None
     maneuvers_played: int = 0
     armor: int = 0
+    castled: bool = False
     center_bonus_pending: bool = False
     temporary_mana: int = 0
 
@@ -186,6 +189,38 @@ class Game:
             raise RuleError("A partida terminou.")
         if self.current != owner:
             raise RuleError("Aguarde seu turno.")
+
+    def castle_unavailable_reason(self, owner: int) -> str:
+        if self.over:
+            return "A partida terminou."
+        if self.current != owner:
+            return "Aguarde seu turno."
+        player = self.players[owner]
+        if player.castled:
+            return "Roque ja foi usado nesta partida."
+        if player.king:
+            return "Roque exige o Rei fora do tabuleiro."
+        if not any(
+            unit.health > 0 and not unit.is_king and unit.piece_type == "torre"
+            and unit.slot in CORNER_SLOTS for unit in player.board
+        ):
+            return "Roque exige uma Torre aliada em um canto."
+        if player.mana < CASTLE_COST:
+            return "Tempo insuficiente para o Roque."
+        return ""
+
+    def can_castle(self, owner: int) -> bool:
+        return not self.castle_unavailable_reason(owner)
+
+    def castle(self, owner: int) -> None:
+        reason = self.castle_unavailable_reason(owner)
+        if reason:
+            raise RuleError(reason)
+        player = self.players[owner]
+        player.mana -= CASTLE_COST
+        player.armor += CASTLE_ARMOR
+        player.castled = True
+        self.log(f"{player.name} usa Roque: +{CASTLE_ARMOR} de Armadura (Seguranca do Rei).")
 
     def draw_card(self, owner: int) -> None:
         player = self.players[owner]
@@ -545,6 +580,9 @@ class Game:
         """Perform one legal action; the UI schedules steps without blocking events."""
         if self.over or self.current != 1:
             return
+        if self.can_castle(1):
+            self.castle(1)
+            return
         if self.can_activate_king(1):
             self.activate_king(1, manual=True)
             return
@@ -563,7 +601,14 @@ class Game:
             target = self.rng.choice(targets) if targets else None
             position = None
             if mode == "piece":
-                position = min(player.free_slots(), key=lambda slot: (slot not in CENTER_SLOTS, slot))
+                prefer_corner = (
+                    card.mode("piece")["piece_type"] == "torre"
+                    and not player.castled and not player.king
+                )
+                position = min(
+                    player.free_slots(),
+                    key=lambda slot: (slot not in (CORNER_SLOTS if prefer_corner else CENTER_SLOTS), slot),
+                )
             self.play_card(1, card, target, position, mode=mode)
             return
         for unit in player.board:

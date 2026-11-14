@@ -286,36 +286,6 @@
     "description": "Peca: Cavalo 4/4, sem efeito de entrada. Manobra: Congele todas as peças inimigas até o fim do próximo turno delas."
   },
   {
-    "id": "roque",
-    "name": "Roque",
-    "piece_mode": {
-      "piece_type": "torre",
-      "cost": 4,
-      "attack": 3,
-      "health": 5,
-      "keywords": [],
-      "effects": []
-    },
-    "manouvre_mode": {
-      "cost": 4,
-      "effects": [
-        {
-          "action": "heal",
-          "amount": 4,
-          "target": "own_hero",
-          "trigger": "on_play"
-        },
-        {
-          "action": "summon",
-          "card_id": "torre",
-          "count": 1,
-          "trigger": "on_play"
-        }
-      ]
-    },
-    "description": "Peca: Torre 3/5, sem efeito de entrada. Manobra: Cure seu Rei em 4 e desenvolva uma Torre se houver espaço."
-  },
-  {
     "id": "sacrificio_da_dama",
     "name": "Sacrifício da Dama",
     "piece_mode": {

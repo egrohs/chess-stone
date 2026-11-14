@@ -136,7 +136,6 @@ assets\
     par_de_bispos\
     coluna_aberta\
     zugzwang\
-    roque\
     sacrificio_da_dama\
     mate_anastasia\
     mate_boden\

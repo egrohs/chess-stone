@@ -12,7 +12,7 @@ from pathlib import Path
 import pygame
 
 from game_engine import BOARD_LIMIT, CENTER_SLOTS, KEYWORD_LABELS, Card, Entity, Game, PlayMode, RuleError, Unit, load_cards
-from deck_store import DEFAULT_PATH, DeckStore, validate_legendary
+from deck_store import DEFAULT_PATH, DeckStore, validate_deck, validate_legendary
 from collection_view import CollectionView
 from ui_theme import BG, PANEL, WHITE, MUTED, GREEN, GOLD, RED, BLUE
 from crafting import CraftingInventory, STARTER_IDS
@@ -105,6 +105,7 @@ class App:
         self.end_button = pygame.Rect(1120, 100, 296, 52)
         self.king_button = pygame.Rect(1120, 164, 296, 52)
         self.play_button = pygame.Rect(1120, 228, 296, 52)
+        self.castle_button = pygame.Rect(1120, 292, 296, 52)
         self.menu_button = pygame.Rect(1120, 868, 296, 48)
 
     def start_game(self) -> None:
@@ -154,7 +155,10 @@ class App:
         if self.active_deck not in decks:
             self.active_deck = None
         self.library_error = False
-        self.deck_message = ""
+        self.deck_message = (
+            "Carta Roque removida; decks vazios precisam ser editados."
+            if self.deck_store.migrated or self.inventory.migrated else ""
+        )
 
     def open_builder(self) -> None:
         self.reload_decks()
@@ -188,11 +192,12 @@ class App:
         name = self.draft_name.strip()
         candidate = {**self.saved_decks, name: cards}
         try:
+            validate_deck(cards, self.deck_store.catalog)
             self.inventory.validate_owned(cards)
             validate_legendary(
                 cards, {c["id"]: c for c in self.inventory.catalog(all_variants=True)},
             )
-            self.deck_store.save(candidate)
+            self.deck_store.save(candidate, allow_empty=True)
         except (OSError, ValueError) as error:
             self.deck_message = f"Erro ao salvar: {error}"
             return
@@ -484,6 +489,10 @@ class App:
                 game.activate_king(0, manual=True)
                 self.clear_selection()
                 return
+            if self.castle_button.collidepoint(point):
+                game.castle(0)
+                self.clear_selection()
+                return
             if self.play_button.collidepoint(point) and self.selected_card:
                 self.choose_maneuver(point)
                 return
@@ -757,6 +766,7 @@ class App:
         self.button(self.king_button, "Ativar Rei (Final de jogo)", human_turn and game.can_activate_king(0))
         can_play = bool(human_turn and self.selected_card and game.playable(0, self.selected_card, "manobra"))
         self.button(self.play_button, "Jogar como Manobra", can_play)
+        self.button(self.castle_button, "Roque: +6 Armadura (2 tempo)", game.can_castle(0))
         if self.selected_card:
             automatic_targets = [
                 game.entity_name(entity) + (f" (casa {entity.slot + 1})" if isinstance(entity, Unit) else "")
@@ -767,26 +777,26 @@ class App:
             self.paragraph(
                 ("Alvos agora: " + ", ".join(automatic_targets) + ". " if automatic_targets else "")
                 + f"{self.selected_card.name}: {self.selected_card.definition['description']}",
-                pygame.Rect(1120, 298, 296, 128),
+                pygame.Rect(1120, 360, 296, 128),
             )
         elif self.selected_unit:
             unit = self.selected_unit
             description = self.game.catalog.get(unit.definition_id or unit.card_id, {}).get(
                 "description", "O Rei no tabuleiro compartilha a vida indicada no retrato.",
             )
-            self.paragraph(f"{unit.name}: {description}", pygame.Rect(1120, 298, 296, 128))
+            self.paragraph(f"{unit.name}: {description}", pygame.Rect(1120, 360, 296, 128))
         else:
             self.paragraph(
-                "Final de jogo: deck esgotado ativa automaticamente. Apos 8 rodadas, tabuleiro total com ate 3"
-                " peças libera o botao. O Rei precisa de um espaco livre.",
-                pygame.Rect(1120, 298, 296, 128), MUTED,
+                "Roque: Torre no canto e Rei fora do tabuleiro. Uma vez por partida."
+                " Final de jogo: Rei ativa com deck esgotado ou apos 8 rodadas com ate 3 peças.",
+                pygame.Rect(1120, 360, 296, 128), MUTED,
             )
-        self.text("ULTIMAS JOGADAS", (1120, 443), GOLD)
+        self.text("ULTIMAS JOGADAS", (1120, 505), GOLD)
         lines = [line for message in game.messages for line in self.wrap(message, 296)]
         height = self.small.get_linesize()
-        capacity = (843 - 480) // height
+        capacity = (843 - 542) // height
         for index, line in enumerate(lines[-capacity:]):
-            self.text(line, (1120, 480 + height * index), WHITE, self.small)
+            self.text(line, (1120, 542 + height * index), WHITE, self.small)
         self.button(self.menu_button, "Voltar ao Menu")
 
     def draw_builder(self) -> None:

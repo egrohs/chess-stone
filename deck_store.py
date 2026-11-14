@@ -11,6 +11,7 @@ from collections import Counter
 
 
 DEFAULT_PATH = Path(__file__).resolve().parent / "data" / "decks.json"
+RETIRED_ROQUE_IDS = {"roque", "roque__improved", "roque__perfect"}
 
 
 def validate_legendary(deck: list[str], catalog: dict[str, dict]) -> None:
@@ -51,8 +52,9 @@ class DeckStore:
     def __init__(self, catalog: Collection[str], path: Path = DEFAULT_PATH):
         self.catalog = set(catalog)
         self.path = path
+        self.migrated = False
 
-    def validate(self, decks: object) -> dict[str, list[str]]:
+    def validate(self, decks: object, *, allow_empty: bool = False, legacy: bool = False) -> dict[str, list[str]]:
         if not isinstance(decks, dict):
             raise ValueError("A biblioteca de decks deve ser um objeto JSON.")
         result = {}
@@ -61,7 +63,11 @@ class DeckStore:
                 raise ValueError("Nomes de decks devem ter entre 1 e 40 caracteres, sem espacos nas pontas.")
             if any(not character.isprintable() for character in name):
                 raise ValueError("O nome do deck contem caracteres de controle.")
-            result[name] = validate_deck(cards, self.catalog)
+            if allow_empty and cards == []:
+                result[name] = []
+            else:
+                catalog = self.catalog | RETIRED_ROQUE_IDS if legacy else self.catalog
+                result[name] = validate_deck(cards, catalog)
         return result
 
     def load(self) -> dict[str, list[str]]:
@@ -69,8 +75,17 @@ class DeckStore:
             text = self.path.read_text(encoding="utf-8")
         except FileNotFoundError:
             return {}
-        return self.validate(json.loads(text))
+        decks = self.validate(json.loads(text), allow_empty=True, legacy=True)
+        migrated = {
+            name: [card for card in cards if card not in RETIRED_ROQUE_IDS]
+            for name, cards in decks.items()
+        }
+        validated = self.validate(migrated, allow_empty=True)
+        if migrated != decks:
+            write_json(self.path, validated)
+            self.migrated = True
+        return validated
 
-    def save(self, decks: dict[str, list[str]]) -> None:
-        validated = self.validate(decks)
+    def save(self, decks: dict[str, list[str]], *, allow_empty: bool = False) -> None:
+        validated = self.validate(decks, allow_empty=allow_empty)
         write_json(self.path, validated)

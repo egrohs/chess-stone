@@ -42,13 +42,13 @@ class ModalRulesTests(unittest.TestCase):
         self.assertNotIn(maneuver, self.player.hand)
 
     def test_former_maneuver_can_develop_without_executing_its_maneuver(self):
-        card = self.card("roque")
+        card = self.card("coluna_aberta")
         self.player.health = 20
         self.game.play_card(0, card, position=4, mode="piece")
         self.assertEqual(self.player.health, 20)
         self.assertEqual(len(self.player.board), 1)
         unit = self.player.unit_at(4)
-        self.assertEqual((unit.card_id, unit.piece_type, unit.attack, unit.health), ("roque", "torre", 3, 5))
+        self.assertEqual((unit.card_id, unit.piece_type, unit.attack, unit.health), ("coluna_aberta", "torre", 2, 3))
         self.assertEqual(self.player.maneuvers_played, 0)
         self.assertEqual(self.player.discard, [])
 
