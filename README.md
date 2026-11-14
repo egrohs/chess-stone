@@ -376,3 +376,21 @@ simuladas; nao dependem de internet nem modificam o inventario local.
 ### TODO
 - musicas de https://downloads.khinsider.com/game-soundtracks/album/hearthstone-music-from-the-tavern-anniversary-picks-2024
 - Vamos adicionar classes de heroes que seriam os campeões de chess. Seriam 4 classes dos perfis de jogadores, ativista, pragmático, reflector, teorista.
+- Vamos modificar o roque com alguns critérios:
+  Roque custa 2 "mana", TEMPO.
+  Rei não sofreu dano, full hp.
+  Nem rei, nem torre moveram nem atacaram no jogo.
+  Rei nem slots entre ele e torre estão sendo atacados?!
+
+- Os nomes das Keywords ainda não foram alteradas no csv. Altere-as. 
+  E o termo freeze deveria ser "imobiliza".
+  O hp do hero/rei poderia ser pontos de vantagem?, "posicional"!
+  Invéz de hp ou vida use o termo "...".
+  Secret -> Armadilha (trap)
+  Spell Damage +1 -> Cálculo +1 (aumenta em 1 o dano/efeito das cartas de Tática)
+
+- Peão tenho dúvida como pode atacar, mas pode promover se ficar 1 turno sem 3 peças na sua frente?!
+- Torre parece fraca atacando 1.casa somente... Poderia ser a frente e as 2 peças da ponta, e dama as três da frente e duas da ponta,.5.pecas.
+- Dama pode reposicionar pra qlqr slot vazio.
+
+- Depois adicionar novos heroes/reis como campeões de xadrez com habilidades únicas.

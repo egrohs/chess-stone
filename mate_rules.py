@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 
 PATTERNS = {"anastasia", "boden", "smothered", "back_rank", "opera", "opposition"}
+MATE_HEALTH_LIMIT = 10
 LABELS = {
     "anastasia": "Mate de Anastasia", "boden": "Mate de Boden",
     "smothered": "Mate Abafado", "back_rank": "Mate de Gaveta",
@@ -119,9 +120,9 @@ class MateRules:
             return f"Exige formacao anunciada no turno anterior, intacta, descongelada e {attacks}."
         player = self.game.players[owner]
         enemy = self.game.players[1 - owner]
+        if enemy.health > MATE_HEALTH_LIMIT:
+            return f"Mate exige inimigo com ate {MATE_HEALTH_LIMIT} de vida."
         if pattern == "anastasia":
-            if enemy.health > 15:
-                return "Anastasia exige inimigo com ate 15 de vida."
             if sum(not u.is_king for u in enemy.board) < 2:
                 return "Anastasia exige ao menos duas peças inimigas (Rei nao conta)."
         elif pattern == "boden" and self.game.players[owner].maneuvers_played < 2:
@@ -142,8 +143,8 @@ class MateRules:
             pair = self.ready_pair(owner, pattern)
             if pair is None or not all(unit.has_attacked for unit in pair):
                 return "Mate da Opera exige que a Torre e o Bispo tenham atacado nesta partida."
-            if enemy.health > 15 or sum(not unit.is_king for unit in enemy.board) != 1:
-                return "Mate da Opera exige inimigo com ate 15 de vida e exatamente uma peça (Rei nao conta)."
+            if sum(not unit.is_king for unit in enemy.board) != 1:
+                return "Mate da Opera exige exatamente uma peça inimiga (Rei nao conta)."
         elif pattern == "opposition":
             if not any(
                 card.definition.get("base_id", card.definition["id"]) == "peao_passado"

@@ -341,7 +341,7 @@
         }
       ]
     },
-    "description": "Peca: Torre 6/7, sem efeito de entrada. Manobra: Anuncie Torre na casa 1 ou 6 junto a Cavalo adjacente com pelo menos 3 peças aliadas. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: venca se o inimigo tem ate 15 de vida e pelo menos 2 peças. Rei nao conta na quantidade de peças inimigas.",
+    "description": "Peca: Torre 6/7, sem efeito de entrada. Manobra: Anuncie Torre na casa 1 ou 6 junto a Cavalo adjacente com pelo menos 3 peças aliadas. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: venca se o inimigo tem ate 10 de vida e pelo menos 2 peças. Rei nao conta na quantidade de peças inimigas.",
     "rarity": "legendary"
   },
   {
@@ -365,7 +365,7 @@
         }
       ]
     },
-    "description": "Peca: Bispo 4/5, sem efeito de entrada. Manobra: Anuncie Bispos nas casas 1 e 6 com pelo menos 2 peças entre eles. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: apos jogar 2 outras manobras neste turno venca a partida. Rei nao conta na quantidade de peças intermediarias.",
+    "description": "Peca: Bispo 4/5, sem efeito de entrada. Manobra: Anuncie Bispos nas casas 1 e 6 com pelo menos 2 peças entre eles. Preserve a dupla por um turno inimigo. Sem ataques ou congelamento: venca se o inimigo tem ate 10 de vida apos jogar 2 outras manobras neste turno. Rei nao conta na quantidade de peças intermediarias.",
     "rarity": "legendary"
   },
   {
@@ -389,7 +389,7 @@
         }
       ]
     },
-    "description": "Peca: Cavalo 4/5, sem efeito de entrada. Manobra: Anuncie um Cavalo e preserve-o por um turno inimigo. Sem atacar nem estar congelado: venca se o inimigo controla seis peças. Rei nao conta na quantidade de peças.",
+    "description": "Peca: Cavalo 4/5, sem efeito de entrada. Manobra: Anuncie um Cavalo e preserve-o por um turno inimigo. Sem atacar nem estar congelado: venca se o inimigo tem ate 10 de vida e controla seis peças. Rei nao conta na quantidade de peças.",
     "rarity": "legendary"
   },
   {
@@ -413,7 +413,7 @@
         }
       ]
     },
-    "description": "Peca: Torre 5/7, sem efeito de entrada. Manobra: Anuncie uma Torre e preserve-a por um turno inimigo. Ela deve atacar e sobreviver neste turno sem estar congelada. Venca se o inimigo tem zero de Armadura e pelo menos tres Peoes. Peao Passado tambem conta. Rei nao conta na quantidade de peças.",
+    "description": "Peca: Torre 5/7, sem efeito de entrada. Manobra: Anuncie uma Torre e preserve-a por um turno inimigo. Ela deve atacar e sobreviver neste turno sem estar congelada. Venca se o inimigo tem ate 10 de vida, zero de Armadura e pelo menos tres Peoes. Peao Passado tambem conta. Rei nao conta na quantidade de peças.",
     "rarity": "legendary"
   },
   {
@@ -437,7 +437,7 @@
         }
       ]
     },
-    "description": "Peca: Bispo 5/6, sem efeito de entrada. Manobra: Anuncie exatamente uma Torre e um Bispo adjacentes e preserve-os por um turno inimigo. Ambos devem ter atacado nesta partida mas nao neste turno nem estar congelados. Venca se o inimigo tem ate 15 de vida e exatamente uma peça. Rei nao conta na quantidade de peças inimigas.",
+    "description": "Peca: Bispo 5/6, sem efeito de entrada. Manobra: Anuncie exatamente uma Torre e um Bispo adjacentes e preserve-os por um turno inimigo. Ambos devem ter atacado nesta partida mas nao neste turno nem estar congelados. Venca se o inimigo tem ate 10 de vida e exatamente uma peça. Rei nao conta na quantidade de peças inimigas.",
     "rarity": "legendary"
   },
   {
@@ -461,7 +461,7 @@
         }
       ]
     },
-    "description": "Peca: Peao 7/8, sem efeito de entrada. Manobra: Anuncie seu Rei quando so restarem os dois Reis no tabuleiro e preserve esse tabuleiro por um turno inimigo. Sem atacar nem estar congelado: venca se possui Peao Passado na mao e seu Rei tem mais vida que o inimigo.",
+    "description": "Peca: Peao 7/8, sem efeito de entrada. Manobra: Anuncie seu Rei quando so restarem os dois Reis no tabuleiro e preserve esse tabuleiro por um turno inimigo. Sem atacar nem estar congelado: venca se o inimigo tem ate 10 de vida, voce possui Peao Passado na mao e seu Rei tem mais vida que o inimigo.",
     "rarity": "legendary"
   },
   {

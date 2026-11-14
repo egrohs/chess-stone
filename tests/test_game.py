@@ -185,7 +185,8 @@ class RulesTests(unittest.TestCase):
     def test_initial_state(self):
         game = Game(load_cards(), seed=3)
         p0, p1 = game.players
-        self.assertEqual((p0.health, p1.health), (30, 30))
+        self.assertEqual((p0.health, p1.health), (20, 20))
+        self.assertEqual((p0.max_health, p1.max_health), (20, 20))
         self.assertEqual((len(p0.hand), len(p1.hand)), (4, 3))
         self.assertEqual((len(p0.deck), len(p1.deck)), (26, 27))
         self.assertEqual((p0.mana, p1.mana), (1, 0))
@@ -266,7 +267,7 @@ class RulesTests(unittest.TestCase):
         queen = self.unit("dama")
         self.game.attack(0, queen, self.p1)
         self.game.attack(0, queen, self.p1)
-        self.assertEqual(self.p1.health, 20)
+        self.assertEqual(self.p1.health, 10)
         with self.assertRaises(RuleError):
             self.game.attack(0, queen, self.p1)
 
@@ -289,7 +290,7 @@ class RulesTests(unittest.TestCase):
         self.assertIn(self.p1, self.game.attack_targets(pawn))
         self.assertIn(rook, self.game.attack_targets(pawn))
         self.game.attack(0, pawn, self.p1)
-        self.assertEqual(self.p1.health, 29)
+        self.assertEqual(self.p1.health, 19)
         self.assertIn("Rei (Adversario) sofre 1 de dano.", self.game.messages)
 
     def test_out_of_range_piece_targets_activated_king_not_hidden_portrait(self):
@@ -319,7 +320,7 @@ class RulesTests(unittest.TestCase):
         self.game.cleanup()
         self.assertTrue(self.game.over)
         self.assertEqual(self.game.winner, 1)
-        self.assertEqual(self.p1.health, 30)
+        self.assertEqual(self.p1.health, 20)
 
     def test_manual_maneuver_targets_and_elusive(self):
         bishop = self.unit("bispo", 1)
@@ -396,14 +397,14 @@ class RulesTests(unittest.TestCase):
         self.game.play_card(0, card, queen, mode="manobra")
         self.assertNotIn(queen, self.p0.board)
         self.assertEqual(self.p1.board, [])
-        self.assertEqual(self.p1.health, 25)
+        self.assertEqual(self.p1.health, 15)
         self.assertEqual(len(self.p0.hand), 2)
 
     def test_bishop_end_turn_heal(self):
         self.unit("bispo")
-        self.p0.health = 29
+        self.p0.health = 19
         self.game.end_turn(0)
-        self.assertEqual(self.p0.health, 30)
+        self.assertEqual(self.p0.health, 20)
 
     def test_last_draw_activates_shared_health_king(self):
         self.p0.health = 17
@@ -426,7 +427,7 @@ class RulesTests(unittest.TestCase):
         self.p0.deck.clear()
         for _ in range(3):
             self.game.draw_card(0)
-        self.assertEqual(self.p0.health, 24)
+        self.assertEqual(self.p0.health, 14)
         self.assertEqual(self.p0.fatigue, 3)
         self.assertEqual(len(self.p0.board), 1)
 
@@ -437,7 +438,7 @@ class RulesTests(unittest.TestCase):
             [{"trigger": "on_play", "action": "damage", "amount": 3, "target": "all_enemies"}],
             "on_play", 0,
         )
-        self.assertEqual(self.p1.health, 27)
+        self.assertEqual(self.p1.health, 17)
 
     def test_full_board_defers_king_until_a_slot_is_free(self):
         units = [self.unit() for _ in range(BOARD_LIMIT)]

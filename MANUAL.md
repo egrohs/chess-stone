@@ -31,7 +31,7 @@ o catalogo base completo, sem variantes de crafting nem cartas lendarias.
 O tamanho padrao e 30 cartas; a opcao de execucao `--deck-size` permite decks
 de teste menores e nao altera o tamanho de decks personalizados.
 
-Cada jogador comeca com **30 de vida** e recebe tres cartas iniciais (ou o
+Cada jogador comeca com **20 de vida** e recebe tres cartas iniciais (ou o
 tamanho do deck, se menor). O primeiro jogador tambem compra no inicio do seu
 primeiro turno. Nao ha mulligan, moeda, armas ou poder heroico.
 
@@ -46,7 +46,7 @@ primeiro turno. Nao ha mulligan, moeda, armas ou poder heroico.
 | Manobra com alvo | Clique direto no inimigo valido, escolha Manobra e depois clique no alvo verde, ou arraste a carta diretamente ate o alvo verde (inclusive aliado) |
 | Atacar | Clique em uma peça aliada pronta e depois em um inimigo verde |
 | Reposicionar | Arraste uma peça sua (exceto o Rei) para uma casa vazia (borda azul); custa 1 tempo |
-| Roque | Com o Rei fora do tabuleiro e uma Torre aliada no canto 1 ou 6, use o botao Roque: custa 2 tempo e concede 6 de Armadura; uma vez por partida |
+| Roque | Com o Rei fora do tabuleiro e uma Torre aliada no canto 1 ou 6, use o botao Roque: custa 2 tempo e concede 4 de Armadura; uma vez por partida |
 | Cancelar selecao | Clique direito ou Esc |
 | Encerrar turno | Clique em **Passar Turno** |
 | Ativar o Rei manualmente | Use **Ativar Rei (Final de jogo)** quando estiver disponivel |
@@ -144,7 +144,7 @@ alvo na fileira/padrao, a peça pode atacar o Rei diretamente.
 O dano permanece entre turnos. Morte dos dois Reis na mesma acao resulta em
 empate.
 
-A Armadura dos Reis comeca em zero. O Roque concede 6 de Armadura como
+A Armadura dos Reis comeca em zero. O Roque concede 4 de Armadura como
 Seguranca do Rei, sem mover nem curar peças. Se houver Armadura, ela absorve dano
 antes da vida, inclusive depois da Ativacao do Rei, e e exibida no tabuleiro.
 Mate de Gaveta exige que o Rei inimigo esteja sem Armadura.
@@ -212,14 +212,16 @@ Cada deck aceita no maximo uma copia de cada mate, somando todas as qualidades.
 Os decks automaticos nao incluem lendarias.
 
 O Rei ocupa uma casa fixa, mas nao conta na quantidade de peças exigida pelos mates abaixo.
+Todos os mates exigem que o Rei inimigo tenha **ate 10 de vida** ao executa-los,
+alem das condicoes especificas indicadas na tabela.
 
 | Carta | Tempo | Formacao a anunciar | Condicoes adicionais para executar |
 |---|---|---|---|
-| Mate de Anastasia | 9 | Torre na casa 1 ou 6, com Cavalo na casa 2 ou 5 respectivamente; pelo menos tres peças aliadas | Inimigo com ate 15 de vida e ao menos duas peças |
+| Mate de Anastasia | 9 | Torre na casa 1 ou 6, com Cavalo na casa 2 ou 5 respectivamente; pelo menos tres peças aliadas | Inimigo com ate 10 de vida e ao menos duas peças |
 | Mate de Boden | 5 | Bispos nas casas 1 e 6; pelo menos duas peças nas casas intermediarias | Jogar duas outras manobras no mesmo turno antes do mate |
 | Mate Abafado | 6 | Um Cavalo | Inimigo com seis peças; Rei nao conta para as seis |
 | Mate de Gaveta | 8 | Uma Torre | Essa mesma Torre deve ter atacado e sobrevivido no turno atual; inimigo com zero de Armadura e pelo menos tres Peoes |
-| Mate da Opera | 7 | Exatamente uma Torre e um Bispo aliados, adjacentes; outras pecas sao permitidas | Ambos devem ter atacado nesta partida; inimigo com ate 15 de vida e exatamente uma peça |
+| Mate da Opera | 7 | Exatamente uma Torre e um Bispo aliados, adjacentes; outras pecas sao permitidas | Ambos devem ter atacado nesta partida; inimigo com ate 10 de vida e exatamente uma peça |
 | Final de jogo Puro (Rei e Peao) | 10 | Ambos os Reis ativados, sem nenhuma outra peça em qualquer lado | Peao Passado na mao e seu Rei com estritamente mais vida que o Rei inimigo |
 
 ### Preparacao e resposta adversaria

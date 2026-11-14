@@ -18,7 +18,8 @@ from board_rules import BOARD_LIMIT, CENTER_SLOTS, CORNER_SLOTS
 
 MOVE_COST = 1
 CASTLE_COST = 2
-CASTLE_ARMOR = 6
+CASTLE_ARMOR = 4
+STARTING_HEALTH = 20
 HAND_LIMIT = 10
 PlayMode = Literal["piece", "manobra"]
 KEYWORD_LABELS = {
@@ -77,8 +78,8 @@ class Player:
     hand: list[Card] = field(default_factory=list)
     discard: list[Card] = field(default_factory=list)
     board: list[Unit] = field(default_factory=list)
-    _health: int = 30
-    max_health: int = 30
+    _health: int = STARTING_HEALTH
+    max_health: int = STARTING_HEALTH
     max_mana: int = 0
     mana: int = 0
     fatigue: int = 0

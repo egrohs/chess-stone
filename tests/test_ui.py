@@ -560,7 +560,7 @@ class InterfaceTests(unittest.TestCase):
         self.app.click(self.app.slots(0)[0].center)
         self.assertIsNotNone(self.app.selected_unit)
         self.app.click(self.app.hero_rect(1).center)
-        self.assertEqual(self.game.players[1].health, 25)
+        self.assertEqual(self.game.players[1].health, 15)
 
     def test_hero_health_is_drawn_over_drops_and_tracks_activated_king(self):
         self.player.health = 17
@@ -596,11 +596,11 @@ class InterfaceTests(unittest.TestCase):
         castle = next(call for call in button.call_args_list if call.args[0] == self.app.castle_button)
         self.assertTrue(castle.args[2])
         self.app.click(self.app.castle_button.center)
-        self.assertEqual((self.player.mana, self.player.armor), (8, 6))
+        self.assertEqual((self.player.mana, self.player.armor), (8, 4))
         self.assertIsNone(self.app.selected_card)
         self.app.click(self.app.castle_button.center)
         self.assertIn("ja foi usado", self.game.messages[-1])
-        self.assertEqual((self.player.mana, self.player.armor), (8, 6))
+        self.assertEqual((self.player.mana, self.player.armor), (8, 4))
 
     def test_cancel_selection_and_king_button(self):
         self.add_card("peao")
@@ -642,6 +642,7 @@ class InterfaceTests(unittest.TestCase):
         self.game.end_turn(1)
         self.player.mana = 10
         self.player.maneuvers_played = 2
+        self.game.players[1].health = 10
         self.player.hand.clear()
         self.add_card("mate_boden")
         self.app.draw()
@@ -649,7 +650,7 @@ class InterfaceTests(unittest.TestCase):
         self.app.click(self.app.play_button.center)
         self.assertTrue(self.game.over)
         self.assertEqual(self.game.winner, 0)
-        self.assertEqual(self.game.players[1].health, 30)
+        self.assertEqual(self.game.players[1].health, 10)
         self.app.update()
         self.assertEqual(self.app.state, State.GAME_OVER)
         self.app.draw()
@@ -666,6 +667,7 @@ class InterfaceTests(unittest.TestCase):
         self.add_card("mate_gaveta")
         self.app.draw()
         self.game.players[1].armor = 0
+        self.game.players[1].health = 10
         self.game.attack(0, rook, self.game.players[1])
         self.select_first_card()
         self.app.draw()

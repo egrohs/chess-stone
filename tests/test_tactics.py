@@ -184,14 +184,14 @@ class TacticalRulesTests(unittest.TestCase):
         attacker = self.unit(card_id="dama")
         attacker.attack = 2
         self.game.attack(0, attacker, self.p1)
-        self.assertEqual(self.p1.health, 28)
+        self.assertEqual(self.p1.health, 18)
         self.p1.endgame_ready = True
         self.game.activate_king(1)
         support = self.unit(1, 1)
         self.assertTrue(self.game.supported(self.p1.king))
         self.p1.armor = 1
         self.game.attack(0, attacker, self.p1.king)
-        self.assertEqual((self.p1.health, self.p1.armor), (28, 0))
+        self.assertEqual((self.p1.health, self.p1.armor), (18, 0))
         support.health = 0
         self.assertFalse(self.game.supported(self.p1.king))
 
@@ -281,7 +281,7 @@ class TacticalRulesTests(unittest.TestCase):
             self.game.play_card(0, self.card("ataque_duplo"), mode="manobra")
         self.assertEqual(self.p1.board, [high])
         self.assertEqual(len(self.p0.hand), 2)
-        self.assertEqual(self.p1.health, 30)
+        self.assertEqual(self.p1.health, 20)
 
     def test_lowest_health_hero_tie_comes_after_slots_and_respects_count(self):
         piece = self.unit(1, 5)

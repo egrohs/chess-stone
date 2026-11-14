@@ -27,7 +27,7 @@ class DamageEventTests(unittest.TestCase):
         snapshots = []
         self.game.on_damage = lambda amount: snapshots.append((amount, target.health))
         self.game.damage(target, 4)
-        self.assertEqual(snapshots, [(4, 26)])
+        self.assertEqual(snapshots, [(4, 16)])
 
     def test_shield_zero_healing_and_destroy_do_not_play_impact(self):
         rook = self.game.summon(1, "torre")

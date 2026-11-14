@@ -33,10 +33,11 @@ class MateTests(unittest.TestCase):
             self.unit("peao")
         self.unit("peao", 1)
         self.unit("peao", 1)
-        self.p1.health = 15
+        self.p1.health = 10
         return rook, knight
 
     def boden(self):
+        self.p1.health = 10
         left = self.unit("bispo")
         self.unit("peao")
         self.unit("peao")
@@ -57,7 +58,7 @@ class MateTests(unittest.TestCase):
         self.game.play_card(0, card, mode="manobra")
         self.assertTrue(self.game.over)
         self.assertEqual(self.game.winner, 0)
-        self.assertEqual(self.p1.health, 15)
+        self.assertEqual(self.p1.health, 10)
         self.assertEqual(self.p0.mana, 1)
         self.assertTrue(all(u.attacks_used == 1 for u in pair))
         self.assertIn("venceu por Mate de Anastasia", self.game.messages[-1])
@@ -106,7 +107,7 @@ class MateTests(unittest.TestCase):
         self.assertEqual(self.p0.maneuvers_played, 3)
         self.assertEqual(self.p0.mana, 1)
         self.assertTrue(self.game.over)
-        self.assertEqual(self.p1.health, 30)
+        self.assertEqual(self.p1.health, 10)
 
     def test_boden_needs_two_interior_pieces_not_only_kings(self):
         self.unit("bispo")
@@ -177,9 +178,9 @@ class MateTests(unittest.TestCase):
         self.anastasia()
         self.cycle()
         card = self.card("mate_anastasia")
-        self.p1.health = 16
-        self.assertIn("15", self.game.mate_unavailable_reason(0, card))
-        self.p1.health = 15
+        self.p1.health = 11
+        self.assertIn("10", self.game.mate_unavailable_reason(0, card))
+        self.p1.health = 10
         self.assertEqual(self.game.mate_unavailable_reason(0, card), "")
         pawn = self.p1.board[0]
         pawn.effects = []
@@ -205,6 +206,7 @@ class MateTests(unittest.TestCase):
         self.assertTrue(self.game.playable(0, self.card("mate_anastasia"), mode="manobra"))
 
     def test_boden_intermediate_death_with_two_survivors_keeps_threat(self):
+        self.p1.health = 10
         self.unit("bispo")
         for _ in range(3):
             self.unit("peao")
@@ -278,11 +280,13 @@ class MateTests(unittest.TestCase):
         self.p1.hand = [Card(self.game.uid(), self.game.catalog["mate_boden"])]
         self.p1.mana = 10
         self.p1.maneuvers_played = 2
+        self.p0.health = 10
         self.game.ai_step()
         self.assertTrue(self.game.over)
         self.assertEqual(self.game.winner, 1)
 
     def smothered(self):
+        self.p1.health = 10
         knight = self.unit("cavalo")
         for _ in range(6):
             unit = self.unit("peao", 1)
@@ -290,6 +294,7 @@ class MateTests(unittest.TestCase):
         return knight
 
     def back_rank(self):
+        self.p1.health = 10
         rook = self.unit("torre", position=5)
         for _ in range(3):
             unit = self.unit("peao", 1)
@@ -306,7 +311,7 @@ class MateTests(unittest.TestCase):
         bishop.summoned_turn -= 1
         self.game.attack(0, rook, enemy)
         self.game.attack(0, bishop, enemy)
-        self.p1.health = 15
+        self.p1.health = 10
         return rook, bishop
 
     def opposition(self):
@@ -314,7 +319,7 @@ class MateTests(unittest.TestCase):
             player.endgame_ready = True
             self.game.activate_king(player.owner)
         self.p0.health = 20
-        self.p1.health = 15
+        self.p1.health = 10
         self.card("peao_passado")
         return self.p0.king
 
@@ -324,7 +329,7 @@ class MateTests(unittest.TestCase):
         self.game.play_card(0, self.card("mate_abafado"), mode="manobra")
         self.assertTrue(self.game.over)
         self.assertEqual(self.game.winner, 0)
-        self.assertEqual(self.p1.health, 30)
+        self.assertEqual(self.p1.health, 10)
         self.assertEqual(self.p0.mana, 4)
 
     def test_smothered_allows_frozen_enemy_pieces(self):
@@ -360,7 +365,7 @@ class MateTests(unittest.TestCase):
         self.game.attack(0, rook, self.p1)
         self.game.play_card(0, card, mode="manobra")
         self.assertTrue(self.game.over)
-        self.assertEqual(self.p1.health, 27)
+        self.assertEqual(self.p1.health, 7)
         self.assertEqual(self.p0.mana, 2)
 
     def test_back_rank_counts_only_pawns_and_excludes_king(self):
@@ -392,7 +397,7 @@ class MateTests(unittest.TestCase):
         self.assertIn(card, self.p0.hand)
         self.game.damage(self.p1, 1)
         self.assertEqual(self.p1.armor, 0)
-        self.assertEqual(self.p1.health, 27)
+        self.assertEqual(self.p1.health, 7)
         self.game.play_card(0, card, mode="manobra")
         self.assertTrue(self.game.over)
 
@@ -412,7 +417,7 @@ class MateTests(unittest.TestCase):
         self.assertTrue(all(u.has_attacked and u.attacks_used == 0 for u in pair))
         self.game.play_card(0, self.card("mate_opera"), mode="manobra")
         self.assertTrue(self.game.over)
-        self.assertEqual(self.p1.health, 15)
+        self.assertEqual(self.p1.health, 10)
         self.assertEqual(self.p0.mana, 3)
 
     def test_opera_requires_both_attack_histories(self):
@@ -429,9 +434,9 @@ class MateTests(unittest.TestCase):
         self.opera()
         self.cycle()
         card = self.card("mate_opera")
-        self.p1.health = 16
+        self.p1.health = 11
         self.assertFalse(self.game.playable(0, card, mode="manobra"))
-        self.p1.health = 15
+        self.p1.health = 10
         self.unit("peao", 1)
         self.assertFalse(self.game.playable(0, card, mode="manobra"))
 
@@ -456,7 +461,7 @@ class MateTests(unittest.TestCase):
         self.assertTrue(self.game.over)
         self.assertEqual(self.game.winner, 0)
         self.assertEqual(self.p0.mana, 0)
-        self.assertEqual(self.p1.health, 15)
+        self.assertEqual(self.p1.health, 10)
         self.assertTrue(any(c.definition["id"] == "peao_passado" for c in self.p0.hand))
 
     def test_opposition_requires_pawn_and_strictly_more_health(self):
@@ -497,6 +502,38 @@ class MateTests(unittest.TestCase):
             self.game.mates.execute(0, pattern)
             self.assertFalse(self.game.over)
 
+    def test_all_mates_require_enemy_health_at_most_ten(self):
+        cases = (
+            ("anastasia", "mate_anastasia"),
+            ("boden", "mate_boden"),
+            ("smothered", "mate_abafado"),
+            ("back_rank", "mate_gaveta"),
+            ("opera", "mate_opera"),
+            ("opposition", "endgame_puro"),
+        )
+        for pattern, card_id in cases:
+            with self.subTest(pattern=pattern):
+                self.setUp()
+                formation = getattr(self, pattern)()
+                self.cycle()
+                if pattern == "boden":
+                    self.p0.maneuvers_played = 2
+                elif pattern == "back_rank":
+                    self.game.attack(0, formation, self.p1)
+                card = self.card(card_id)
+                for health in (11, 10, 9):
+                    self.p1.health = health
+                    self.assertEqual(self.game.playable(0, card, "manobra"), health <= 10)
+                    if health == 11:
+                        with self.assertRaisesRegex(RuleError, "ate 10"):
+                            self.game.play_card(0, card, mode="manobra")
+                        self.assertEqual(self.p0.mana, 10)
+                        self.assertIn(card, self.p0.hand)
+                self.p1.health = 10
+                self.game.play_card(0, card, mode="manobra")
+                self.assertTrue(self.game.over)
+                self.assertEqual(self.p1.health, 10)
+
     def test_all_six_quality_variants_preserve_requirements_and_cost(self):
         from mate_rules import PATTERNS
 
@@ -517,13 +554,13 @@ class MateTests(unittest.TestCase):
     def test_armor_absorbs_hero_damage_before_and_after_activation(self):
         self.p1.armor = 5
         self.game.damage(self.p1, 3)
-        self.assertEqual((self.p1.armor, self.p1.health), (2, 30))
+        self.assertEqual((self.p1.armor, self.p1.health), (2, 20))
         self.p1.endgame_ready = True
         self.game.activate_king(1)
         self.game.damage(self.p1.king, 5)
-        self.assertEqual((self.p1.armor, self.p1.health), (0, 27))
+        self.assertEqual((self.p1.armor, self.p1.health), (0, 17))
         self.game.heal(self.p1.king, 2)
-        self.assertEqual((self.p1.armor, self.p1.health), (0, 29))
+        self.assertEqual((self.p1.armor, self.p1.health), (0, 19))
 
 
 if __name__ == "__main__":

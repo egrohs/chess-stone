@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pygame
 
-from game_engine import BOARD_LIMIT, CENTER_SLOTS, KEYWORD_LABELS, Card, Entity, Game, PlayMode, RuleError, Unit, load_cards
+from game_engine import BOARD_LIMIT, CASTLE_ARMOR, CENTER_SLOTS, KEYWORD_LABELS, STARTING_HEALTH, Card, Entity, Game, PlayMode, RuleError, Unit, load_cards
 from deck_store import DEFAULT_PATH, DeckStore, validate_deck, validate_legendary
 from collection_view import CollectionView
 from ui_theme import BG, PANEL, WHITE, MUTED, GREEN, GOLD, RED, BLUE
@@ -850,7 +850,7 @@ class App:
         self.button(self.king_button, "Ativar Rei (Final de jogo)", human_turn and game.can_activate_king(0))
         can_play = bool(human_turn and self.selected_card and game.playable(0, self.selected_card, "manobra"))
         self.button(self.play_button, "Jogar como Manobra", can_play)
-        self.button(self.castle_button, "Roque: +6 Armadura (2 tempo)", game.can_castle(0))
+        self.button(self.castle_button, f"Roque: +{CASTLE_ARMOR} Armadura (2 tempo)", game.can_castle(0))
         if self.selected_card:
             automatic_targets = [
                 game.entity_name(entity) + (f" (casa {entity.slot + 1})" if isinstance(entity, Unit) else "")
@@ -951,7 +951,7 @@ class App:
         elif self.state == State.MENU:
             self.text("CHESS STONE", (600, 220), GOLD, self.large)
             self.text("Card game de xadrez | Jogador x IA", (548, 292))
-            self.text(f"IA: {self.deck_size} cartas | {BOARD_LIMIT} peças por lado | 30 de vida", (493, 336), MUTED)
+            self.text(f"IA: {self.deck_size} cartas | {BOARD_LIMIT} peças por lado | {STARTING_HEALTH} de vida", (493, 336), MUTED)
             self.button(self.start_button, "Iniciar partida")
             self.button(self.builder_button, "Montar / editar decks")
             self.button(self.collection_button, "Colecao de cartas")
